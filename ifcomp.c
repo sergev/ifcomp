@@ -125,7 +125,6 @@ void internal_error(char *proc, char *fmat, ...) {
     printf("*** Internal error in procedure %s:",proc);
     vfprintf(stdout,fmat,ap);
     CR();
-    _inline(0xcc);
     exit(1);
     }
 
@@ -165,7 +164,7 @@ hash_info hash_line(char *line) {
     }
 
 void print_hash_node(hash_node_decl *p) {
-    printf("h2=%x  h1=%x  text_list=%d  nextb=%d\n",
+    printf("h2=%lx  h1=%x  text_list=%d  nextb=%d\n",
 	p->h.h2, p->h.h1, p->text_list, p->next_in_bucket);
     }
 
@@ -215,6 +214,10 @@ void format_file_line(file_line_decl *p) {
     printf("|%s|\n",string[p->file_line_text].text);
     }
 
+static inline int _max(int a, int b) {
+    return (a > b) ? a : b;
+    }
+
 void test_list(int pass) {	// 4634
     line_count i = _max(total_file_nlines[first_file], total_file_nlines[second_file]);
     printf("test list after pass%d\n",pass);
@@ -256,9 +259,9 @@ int next_index_func(int *last, int *hbound, char *name, int size, void **p) {
 		sizeof(*name),(void **)&name)
 #define str(x) #x
 #define next_index1(name,w) \
-	next_index_func(&last_##name w,&hbound_##name w, \
-		str(name##w), sizeof(*name w), \
-		(void **)&name w)
+	next_index_func(&last_##name[w],&hbound_##name[w], \
+		str(name##w), sizeof(*name[w]), \
+		(void **)&name[w])
 
 line_count make_line_entry(line_count linen, line_count next) {
     line_count i = next_index(line_table);
@@ -306,7 +309,7 @@ char *scopy(const char *p) {
     static char *strpool=0;
     static char *poolptr = 0;
     char *q;
-    static total = 0;
+    static int total = 0;
     int len = strlen(p);
     if (strpool == 0 || poolptr+len+1 >= strpool+POOL_SEG_SIZE) {
 	strpool = poolptr = Mmalloc(POOL_SEG_SIZE), total+=POOL_SEG_SIZE;
@@ -402,7 +405,7 @@ finish: ;
 
 FILE* input_file[two_files];
 
-void read_lines(which_file) {
+void read_lines(int which_file) {
     int current_line = 0;
     while (1) {
         char buf[4096]; *buf = 0;
@@ -412,7 +415,7 @@ void read_lines(which_file) {
         int len = strlen(buf);
         if (len && buf[len-1] == '\n') buf[len-1] = 0;
         if (debug_read_current_line) printf("read %s\n",buf);
-        current_line = next_index1(file_line,[which_file]);
+        current_line = next_index1(file_line,which_file);
         hash_node_index H;
         enter_line(buf, hash_line(buf), current_line, which_file,
 		&H, // file_line[which_file][current_line].ptr0,
@@ -570,8 +573,14 @@ bool cosmetic_line(char first_byte) {
     if (linen < 0) fileno = second_file, linen = - linen; \
     else fileno = first_file; }
 
-void each_line_in_node(int noden, bool always, int starting_line)
-	 -> (int which_file, char *, int lineno) {
+static inline int _abs(int a) {
+    return (a < 0) ? -a : a;
+    }
+
+// Call a function for each line.
+
+void each_line_in_node(int noden, bool always, int starting_line,
+                       void (*func)(int which_file, char *text, int lineno, void *arg), void *arg) {
     get_start_finish(noden);
     for (; start != finish; start = node[start].next) {
 	line_count filen;
@@ -585,17 +594,21 @@ void each_line_in_node(int noden, bool always, int starting_line)
 	// He may have passed a place to start later than the beginning of
 	// a node.
 	for (sline = _max(sline,starting_line); sline < last; sline++)
-	    yield (filen,
-		   string[fp[sline].file_line_text].text,
-		   fp[sline].linen);
+	    func(filen,
+		 string[fp[sline].file_line_text].text,
+		 fp[sline].linen,
+		 arg);
 	}
     }
 
+void count_node_callback(int which_file, char *text, int lineno, void *arg) {
+    line_kinds *p = arg;
+    if (cosmetic_line(*text)) p->cosmetic++;
+    else p->non_cosmetic++;
+    }
+
 void count_node(int noden, line_kinds *p) {
-    for dummy, text, dummy2 <- each_line_in_node(noden,False,0) do {
-	if (cosmetic_line(*text)) p->cosmetic++;
-        else p->non_cosmetic++;
-	}
+    each_line_in_node(noden,False,0,count_node_callback,p);
     }
 
 void format_node(tree_index noden, int pad) {
@@ -611,9 +624,11 @@ void format_node(tree_index noden, int pad) {
     printf("]\n");
     }
 
+void print_node1_callback(int which_file, char *text, int lineno, void *arg) {
+    printf("%c%6d|%s\n",which_file == first_file ? ' ' : '+',lineno,text);
+    }
 void print_node1(tree_index noden, bool always, int starting_line) {
-    for which_file, text, lineno <- each_line_in_node(noden,always,starting_line) do
-        printf("%c%6d|%s\n",which_file == first_file ? ' ' : '+',lineno,text);
+    each_line_in_node(noden,always,starting_line,print_node1_callback,NULL);
     }
 void print_node(tree_index noden) {
     print_node1(noden,False,0);
@@ -714,8 +729,8 @@ void pass5() {	// 70e0
     // Also make the trailers talk to each other.
     // First be sure the file_line array has space for the extra line
     // number.
-    next_index1(file_line,[first_file]);
-    next_index1(file_line,[second_file]);
+    next_index1(file_line,first_file);
+    next_index1(file_line,second_file);
     file1_line[file1_tlinesp].ptr0 = file2_tlinesp;
     file2_line[file2_tlinesp].ptr0 = file1_tlinesp;
     }
@@ -1152,9 +1167,9 @@ void doit() {
     allocate_tables();
     void (*A[])() = {pass1,pass2,pass3,pass4};
     #define asize(A) (sizeof(A)/sizeof((A)[0]))
-    for (i = 0; i < asize(A); i++) {A[i](); if (debug_syt) test_list(i+1);}
+    for (int i = 0; i < asize(A); i++) {A[i](); if (debug_syt) test_list(i+1);}
     void (*B[])() = {pass5,pass6,pass7,pass8};
-    for (i = 0; i < asize(B); i++) {B[i](); dump_trees(i+asize(A)+1);}
+    for (int i = 0; i < asize(B); i++) {B[i](); dump_trees(i+asize(A)+1);}
     summary();
     }
 
