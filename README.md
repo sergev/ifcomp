@@ -23,3 +23,16 @@ Copyright               Work of the US Gov. Public Use Permitted.
 ```
 
 [https://ntrs.nasa.gov/citations/19820000365](https://ntrs.nasa.gov/citations/19820000365)
+
+# Build
+
+On Mac:
+```
+$ brew install cmocka
+$ make
+```
+
+Run tests:
+```
+$ make test
+```

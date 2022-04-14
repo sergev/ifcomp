@@ -1,2 +1,3 @@
 ifcomp
+unit_tests
 *.o
