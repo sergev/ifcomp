@@ -32,6 +32,12 @@ $ brew install cmocka
 $ make
 ```
 
+On Ubuntu:
+```
+$ sudo apt install libcmocka-dev
+$ make
+```
+
 Run tests:
 ```
 $ make test

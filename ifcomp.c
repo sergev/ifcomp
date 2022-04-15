@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 
 #define first_file 0
 #define second_file 1
@@ -427,7 +428,7 @@ void enter_line(char *text, hash_info h, line_count linen, int input_file,
         last_node = node;
         int N = hash_node[node].next_in_bucket;
         if (N < 0 || N > hbound_hash_node)
-            printf("OOPS! node=%d &=%x\n", N, &hash_node[node].next_in_bucket);
+            printf("OOPS! node=%d &=%p\n", N, &hash_node[node].next_in_bucket);
         node = hash_node[node].next_in_bucket;
     }
     // Add to chain.
@@ -1297,7 +1298,6 @@ void doit()
 FILE *open_file(char *fn)
 {
     FILE *fp = fopen(fn, "r");
-    extern int errno;
     if (fp == 0)
         printf("Can't open file %s:%s\n", fn, strerror(errno)), exit(1);
     return fp;

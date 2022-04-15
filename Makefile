@@ -1,7 +1,7 @@
 PROG            = ifcomp unit_tests
 CC              = gcc-11
 CFLAGS		= -I/usr/local/include #-O3 -Wall -Werror
-LIBCMOCKA       = -L/usr/local/lib -lcmocka-static
+LIBCMOCKA       = -L/usr/local/lib -lcmocka
 
 all:		$(PROG)
 
