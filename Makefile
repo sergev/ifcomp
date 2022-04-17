@@ -11,8 +11,8 @@ test:           unit_tests
 clean:
 		rm -f $(PROG) *.o
 
-ifcomp:         ifcomp.o
-		$(CC) $(LDFLAGS) $< -o $@
+ifcomp:         main.o ifcomp.o
+		$(CC) $(LDFLAGS) main.o ifcomp.o -o $@
 
-unit_tests:     unit_tests.o
-		$(CC) $(LDFLAGS) $< $(LIBCMOCKA) -o $@
+unit_tests:     unit_tests.o ifcomp.o
+		$(CC) $(LDFLAGS) unit_tests.o ifcomp.o $(LIBCMOCKA) -o $@

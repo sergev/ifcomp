@@ -33,6 +33,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include "ifcomp.h"
 
 #define first_file 0
 #define second_file 1
@@ -45,10 +46,15 @@ typedef struct {
     unsigned short h1;
     long h2;
 } hash_info;
-typedef enum { False, True } bool;
-bool debug_syt_full = False, debug_syt = False, debug_dump_trees = False,
-     debug_dump_trees_full = False, debug_alloc = False, statistics = False, free_ok = True;
-bool debug_read_current_line = False;
+
+bool debug_dont_free = false;
+bool debug_syt_full = false;
+bool debug_syt = false;
+bool debug_dump_trees = false;
+bool debug_dump_trees_full = false;
+bool debug_alloc = false;
+bool debug_read_current_line = false;
+
 int total_file_nlines[two_files];
 
 // 16 for 16 bits, 32 for 32.
@@ -287,8 +293,6 @@ void test_list(int pass)
     CR();
 }
 
-void memory_statistics();
-
 int next_index_func(int *last, int *hbound, char *name, int size, void **p)
 {
     // if (debug_alloc) printf("alloc from %s(%p), hb=%d last=%d\n",name,*p,*hbound,*last);
@@ -310,7 +314,9 @@ int next_index_func(int *last, int *hbound, char *name, int size, void **p)
         } else
             printf("New size shrank!:%u\n", new_size);
     }
-    printf("out of space on %s: hbound index %d\n", name, *hbound), memory_statistics(), exit(1);
+    printf("out of space on %s: hbound index %d\n", name, *hbound);
+    print_statistics();
+    exit(1);
 }
 
 #define next_index(name) \
@@ -623,20 +629,20 @@ tree_index allocate_node()
 
 void free_node(tree_index n)
 {
-    if (!free_ok)
+    if (debug_dont_free)
         return;
     node[n].next = free_nodes_start;
     free_nodes_start = n;
 }
 
-#define cosmetic_line(c) False
+#define cosmetic_line(c) false
 
 #if 0 // I don't understand this stuff.
 bool cosmetic_line(char first_byte) {
     int len = strlen(cosmetic);
     for (i = 0; i < len; i++)
-	if (first_byte == cosmetic[i]) return True;
-    return False;
+	if (first_byte == cosmetic[i]) return true;
+    return false;
     }
 #endif
 
@@ -698,7 +704,7 @@ void count_node_callback(int which_file, char *text, int lineno, void *arg)
 
 void count_node(int noden, line_kinds *p)
 {
-    each_line_in_node(noden, False, 0, count_node_callback, p);
+    each_line_in_node(noden, false, 0, count_node_callback, p);
 }
 
 void format_node(tree_index noden, int pad)
@@ -726,7 +732,7 @@ void print_node1(tree_index noden, bool always, int starting_line)
 }
 void print_node(tree_index noden)
 {
-    print_node1(noden, False, 0);
+    print_node1(noden, false, 0);
 }
 
 tree_index make_node(node_decl *p)
@@ -741,19 +747,19 @@ tree_index make_node(node_decl *p)
 void dump_tree(tree_index tree_start)
 {
     printf("Tree %d:\n", tree_start);
-    bool branch = False;
+    bool branch = false;
     tree_index T = tree_start;
     while (T != null_node) {
         tree_index T2 = T;
         if leaf (T) {
             format_node(T, branch ? 8 : 1), T = node[T].next;
             if (debug_dump_trees_full)
-                print_node1(T2, True, 0);
+                print_node1(T2, true, 0);
         } else {
             if (branch)
-                branch = False, T = node[T].next;
+                branch = false, T = node[T].next;
             else
-                format_node(T, 1), T = node[T].branch_start, branch = True;
+                format_node(T, 1), T = node[T].branch_start, branch = true;
         }
     }
 }
@@ -924,12 +930,12 @@ void ph(char *s, char dash, bool space)
         printf("%c", dash);
     printf(" ***\n");
 }
-#define print_header(s) ph(s, '=', True)
-#define print_header1(s) ph(s, '-', True)
+#define print_header(s) ph(s, '=', true)
+#define print_header1(s) ph(s, '-', true)
 
 void print_trailer()
 {
-    ph("", '=', False);
+    ph("", '=', false);
     printf("\n");
 }
 
@@ -969,7 +975,7 @@ loop1:;
         else
             last = start, start = node[start].branch_end;
     }
-    print_node1(start, False, linen);
+    print_node1(start, false, linen);
     last = start, start = node[start].next;
 loop2:;
     while (start != node[noden].next) {
@@ -1161,9 +1167,9 @@ void pass7()
         if (j == node[i].next) {
             combine_nodes(node1, node2);
             combine_nodes(i, j);
-            return True;
+            return true;
         } else
-            return False;
+            return false;
     }
 
     tree_index i = node[tree1_start].next;
@@ -1283,8 +1289,11 @@ void summary()
 void *alloc(unsigned size)
 {
     void *p = malloc(size);
-    if (p == 0)
-        printf("out of memory\n"), memory_statistics(), exit(1);
+    if (p == 0) {
+        printf("out of memory\n");
+        print_statistics();
+        exit(1);
+    }
     return p;
 }
 
@@ -1338,7 +1347,7 @@ void ifcomp(const char *first_fname, const char *second_fname)
     summary();
 }
 
-void memory_statistics()
+void print_statistics()
 {
     long mem_used = 0;
     unsigned msize;
@@ -1358,58 +1367,4 @@ void memory_statistics()
     printf("%8ld bytes of line texts.\n", string_bytes);
     mem_used += string_bytes;
     printf("%8ld total bytes of memory used.\n", mem_used);
-}
-
-void print_statistics()
-{
-    printf("\nStatistics:\n");
-    memory_statistics();
-}
-
-void main(int argc, char **argv)
-{
-    int fileno = first_file;
-    void help()
-    {
-        printf("Usage is: %s file1 file2\n", argv[0]);
-        exit(1);
-    }
-    char *fnames[two_files];
-    for (int i = 1; i < argc; i++) {
-        char *arg = argv[i];
-#define p_is(s) (strcmp(arg, s) == 0)
-        if (arg[0] == '-')
-            if (p_is("-stfull"))
-                debug_syt_full = True;
-            else if (p_is("-st"))
-                debug_syt = True;
-            else if (p_is("-trees"))
-                debug_dump_trees = True;
-            else if (p_is("-treesfull"))
-                debug_dump_trees_full = True;
-            else if (p_is("-alloc"))
-                debug_alloc = True;
-            else if (p_is("-stat"))
-                statistics = True;
-            else if (p_is("-nofree"))
-                free_ok = False;
-            else if (p_is("-debug")) {
-                debug_syt_full = True;
-                debug_syt = True;
-                debug_dump_trees = True;
-                debug_dump_trees_full = True;
-                // debug_alloc = True;
-            } else
-                help();
-        else if (fileno < two_files)
-            fnames[fileno++] = arg;
-        else
-            help();
-    }
-    if (fileno <= second_file)
-        help();
-    printf("Comparing:  %s %s\n\n", fnames[first_file], fnames[second_file]);
-    ifcomp(fnames[first_file], fnames[second_file]);
-    if (statistics)
-        print_statistics();
 }
