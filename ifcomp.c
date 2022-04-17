@@ -1305,8 +1305,21 @@ void allocate_tables()
     alloc_thing(file_line[second_file], 1);
 }
 
-void doit()
+FILE *open_file(const char *fn)
 {
+    FILE *fp = fopen(fn, "r");
+    if (fp == 0) {
+        printf("Can't open file %s: %s\n", fn, strerror(errno));
+        exit(1);
+    }
+    return fp;
+}
+
+void ifcomp(const char *first_fname, const char *second_fname)
+{
+    input_file[first_file] = open_file(first_fname);
+    input_file[second_file] = open_file(second_fname);
+
     for (int i = 0; i < nbuckets; i++)
         sec_hash_start_node[i] = null_hash_list;
     allocate_tables();
@@ -1323,14 +1336,6 @@ void doit()
         dump_trees(i + asize(A) + 1);
     }
     summary();
-}
-
-FILE *open_file(char *fn)
-{
-    FILE *fp = fopen(fn, "r");
-    if (fp == 0)
-        printf("Can't open file %s:%s\n", fn, strerror(errno)), exit(1);
-    return fp;
 }
 
 void memory_statistics()
@@ -1397,14 +1402,14 @@ void main(int argc, char **argv)
             } else
                 help();
         else if (fileno < two_files)
-            input_file[fileno] = open_file(fnames[fileno] = arg), fileno++;
+            fnames[fileno++] = arg;
         else
             help();
     }
     if (fileno <= second_file)
         help();
     printf("Comparing:  %s %s\n\n", fnames[first_file], fnames[second_file]);
-    doit();
+    ifcomp(fnames[first_file], fnames[second_file]);
     if (statistics)
         print_statistics();
 }
