@@ -1,3 +1,33 @@
+//
+// The file Comparator program IFCOMP, is a text file comparator for IBM
+// OS/VS-compatible systems. IFCOMP accepts as input two text files
+// and produces a listing of their differences in pseudo-update form.
+// The implemented algorithm is described in article:
+// https://dl.acm.org/doi/10.1145/359460.359467
+//
+// IFCOMP was written by Reed Kotler in XPL language for an IBM 370-series
+// computer in 1979. Later Tom Penello converted it from XPL to MetaWare High C.
+//
+// Copyright (c) 1979-2022 Reed Kotler
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+//
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>

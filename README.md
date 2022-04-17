@@ -1,7 +1,7 @@
 # Text File Comparator
 
 File Comparator program IFCOMP, is text file comparator for IBM
-OS/VScompatable systems. IFCOMP accepts as input two text files
+OS/VS compatable systems. IFCOMP accepts as input two text files
 and produces listing of differences in pseudo-update form.
 IFCOMP is very useful in monitoring changes made to software at
 the source code level.
