@@ -55,25 +55,25 @@ bool debug_dump_trees_full = false;
 bool debug_alloc = false;
 bool debug_read_current_line = false;
 
-int total_file_nlines[two_files];
+static int total_file_nlines[two_files];
 
 // 16 for 16 bits, 32 for 32.
 typedef int line_count;
 
-short nchange_blocks = 0;
+static short nchange_blocks = 0;
 typedef struct {
     line_count cosmetic, non_cosmetic;
 } line_kinds;
-line_kinds delete, insert, move, replace1, replace2;
+static line_kinds delete, insert, move, replace1, replace2;
 
 //? string cosmetic = "";
 
 #define array_of(name) \
-    name##_decl *name; \
-    int last_##name, hbound_##name;
+    static name##_decl *name; \
+    static int last_##name, hbound_##name;
 #define array_of1(name, w) \
-    name##_decl *name w;   \
-    int last_##name w, hbound_##name w;
+    static name##_decl *name w;   \
+    static int last_##name w, hbound_##name w;
 
 // Cells for linked list of line numbers.
 
@@ -149,7 +149,7 @@ array_of(hash_node);
 
 #define nbuckets 256
 
-hash_node_index sec_hash_start_node[nbuckets];
+static hash_node_index sec_hash_start_node[nbuckets];
 
 typedef enum { syt_type = 1, unique_type, match_type } line_type;
 
@@ -166,7 +166,7 @@ array_of1(file_line, [two_files]);
 
 #define CR() printf("\n");
 
-void internal_error(char *proc, char *fmat, ...)
+static void internal_error(char *proc, char *fmat, ...)
 {
     va_list ap;
     va_start(ap, fmat);
@@ -183,13 +183,13 @@ void internal_error(char *proc, char *fmat, ...)
 
 enum { lt = 1, eq = 2, gt = 3 };
 
-int hashcode_compare(hash_info ha, hash_info hb)
+static int hashcode_compare(hash_info ha, hash_info hb)
 {
     return ha.h1 < hb.h1 ? lt : ha.h1 > hb.h1 ? gt : ha.h2 < hb.h2 ? lt : ha.h2 > hb.h2 ? gt : eq;
 }
 
 // hash_line.
-hash_info hash_line(char *line)
+static hash_info hash_line(char *line)
 {
     char xor ;
     int i;
@@ -209,20 +209,20 @@ hash_info hash_line(char *line)
     return h;
 }
 
-void print_hash_node(hash_node_decl *p)
+static void print_hash_node(hash_node_decl *p)
 {
     printf("h2=%lx  h1=%x  text_list=%d  nextb=%d\n", p->h.h2, p->h.h1, p->text_list,
            p->next_in_bucket);
 }
 
-void print_string(string_decl *p)
+static void print_string(string_decl *p)
 {
     printf("| %s | nexth=%d f1l=%d f2l=%d f1lst=%d f2lst=%d\n", p->text,
            p->next_text_with_same_hash, p->file_nlines[first_file], p->file_nlines[second_file],
            p->file_list[first_file], p->file_list[second_file]);
 }
 
-void dump_hash_node(hash_node_index node)
+static void dump_hash_node(hash_node_index node)
 {
     printf("hash_node  %d: ", node);
     print_hash_node(hash_node + node);
@@ -246,14 +246,14 @@ void dump_hash_node(hash_node_index node)
     }
 }
 
-void dump_syt(hash_node_index node)
+static void dump_syt(hash_node_index node)
 { // 4366
     printf("** symbol table dump **, start=%d \n", node);
     while (node != null_hash_list)
         dump_hash_node(node), node = hash_node[node].next_in_bucket;
 }
 
-void format_file_line(file_line_decl *p)
+static void format_file_line(file_line_decl *p)
 {
     printf("|%3d|", p->linen);
     switch (p->ptr_type) {
@@ -278,7 +278,7 @@ static inline int _max(int a, int b)
     return (a > b) ? a : b;
 }
 
-void test_list(int pass)
+static void test_list(int pass)
 { // 4634
     line_count i = _max(total_file_nlines[first_file], total_file_nlines[second_file]);
     printf("test list after pass%d\n", pass);
@@ -293,7 +293,7 @@ void test_list(int pass)
     CR();
 }
 
-int next_index_func(int *last, int *hbound, char *name, int size, void **p)
+static int next_index_func(int *last, int *hbound, char *name, int size, void **p)
 {
     // if (debug_alloc) printf("alloc from %s(%p), hb=%d last=%d\n",name,*p,*hbound,*last);
     if (*last + 1 < *hbound)
@@ -326,7 +326,7 @@ int next_index_func(int *last, int *hbound, char *name, int size, void **p)
     next_index_func(&last_##name[w], &hbound_##name[w], str(name##w), sizeof(*name[w]), \
                     (void **)&name[w])
 
-line_count make_line_entry(line_count linen, line_count next)
+static line_count make_line_entry(line_count linen, line_count next)
 {
     line_count i = next_index(line_table);
     line_table[i].linen = linen;
@@ -334,23 +334,21 @@ line_count make_line_entry(line_count linen, line_count next)
     return i;
 }
 
-string_index make_string(string_decl *p)
+static string_index make_string(string_decl *p)
 {
     string_index i = next_index(string);
     string[i] = *p;
     return i;
 }
 
-hash_node_index make_hash_node(hash_node_decl *p)
+static hash_node_index make_hash_node(hash_node_decl *p)
 {
     hash_node_index i = next_index(hash_node);
     hash_node[i] = *p;
     return i;
 }
 
-#define PUBLIC
-
-PUBLIC void terminate_printf(int rc, const char *format, ...)
+static void terminate_printf(int rc, const char *format, ...)
 {
     va_list ap;
     va_start(ap, format);
@@ -358,6 +356,7 @@ PUBLIC void terminate_printf(int rc, const char *format, ...)
     va_end(ap);
     exit(rc);
 }
+
 static void *Check_mem(void *v, size_t Size, const char *where)
 {
     if (!v)
@@ -365,16 +364,16 @@ static void *Check_mem(void *v, size_t Size, const char *where)
     return v;
 }
 
-PUBLIC void *Mmalloc(size_t Amount)
+static void *Mmalloc(size_t Amount)
 {
     if (Amount == 0)
         Amount = 1; // 0 fails on aix 386.
     return Check_mem((void *)malloc(Amount), Amount, "Mmalloc");
 }
 
-long string_bytes = 0;
+static long string_bytes = 0;
 
-char *scopy(const char *p)
+static char *scopy(const char *p)
 {
 #define POOL_SEG_SIZE 512
     static char *strpool = 0;
@@ -392,8 +391,8 @@ char *scopy(const char *p)
     return q;
 }
 
-void enter_line(char *text, hash_info h, line_count linen, int input_file,
-                hash_node_index *result_hash_node, string_index *result_string_index)
+static void enter_line(char *text, hash_info h, line_count linen, int input_file,
+                       hash_node_index *result_hash_node, string_index *result_string_index)
 {
     if (debug_syt_full)
         printf("\nEnter line %s, #%d\n", text, linen);
@@ -476,9 +475,9 @@ finish:;
     *result_string_index = SI;
 }
 
-FILE *input_file[two_files];
+static FILE *input_file[two_files];
 
-void read_lines(int which_file)
+static void read_lines(int which_file)
 {
     int current_line = 0;
     while (1) {
@@ -515,7 +514,7 @@ void read_lines(int which_file)
 }
 
 // Pass1.
-void pass1()
+static void pass1()
 {
     read_lines(first_file);
     read_lines(second_file);
@@ -523,7 +522,7 @@ void pass1()
     free(hash_node);
 }
 
-void pass2()
+static void pass2()
 {
     for (int i = 1; i <= last_string; i++) {
         // Look at each line.  If it occurs once in both files,
@@ -541,7 +540,7 @@ void pass2()
     }
 }
 
-void pass3()
+static void pass3()
 {
     line_count m = 1;
     while (m <= total_file_nlines[first_file]) {
@@ -564,7 +563,7 @@ void pass3()
     }
 }
 
-void pass4()
+static void pass4()
 {
     line_count m = total_file_nlines[first_file];
     while (m > 0) {
@@ -599,14 +598,14 @@ typedef struct {
 array_of(node);
 
 #define null_node 0
-tree_index free_nodes_start = null_node;
+static tree_index free_nodes_start = null_node;
 
 #define leaf(N) (node[N].branch_start == null_node)
 
 typedef struct {
     tree_index start, end;
 } tree_bounds;
-tree_bounds trees[two_files];
+static tree_bounds trees[two_files];
 
 // Shorthand:
 #define tree1 trees[first_file]
@@ -616,7 +615,7 @@ tree_bounds trees[two_files];
 #define tree1_end tree1.end
 #define tree2_end tree2.end
 
-tree_index allocate_node()
+static tree_index allocate_node()
 {
     if (free_nodes_start == null_node)
         return next_index(node);
@@ -627,7 +626,7 @@ tree_index allocate_node()
     }
 }
 
-void free_node(tree_index n)
+static void free_node(tree_index n)
 {
     if (debug_dont_free)
         return;
@@ -638,12 +637,14 @@ void free_node(tree_index n)
 #define cosmetic_line(c) false
 
 #if 0 // I don't understand this stuff.
-bool cosmetic_line(char first_byte) {
+static bool cosmetic_line(char first_byte)
+{
     int len = strlen(cosmetic);
     for (i = 0; i < len; i++)
-	if (first_byte == cosmetic[i]) return true;
+	if (first_byte == cosmetic[i])
+            return true;
     return false;
-    }
+}
 #endif
 
 // If a node is "not a leaf", it means it has been constructed of
@@ -672,8 +673,8 @@ static inline int _abs(int a)
 
 // Call a function for each line.
 
-void each_line_in_node(int noden, bool always, int starting_line,
-                       void (*func)(int which_file, char *text, int lineno, void *arg), void *arg)
+static void each_line_in_node(int noden, bool always, int starting_line,
+                              void (*func)(int which_file, char *text, int lineno, void *arg), void *arg)
 {
     get_start_finish(noden);
     for (; start != finish; start = node[start].next) {
@@ -693,7 +694,7 @@ void each_line_in_node(int noden, bool always, int starting_line,
     }
 }
 
-void count_node_callback(int which_file, char *text, int lineno, void *arg)
+static void count_node_callback(int which_file, char *text, int lineno, void *arg)
 {
     line_kinds *p = arg;
     if (cosmetic_line(*text))
@@ -702,12 +703,12 @@ void count_node_callback(int which_file, char *text, int lineno, void *arg)
         p->non_cosmetic++;
 }
 
-void count_node(int noden, line_kinds *p)
+static void count_node(int noden, line_kinds *p)
 {
     each_line_in_node(noden, false, 0, count_node_callback, p);
 }
 
-void format_node(tree_index noden, int pad)
+static void format_node(tree_index noden, int pad)
 {
 #define X(f) node[noden].f
     for (int i = 0; i < pad; i++)
@@ -722,20 +723,22 @@ void format_node(tree_index noden, int pad)
     printf("]\n");
 }
 
-void print_node1_callback(int which_file, char *text, int lineno, void *arg)
+static void print_node1_callback(int which_file, char *text, int lineno, void *arg)
 {
     printf("%c%6d|%s\n", which_file == first_file ? ' ' : '+', lineno, text);
 }
-void print_node1(tree_index noden, bool always, int starting_line)
+
+static void print_node1(tree_index noden, bool always, int starting_line)
 {
     each_line_in_node(noden, always, starting_line, print_node1_callback, NULL);
 }
-void print_node(tree_index noden)
+
+static void print_node(tree_index noden)
 {
     print_node1(noden, false, 0);
 }
 
-tree_index make_node(node_decl *p)
+static tree_index make_node(node_decl *p)
 {
     int i = next_index(node);
     node[i] = *p;
@@ -744,7 +747,7 @@ tree_index make_node(node_decl *p)
     return i;
 }
 
-void dump_tree(tree_index tree_start)
+static void dump_tree(tree_index tree_start)
 {
     printf("Tree %d:\n", tree_start);
     bool branch = false;
@@ -765,7 +768,7 @@ void dump_tree(tree_index tree_start)
 }
 
 #define no_pass 99
-void dump_trees(int pass)
+static void dump_trees(int pass)
 {
     if (!debug_dump_trees)
         return;
@@ -774,7 +777,7 @@ void dump_trees(int pass)
     dump_tree(tree2_start);
 }
 
-void pass5()
+static void pass5()
 { // 70e0
     void doit(int fileno, node_decl *Np)
     {
@@ -851,7 +854,7 @@ void pass5()
 
 #define true_line_of(N) _abs(node[N].linen)
 
-tree_index find_node(tree_bounds T, tree_index linen)
+static tree_index find_node(tree_bounds T, tree_index linen)
 { // 5eb0
     linen = _abs(linen);
     tree_index N = T.start;
@@ -871,14 +874,14 @@ tree_index find_node(tree_bounds T, tree_index linen)
     internal_error("find_node", " sn=%d en=%d l=%d", T.start, T.end, linen);
 }
 
-void detach_node(tree_index noden)
+static void detach_node(tree_index noden)
 { // 5f20
     // Remove noden from the linked list.
     tree_index prev = node[noden].prev, next = node[noden].next;
     node[prev].next = next, node[next].prev = prev;
 }
 
-void combine_nodes(tree_index node1, tree_index node2)
+static void combine_nodes(tree_index node1, tree_index node2)
 { // 5fd8
     tree_index branch_link1, branch_link2;
     node_decl N;
@@ -917,7 +920,7 @@ void combine_nodes(tree_index node1, tree_index node2)
     node[branch_link2].prev = branch_link1;
 }
 
-void ph(char *s, char dash, bool space)
+static void ph(char *s, char dash, bool space)
 {
     int len = strlen(s);
     printf("*** %s", s);
@@ -933,13 +936,13 @@ void ph(char *s, char dash, bool space)
 #define print_header(s) ph(s, '=', true)
 #define print_header1(s) ph(s, '-', true)
 
-void print_trailer()
+static void print_trailer()
 {
     ph("", '=', false);
     printf("\n");
 }
 
-void after_lines(tree_index noden)
+static void after_lines(tree_index noden)
 { // 6320
     tree_index unique_find(tree_index noden)
     { // 5de0
@@ -991,7 +994,7 @@ loop2:;
     }
 }
 
-void after_header(tree_index noden)
+static void after_header(tree_index noden)
 {
     if (noden == tree1_start)
 #define top_msg() print_header("AFTER TOP")
@@ -1000,7 +1003,7 @@ void after_header(tree_index noden)
         after_lines(noden);
 }
 
-void delete_lines(tree_index noden)
+static void delete_lines(tree_index noden)
 { // 6626
     nchange_blocks++;
     after_header(node[noden].prev);
@@ -1013,7 +1016,7 @@ void delete_lines(tree_index noden)
     dump_trees(no_pass);
 }
 
-void pass6()
+static void pass6()
 { // 7508
     tree_index replaceable(tree_index noden)
     { // 6a18
@@ -1150,7 +1153,7 @@ void pass6()
     do_insert();
 }
 
-void pass7()
+static void pass7()
 { // 75ee
 
     bool combine_adjacent_nodes(tree_index node1)
@@ -1179,7 +1182,7 @@ void pass7()
     }
 }
 
-void insert_node_after(tree_index after_this, tree_index insert_this)
+static void insert_node_after(tree_index after_this, tree_index insert_this)
 {
     node[insert_this].prev = after_this;
     tree_index after_after = node[after_this].next;
@@ -1188,7 +1191,7 @@ void insert_node_after(tree_index after_this, tree_index insert_this)
     node[after_this].next = insert_this;
 }
 
-void pass8()
+static void pass8()
 { // 7678
     void move_lines(tree_index node1, tree_index node2)
     { // 679a
@@ -1265,12 +1268,12 @@ RETRY:;
     }
 }
 
-int sum_kind(line_kinds l)
+static int sum_kind(line_kinds l)
 {
     return l.non_cosmetic + l.cosmetic;
 }
 
-void summary()
+static void summary()
 {
     //  #define nums(l) l.cosmetic+l.non_cosmetic,l.cosmetic,l.non_cosmetic
     //  #define NFMAT "%d(%d cos, %d non-cos)"
@@ -1286,7 +1289,7 @@ void summary()
     printf("%8d change blocks.\n", nchange_blocks);
 }
 
-void *alloc(unsigned size)
+static void *alloc(unsigned size)
 {
     void *p = malloc(size);
     if (p == 0) {
@@ -1302,7 +1305,7 @@ void *alloc(unsigned size)
 #define alloc_thing1(thing, number, w) \
     (thing = alloc(number * sizeof(*thing)), last_##thing##w = 0, hbound_##thing##w = number)
 
-void allocate_tables()
+static void allocate_tables()
 {
     // Start with allocating a tiny about to be sure to exercise
     // our memory expander.
@@ -1314,7 +1317,7 @@ void allocate_tables()
     alloc_thing(file_line[second_file], 1);
 }
 
-FILE *open_file(const char *fn)
+static FILE *open_file(const char *fn)
 {
     FILE *fp = fopen(fn, "r");
     if (fp == 0) {
