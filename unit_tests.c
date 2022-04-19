@@ -7,6 +7,7 @@
 #include <string.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <inttypes.h>
 #include "ifcomp.h"
 
 static const char fname_a[] = "a.input";
