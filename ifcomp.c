@@ -1329,8 +1329,17 @@ static FILE *open_file(const char *fn)
 
 void ifcomp(const char *first_fname, const char *second_fname)
 {
+    // Open input files.
     input_file[first_file] = open_file(first_fname);
     input_file[second_file] = open_file(second_fname);
+
+    // Clear statistics.
+    nchange_blocks = 0;
+    memset(&delete, 0, sizeof(delete));
+    memset(&insert, 0, sizeof(insert));
+    memset(&move, 0, sizeof(move));
+    memset(&replace1, 0, sizeof(replace1));
+    memset(&replace2, 0, sizeof(replace2));
 
     for (int i = 0; i < nbuckets; i++)
         sec_hash_start_node[i] = null_hash_list;

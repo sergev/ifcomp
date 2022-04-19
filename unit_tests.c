@@ -81,6 +81,7 @@ static const char *run_ifcomp(const char *input_a, const char *input_b)
     create_file(fname_b, input_b);
     setup_output(fname_out);
     ifcomp(fname_a, fname_b);
+    fflush(stdout);
     return get_output(fname_out);
 }
 
@@ -97,19 +98,163 @@ void exit(int status)
 }
 
 //
-// A test case with empty input files.
+// A test case with identical input files.
 //
 static void ab_ab(void **)
 {
-    const char *a = "a\n"
-                    "b\n";
-    const char *b = "a\n"
-                    "b\n";
+    const char *a = "A\n"   "B\n";
+    const char *b = "A\n"   "B\n";
     const char *expect = "       0 lines deleted from old.\n"
                          "       0 lines inserted in new.\n"
                          "       0 lines deleted from old and replaced with 0 lines of new.\n"
                          "       0 lines moved in old.\n"
                          "       0 change blocks.\n";
+    const char *result = run_ifcomp(a, b);
+    assert_string_equal(result, expect);
+    free((void*)result);
+}
+
+//
+// A test case with deletes, moves and replacements.
+//
+static void axcydweabe_abcde(void **)
+{
+    const char *a = "A\n"   "X\n"   "C\n"   "Y\n"   "D\n"
+                    "W\n"   "E\n"   "A\n"   "B\n"   "E\n";
+    const char *b = "A\n"   "B\n"   "C\n"   "D\n"   "E\n";
+    const char *expect = "*** AFTER TOP =========================================== ***\n"
+                         "*** DELETE LINE(s) -------------------------------------- ***\n"
+                         "      1|A\n"
+                         "      2|X\n"
+                         "*** ===================================================== ***\n"
+                         "\n"
+                         "*** AFTER LINE(s) ======================================= ***\n"
+                         "      3|C\n"
+                         "*** DELETE LINE(s) -------------------------------------- ***\n"
+                         "      4|Y\n"
+                         "*** ===================================================== ***\n"
+                         "\n"
+                         "*** AFTER LINE(s) ======================================= ***\n"
+                         "      5|D\n"
+                         "*** REPLACE LINE(s) ------------------------------------- ***\n"
+                         "      6|W\n"
+                         "      7|E\n"
+                         "*** WITH LINE(s) ---------------------------------------- ***\n"
+                         "+     5|E\n"
+                         "*** ===================================================== ***\n"
+                         "\n"
+                         "*** AFTER LINE(s) ======================================= ***\n"
+                         "      9|B\n"
+                         "*** DELETE LINE(s) -------------------------------------- ***\n"
+                         "     10|E\n"
+                         "*** ===================================================== ***\n"
+                         "\n"
+                         "*** AFTER TOP =========================================== ***\n"
+                         "*** MOVE LINE(s) ---------------------------------------- ***\n"
+                         "      8|A\n"
+                         "      9|B\n"
+                         "*** ===================================================== ***\n"
+                         "\n"
+                         "       4 lines deleted from old.\n"
+                         "       0 lines inserted in new.\n"
+                         "       2 lines deleted from old and replaced with 1 lines of new.\n"
+                         "       2 lines moved in old.\n"
+                         "       5 change blocks.\n";
+    const char *result = run_ifcomp(a, b);
+    assert_string_equal(result, expect);
+    free((void*)result);
+}
+
+//
+// A test case with deletes, moves and replacements.
+//
+static void abcdeg_defgac(void **)
+{
+    const char *a = "A\n"   "B\n"   "C\n"   "D\n"   "E\n"   "G\n";
+    const char *b = "D\n"   "E\n"   "F\n"   "G\n"   "A\n"   "C\n";
+    const char *expect = "*** AFTER LINE(s) ======================================= ***\n"
+                         "      1|A\n"
+                         "*** DELETE LINE(s) -------------------------------------- ***\n"
+                         "      2|B\n"
+                         "*** ===================================================== ***\n"
+                         "\n"
+                         "*** AFTER LINE(s) ======================================= ***\n"
+                         "      5|E\n"
+                         "*** INSERT LINE(s) -------------------------------------- ***\n"
+                         "+     3|F\n"
+                         "*** ===================================================== ***\n"
+                         "\n"
+                         "*** AFTER LINE(s) ======================================= ***\n"
+                         "      6|G\n"
+                         "*** MOVE LINE(s) ---------------------------------------- ***\n"
+                         "      1|A\n"
+                         "      3|C\n"
+                         "*** ===================================================== ***\n"
+                         "\n"
+                         "       1 lines deleted from old.\n"
+                         "       1 lines inserted in new.\n"
+                         "       0 lines deleted from old and replaced with 0 lines of new.\n"
+                         "       2 lines moved in old.\n"
+                         "       3 change blocks.\n";
+    const char *result = run_ifcomp(a, b);
+    assert_string_equal(result, expect);
+    free((void*)result);
+}
+
+//
+// A test case from the article.
+//
+static void much_writing(void **)
+{
+    const char *a = "a\n"     "mass\n"     "of\n"      "latin\n"    "words\n"
+                    "falls\n" "upon\n"     "the\n"     "relevant\n" "facts\n"
+                    "like\n"  "soft\n"     "snow\n"    ",\n"        "covering\n"
+                    "up\n"    "the\n"      "details\n" ".\n";
+    const char *b = "much\n"  "writing\n"  "is\n"      "like\n"     "snow\n"
+                    ",\n"     "a\n"        "mass\n"    "of\n"       "long\n"
+                    "words\n" "and\n"      "phrases\n" "falls\n"    "upon\n"
+                    "the\n"   "relevant\n" "facts\n"   "covering\n" "up\n"
+                    "the\n"   "details\n"  ".\n";
+    const char *expect = "*** AFTER LINE(s) ======================================= ***\n"
+                         "      3|of\n"
+                         "*** REPLACE LINE(s) ------------------------------------- ***\n"
+                         "      4|latin\n"
+                         "*** WITH LINE(s) ---------------------------------------- ***\n"
+                         "+    10|long\n"
+                         "*** ===================================================== ***\n"
+                         "\n"
+                         "*** AFTER LINE(s) ======================================= ***\n"
+                         "     11|like\n"
+                         "*** DELETE LINE(s) -------------------------------------- ***\n"
+                         "     12|soft\n"
+                         "*** ===================================================== ***\n"
+                         "\n"
+                         "*** AFTER TOP =========================================== ***\n"
+                         "*** INSERT LINE(s) -------------------------------------- ***\n"
+                         "+     1|much\n"
+                         "+     2|writing\n"
+                         "+     3|is\n"
+                         "*** ===================================================== ***\n"
+                         "\n"
+                         "*** AFTER LINE(s) ======================================= ***\n"
+                         "      5|words\n"
+                         "*** INSERT LINE(s) -------------------------------------- ***\n"
+                         "+    12|and\n"
+                         "+    13|phrases\n"
+                         "*** ===================================================== ***\n"
+                         "\n"
+                         "*** AFTER TOP =========================================== ***\n"
+                         "*** MOVE LINE(s) ---------------------------------------- ***\n"
+                         "     11|like\n"
+                         "     13|snow\n"
+                         "     14|,\n"
+                         "*** ===================================================== ***\n"
+                         "\n"
+                         "       1 lines deleted from old.\n"
+                         "       5 lines inserted in new.\n"
+                         "       1 lines deleted from old and replaced with 1 lines of new.\n"
+                         "       3 lines moved in old.\n"
+                         "       5 change blocks.\n";
     const char *result = run_ifcomp(a, b);
     assert_string_equal(result, expect);
     free((void*)result);
@@ -122,6 +267,9 @@ int main()
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(ab_ab),
+        cmocka_unit_test(axcydweabe_abcde),
+        cmocka_unit_test(abcdeg_defgac),
+        cmocka_unit_test(much_writing),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
