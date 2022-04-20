@@ -1,6 +1,5 @@
 use assert_cmd::Command;
 use predicates::prelude::*;
-use rand::{distributions::Alphanumeric, Rng};
 use std::error::Error;
 use std::fs;
 
@@ -8,11 +7,14 @@ type TestResult = Result<(), Box<dyn Error>>;
 
 const PRG: &str = "ifcomp";
 const EMPTY: &str = "tests/inputs/empty.txt";
-const FOX: &str = "tests/inputs/fox.txt";
-const SPIDERS: &str = "tests/inputs/spiders.txt";
-const BUSTLE: &str = "tests/inputs/the-bustle.txt";
+const A: &str = "tests/inputs/a.txt";
+const B: &str = "tests/inputs/b.txt";
+const AB: &str = "tests/inputs/ab.txt";
+const ABCDEG: &str = "tests/inputs/abcdeg.txt";
+const DEFGAC: &str = "tests/inputs/defgac.txt";
+const A_MASS: &str = "tests/inputs/a_mass.txt";
+const MUCH_WRITING: &str = "tests/inputs/much_writing.txt";
 
-// --------------------------------------------------
 #[test]
 fn usage() -> TestResult {
     for flag in &["-h", "--help"] {
@@ -24,35 +26,6 @@ fn usage() -> TestResult {
     Ok(())
 }
 
-// --------------------------------------------------
-fn gen_bad_file() -> String {
-    loop {
-        let filename: String = rand::thread_rng()
-            .sample_iter(&Alphanumeric)
-            .take(7)
-            .map(char::from)
-            .collect();
-
-        if fs::metadata(&filename).is_err() {
-            return filename;
-        }
-    }
-}
-
-// --------------------------------------------------
-#[test]
-fn skips_bad_file() -> TestResult {
-    let bad = gen_bad_file();
-    let expected = format!("{}: .* [(]os error 2[)]", bad);
-    Command::cargo_bin(PRG)?
-        .arg(&bad)
-        .assert()
-        .success()
-        .stderr(predicate::str::is_match(expected)?);
-    Ok(())
-}
-
-// --------------------------------------------------
 fn run(args: &[&str], expected_file: &str) -> TestResult {
     let expected = fs::read_to_string(expected_file)?;
     Command::cargo_bin(PRG)?
@@ -63,138 +36,46 @@ fn run(args: &[&str], expected_file: &str) -> TestResult {
     Ok(())
 }
 
-// --------------------------------------------------
-fn run_stdin(
-    input_file: &str,
-    args: &[&str],
-    expected_file: &str,
-) -> TestResult {
-    let input = fs::read_to_string(input_file)?;
-    let expected = fs::read_to_string(expected_file)?;
-    Command::cargo_bin(PRG)?
-        .args(args)
-        .write_stdin(input)
-        .assert()
-        .success()
-        .stdout(expected);
-    Ok(())
+#[test]
+fn empty_empty() -> TestResult {
+    run(&[EMPTY, EMPTY], "tests/expected/empty_empty.out")
 }
 
-// --------------------------------------------------
 #[test]
-fn bustle_stdin() -> TestResult {
-    run_stdin(BUSTLE, &["-"], "tests/expected/the-bustle.txt.stdin.out")
+fn a_b() -> TestResult {
+    run(&[A, B], "tests/expected/a_b.out")
 }
 
-// --------------------------------------------------
 #[test]
-fn bustle_stdin_n() -> TestResult {
-    run_stdin(
-        BUSTLE,
-        &["-n", "-"],
-        "tests/expected/the-bustle.txt.n.stdin.out",
-    )
+fn a_ab() -> TestResult {
+    run(&[A, AB], "tests/expected/a_ab.out")
 }
 
-// --------------------------------------------------
+// This test fails with message:
+// index out of bounds: the len is 1 but the index is 1, at hdiff-0.1.1/src/lib.rs:166:33
 #[test]
-fn bustle_stdin_b() -> TestResult {
-    run_stdin(
-        BUSTLE,
-        &["-b", "-"],
-        "tests/expected/the-bustle.txt.b.stdin.out",
-    )
+fn b_ab() -> TestResult {
+    run(&[B, AB], "tests/expected/b_ab.out")
 }
 
-// --------------------------------------------------
 #[test]
-fn empty() -> TestResult {
-    run(&[EMPTY], "tests/expected/empty.txt.out")
+fn abcdeg_defgac() -> TestResult {
+    run(&[ABCDEG, DEFGAC], "tests/expected/abcdeg_defgac.out")
 }
 
-// --------------------------------------------------
 #[test]
-fn empty_n() -> TestResult {
-    run(&["-n", EMPTY], "tests/expected/empty.txt.n.out")
+fn defgac_abcdeg() -> TestResult {
+    run(&[DEFGAC, ABCDEG], "tests/expected/defgac_abcdeg.out")
 }
 
-// --------------------------------------------------
 #[test]
-fn empty_b() -> TestResult {
-    run(&["-b", EMPTY], "tests/expected/empty.txt.b.out")
+fn much_writing_a_mass() -> TestResult {
+    run(&[MUCH_WRITING, A_MASS], "tests/expected/much_writing_a_mass.out")
 }
 
-// --------------------------------------------------
+// This test fails with message:
+// index out of bounds: the len is 19 but the index is 19, at hdiff-0.1.1/src/lib.rs:166:33
 #[test]
-fn fox() -> TestResult {
-    run(&[FOX], "tests/expected/fox.txt.out")
-}
-
-// --------------------------------------------------
-#[test]
-fn fox_n() -> TestResult {
-    run(&["-n", FOX], "tests/expected/fox.txt.n.out")
-}
-
-// --------------------------------------------------
-#[test]
-fn fox_b() -> TestResult {
-    run(&["-b", FOX], "tests/expected/fox.txt.b.out")
-}
-
-// --------------------------------------------------
-#[test]
-fn spiders() -> TestResult {
-    run(&[SPIDERS], "tests/expected/spiders.txt.out")
-}
-
-// --------------------------------------------------
-#[test]
-fn spiders_n() -> TestResult {
-    run(&["--number", SPIDERS], "tests/expected/spiders.txt.n.out")
-}
-
-// --------------------------------------------------
-#[test]
-fn spiders_b() -> TestResult {
-    run(
-        &["--number-nonblank", SPIDERS],
-        "tests/expected/spiders.txt.b.out",
-    )
-}
-
-// --------------------------------------------------
-#[test]
-fn bustle() -> TestResult {
-    run(&[BUSTLE], "tests/expected/the-bustle.txt.out")
-}
-
-// --------------------------------------------------
-#[test]
-fn bustle_n() -> TestResult {
-    run(&["-n", BUSTLE], "tests/expected/the-bustle.txt.n.out")
-}
-
-// --------------------------------------------------
-#[test]
-fn bustle_b() -> TestResult {
-    run(&["-b", BUSTLE], "tests/expected/the-bustle.txt.b.out")
-}
-
-// --------------------------------------------------
-#[test]
-fn all() -> TestResult {
-    run(&[FOX, SPIDERS, BUSTLE], "tests/expected/all.out")
-}
-
-// --------------------------------------------------
-#[test]
-fn all_n() -> TestResult {
-    run(&[FOX, SPIDERS, BUSTLE, "-n"], "tests/expected/all.n.out")
-}
-
-// --------------------------------------------------
-#[test]
-fn all_b() -> TestResult {
-    run(&[FOX, SPIDERS, BUSTLE, "-b"], "tests/expected/all.b.out")
+fn a_mass_much_writing() -> TestResult {
+    run(&[A_MASS, MUCH_WRITING], "tests/expected/a_mass_much_writing.out")
 }

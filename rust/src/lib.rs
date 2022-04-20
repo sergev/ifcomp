@@ -48,28 +48,35 @@ pub fn get_args() -> MyResult<Config> {
 // Run the application.
 //
 pub fn run(config: Config) -> MyResult<()> {
-    println!("ifcomp {} {}", config.first_file, config.second_file);
     if config.debug_flag {
-        println!("(Enable debug info)");
+        println!("ifcomp {} {}", config.first_file, config.second_file);
     }
 
-    let a = lines_from_file(config.first_file);
-    let b = lines_from_file(config.second_file);
+    // Read input files.
+    let a = lines_from_file(config.first_file)?;
+    let b = lines_from_file(config.second_file)?;
 
-    println!("a = {:?}", a);
-    println!("b = {:?}", b);
+    if config.debug_flag {
+        println!("a = {:?}", a);
+        println!("b = {:?}", b);
+    }
+
+    // Compare two files and print the difference.
+    let diff = hdiff::diff(&a, &b);
+    println!("diff = {:?}", diff);
 
     Ok(())
 }
 
+//
+// Read text file as a vector of lines.
+//
 fn lines_from_file(filename: impl AsRef<std::path::Path>) -> MyResult<Vec<String>> {
     let file = std::fs::File::open(filename)?;
     let buf = std::io::BufReader::new(file);
     let lines: Vec<String> = buf.lines()
-//        .map(|item| item.expect("Could not parse line"))
-        .map(|item| item.unwrap())
-//        .expect("Error reading file")
-        .collect();
-    println!("lines = {:?}", lines);
+                                .map(|item| item.unwrap())
+                                .collect();
+    //println!("lines = {:?}", lines);
     Ok(lines)
 }
