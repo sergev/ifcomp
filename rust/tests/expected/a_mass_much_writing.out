@@ -1,1 +1,1 @@
-diff = []
+diff = [Delete(3), Delete(11), Create(0), Create(1), Create(2), Move(10, 3), Move(12, 4), Move(13, 5), Move(0, 6), Move(1, 7), Move(2, 8), Create(9), Move(4, 10), Create(11), Create(12), Move(5, 13), Move(6, 14), Move(7, 15), Move(8, 16), Move(9, 17)]

@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 clap = "2"
-hdiff = "0"
+hdiff = { git = "https://github.com/sergev/hdiff" }
 
 [dev-dependencies]
 assert_cmd = "2"
