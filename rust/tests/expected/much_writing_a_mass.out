@@ -1,0 +1,1 @@
+diff = [Delete(0), Delete(1), Delete(2), Delete(9), Delete(11), Delete(12), Move(6, 0), Move(7, 1), Move(8, 2), Create(3), Move(10, 4), Move(13, 5), Move(14, 6), Move(15, 7), Move(16, 8), Move(17, 9), Move(3, 10), Create(11), Move(4, 12), Move(5, 13)]

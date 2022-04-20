@@ -1,6 +1,20 @@
 PROG            = ifcomp unit_tests
-CFLAGS		= -I/usr/local/include -O3 -Wall -Werror
-LIBCMOCKA       = -L/usr/local/lib -lcmocka
+CFLAGS		= -g -O3 -Wall -Werror
+LDFLAGS         = -g
+LIBCMOCKA       = -lcmocka
+
+ifneq ($(wildcard /usr/local/include),)
+CFLAGS		+= -I/usr/local/include
+endif
+ifneq ($(wildcard /opt/homebrew/include),)
+CFLAGS		+= -I/opt/homebrew/include
+endif
+ifneq ($(wildcard /usr/local/lib),)
+LIBCMOCKA       += -L/usr/local/lib
+endif
+ifneq ($(wildcard /opt/homebrew/lib),)
+LIBCMOCKA       += -L/opt/homebrew/lib
+endif
 
 all:		$(PROG)
 
