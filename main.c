@@ -9,7 +9,7 @@ static void help(const char *prog_name)
     exit(1);
 }
 
-void main(int argc, char **argv)
+int main(int argc, char **argv)
 {
     char *first_fname = 0;
     char *second_fname = 0;

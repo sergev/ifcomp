@@ -222,6 +222,16 @@ static void print_string(string_decl *p)
            p->file_list[first_file], p->file_list[second_file]);
 }
 
+static void print_file_list(char *s, int T, int list)
+{
+    printf("%s for text %d: ", s, T);
+    while (list != null_line_list) {
+        printf(" %5d@%d", line_table[list].linen, list);
+        list = line_table[list].next;
+    }
+    CR();
+}
+
 static void dump_hash_node(hash_node_index node)
 {
     printf("hash_node  %d: ", node);
@@ -231,15 +241,6 @@ static void dump_hash_node(hash_node_index node)
     while (T != null_string_list) {
         printf("string %d: ", T);
         print_string(string + T);
-        void print_file_list(char *s, int T, int list)
-        {
-            printf("%s for text %d: ", s, T);
-            while (list != null_line_list) {
-                printf(" %5d@%d", line_table[list].linen, list);
-                list = line_table[list].next;
-            }
-            CR();
-        }
         print_file_list("file_list1", T, string[T].file_list[first_file]);
         print_file_list("file_list2", T, string[T].file_list[second_file]);
         T = string[T].next_text_with_same_hash;
@@ -391,44 +392,47 @@ static char *scopy(const char *p)
     return q;
 }
 
+static string_index setup_distinct_text(char *text, line_count linen, int input_file)
+{
+    // New piece of text.
+    string_decl S;
+    int other = other_file(input_file);
+    S.file_nlines[input_file] = 1;
+    S.file_nlines[other] = 0;
+    S.file_list[input_file] = make_line_entry(linen, null_line_list);
+    S.file_list[other] = null_line_list;
+    S.next_text_with_same_hash = null_string_list;
+    S.text = scopy(text);
+    return make_string(&S);
+}
+
+static hash_node_index setup_hash_node(string_index * tip, char *text, line_count linen, int input_file, hash_info h)
+{
+    hash_node_decl S;
+    S.next_in_bucket = null_hash_list;
+    S.text_list = *tip = setup_distinct_text(text, linen, input_file);
+    // S.nunique_lines = 1;
+    S.h = h;
+    return make_hash_node(&S);
+}
+
+static void add_linen_to_text_list(string_index T, line_count linen, int input_file)
+{
+    string[T].file_nlines[input_file]++;
+    line_count *p = &string[T].file_list[input_file];
+    *p = make_line_entry(linen, *p);
+}
+
 static void enter_line(char *text, hash_info h, line_count linen, int input_file,
                        hash_node_index *result_hash_node, string_index *result_string_index)
 {
     if (debug_syt_full)
         printf("\nEnter line %s, #%d\n", text, linen);
-    string_index setup_distinct_text()
-    {
-        // New piece of text.
-        string_decl S;
-        int other = other_file(input_file);
-        S.file_nlines[input_file] = 1;
-        S.file_nlines[other] = 0;
-        S.file_list[input_file] = make_line_entry(linen, null_line_list);
-        S.file_list[other] = null_line_list;
-        S.next_text_with_same_hash = null_string_list;
-        S.text = scopy(text);
-        return make_string(&S);
-    }
-    hash_node_index setup_hash_node(string_index * tip)
-    {
-        hash_node_decl S;
-        S.next_in_bucket = null_hash_list;
-        S.text_list = *tip = setup_distinct_text();
-        //  	S.nunique_lines = 1;
-        S.h = h;
-        return make_hash_node(&S);
-    }
-    void add_linen_to_text_list(string_index T)
-    {
-        string[T].file_nlines[input_file]++;
-        line_count *p = &string[T].file_list[input_file];
-        *p = make_line_entry(linen, *p);
-    }
     hash_node_index *hash_start_node = &sec_hash_start_node[h.h1 % nbuckets];
     string_index SI;
     hash_node_index node;
     if (*hash_start_node == null_hash_list) {
-        *hash_start_node = node = setup_hash_node(&SI);
+        *hash_start_node = node = setup_hash_node(&SI, text, linen, input_file, h);
         goto finish;
     }
     node = *hash_start_node;
@@ -442,15 +446,15 @@ static void enter_line(char *text, hash_info h, line_count linen, int input_file
             for (SI = hash_node[node].text_list; SI != null_string_list;
                  last_SI = SI, SI = string[SI].next_text_with_same_hash) {
                 if (strcmp(string[SI].text, text) == 0) {
-                    add_linen_to_text_list(SI);
+                    add_linen_to_text_list(SI, linen, input_file);
                     goto finish;
                 }
             }
-            string[last_SI].next_text_with_same_hash = SI = setup_distinct_text();
+            string[last_SI].next_text_with_same_hash = SI = setup_distinct_text(text, linen, input_file);
             goto finish;
         }
         if (test == lt) {
-            int new_node = setup_hash_node(&SI);
+            int new_node = setup_hash_node(&SI, text, linen, input_file, h);
             if (node == *hash_start_node)
                 hash_node[new_node].next_in_bucket = *hash_start_node, *hash_start_node = new_node;
             else
@@ -469,7 +473,7 @@ static void enter_line(char *text, hash_info h, line_count linen, int input_file
     // Add to chain.
     if (last_node == null_hash_list)
         printf("?OOPS empty list!\n");
-    hash_node[last_node].next_in_bucket = node = setup_hash_node(&SI);
+    hash_node[last_node].next_in_bucket = node = setup_hash_node(&SI, text, linen, input_file, h);
 finish:;
     *result_hash_node = node;
     *result_string_index = SI;
@@ -614,17 +618,6 @@ static tree_bounds trees[two_files];
 #define tree2_start tree2.start
 #define tree1_end tree1.end
 #define tree2_end tree2.end
-
-static tree_index allocate_node()
-{
-    if (free_nodes_start == null_node)
-        return next_index(node);
-    else {
-        int i = free_nodes_start;
-        free_nodes_start = node[free_nodes_start].next;
-        return i;
-    }
-}
 
 static void free_node(tree_index n)
 {
@@ -777,44 +770,45 @@ static void dump_trees(int pass)
     dump_tree(tree2_start);
 }
 
+static void pass5_doit(int fileno, node_decl *Np)
+{
+    if (debug_dump_trees)
+        printf("Make tree for file %d\n", fileno + 1);
+    // This tree is initially just a doubly-linked list of the separate
+    // segments of the file that were identified in previous passes.
+    // The branch_start and branch_end fields have no contents.
+    // There are also a header and trailer node for each file.
+    line_count i = 1;
+    while (i <= total_file_nlines[fileno]) {
+        Np->linen = i;
+        file_line_decl *fp = file_line[fileno];
+        line_type ptr_type = fp[i].ptr_type;
+        if (ptr_type == syt_type) {
+            // Determine a block of syt_type lines.
+            while (fp[i + 1].ptr_type == syt_type && i + 1 <= total_file_nlines[fileno])
+                i++;
+            i++;
+            Np->cost = i - Np->linen;
+            Np->cost = -Np->cost; // Signifies delete.
+        } else {
+            // Determine a block of non-syt_type lines.
+            line_count ptr0 = fp[i].ptr0, exp_ptr0 = ptr0 + 1;
+            while (fp[i + 1].ptr_type != syt_type && fp[i + 1].ptr0 == exp_ptr0 &&
+                   i + 1 <= total_file_nlines[fileno])
+                i++, exp_ptr0++;
+            i++;
+            Np->cost = i - Np->linen;
+        }
+        if (fileno == second_file)
+            Np->linen = -Np->linen;
+        tree_index j = make_node(Np);
+        node[Np->prev].next = j;
+        Np->prev = j;
+    }
+}
+
 static void pass5()
 { // 70e0
-    void doit(int fileno, node_decl *Np)
-    {
-        if (debug_dump_trees)
-            printf("Make tree for file %d\n", fileno + 1);
-        // This tree is initially just a doubly-linked list of the separate
-        // segments of the file that were identified in previous passes.
-        // The branch_start and branch_end fields have no contents.
-        // There are also a header and trailer node for each file.
-        line_count i = 1;
-        while (i <= total_file_nlines[fileno]) {
-            Np->linen = i;
-            file_line_decl *fp = file_line[fileno];
-            line_type ptr_type = fp[i].ptr_type;
-            if (ptr_type == syt_type) {
-                // Determine a block of syt_type lines.
-                while (fp[i + 1].ptr_type == syt_type && i + 1 <= total_file_nlines[fileno])
-                    i++;
-                i++;
-                Np->cost = i - Np->linen;
-                Np->cost = -Np->cost; // Signifies delete.
-            } else {
-                // Determine a block of non-syt_type lines.
-                line_count ptr0 = fp[i].ptr0, exp_ptr0 = ptr0 + 1;
-                while (fp[i + 1].ptr_type != syt_type && fp[i + 1].ptr0 == exp_ptr0 &&
-                       i + 1 <= total_file_nlines[fileno])
-                    i++, exp_ptr0++;
-                i++;
-                Np->cost = i - Np->linen;
-            }
-            if (fileno == second_file)
-                Np->linen = -Np->linen;
-            tree_index j = make_node(Np);
-            node[Np->prev].next = j;
-            Np->prev = j;
-        }
-    }
     node_decl N;
     N.cost = 0;
     N.linen = 0;
@@ -824,7 +818,7 @@ static void pass5()
     tree1_start = make_node(&N);
     tree2_start = make_node(&N);
     N.prev = tree1_start;
-    doit(first_file, &N);
+    pass5_doit(first_file, &N);
 
     N.cost = 0;
     int file1_tlinesp = N.linen = total_file_nlines[first_file] + 1;
@@ -832,7 +826,7 @@ static void pass5()
     node[N.prev].next = tree1_end;
 
     N.prev = tree2_start;
-    doit(second_file, &N);
+    pass5_doit(second_file, &N);
     N.cost = 0;
     int file2_tlinesp;
     N.linen = -(file2_tlinesp = total_file_nlines[second_file] + 1);
@@ -872,6 +866,7 @@ static tree_index find_node(tree_bounds T, tree_index linen)
         printf("%d ", N), N = node[N].next;
     printf("] ln=%d\n", linen);
     internal_error("find_node", " sn=%d en=%d l=%d", T.start, T.end, linen);
+    return 0;
 }
 
 static void detach_node(tree_index noden)
@@ -942,21 +937,22 @@ static void print_trailer()
     printf("\n");
 }
 
+static tree_index unique_find(tree_index noden)
+{ // 5de0
+    tree_index end_line = node[noden].linen;
+    short filen;
+    get_which_file(filen, end_line);
+    // Scan backwards looking for a unique line in the file
+    // -- i.e., it must not occur more than once in the file.
+    for (line_count start_line = end_line + node[noden].cost - 1; start_line >= end_line;
+         start_line--)
+        if (file_line[filen][start_line].ptr_type == unique_type)
+            return start_line;
+    return null_node;
+}
+
 static void after_lines(tree_index noden)
 { // 6320
-    tree_index unique_find(tree_index noden)
-    { // 5de0
-        tree_index end_line = node[noden].linen;
-        short filen;
-        get_which_file(filen, end_line);
-        // Scan backwards looking for a unique line in the file
-        // -- i.e., it must not occur more than once in the file.
-        for (line_count start_line = end_line + node[noden].cost - 1; start_line >= end_line;
-             start_line--)
-            if (file_line[filen][start_line].ptr_type == unique_type)
-                return start_line;
-        return null_node;
-    }
     print_header("AFTER LINE(s)");
     // Print the block starting at the last line that is unique
     // in the file.  I.e., be sure the reader can identify the text.
@@ -1016,169 +1012,168 @@ static void delete_lines(tree_index noden)
     dump_trees(no_pass);
 }
 
+static tree_index pass6_replaceable(tree_index noden)
+{ // 6a18
+    // Replaceable if :
+    // file1:  blk1  nodenA  blk2	file2:  blk3  nodenB  blk4
+    // where nodenA and nodenB don't match something in the other file (cost<0)
+    // and blk1=blk3 and blk2=blk4.
+    // It appears, however, that Reed took out the blk2=blk4 test.
+    // See if noden in first_file can be replaced
+    // with something else in second_file.
+    // Find the previous node to this sequence.
+    tree_index prev = node[noden].prev;
+    // Lookup that previous node in the other file.
+    tree_index prev_other_file = find_node(tree2, file1_line[true_line_of(prev)].ptr0);
+    // OK, now find the successor that node in the other file.
+    // This corresponds to our noden.
+    tree_index noden_other_file = node[prev_other_file].next;
+    // Ask if the successor node is unique (cost < 0).  Otherwise
+    // it isn't a replacement.
+    if (node[noden_other_file].cost >= 0) {
+        if (debug_dump_trees_full)
+            printf("replaceable fails: noden_other_file(%d) has neg cost.\n", noden_other_file);
+        return null_node;
+    }
+#if 0
+    // It looks like Reed removed this test.
+    // OK, it's unique.  A possible replacement.
+    // Now check the successor in the other file and find it in our file.
+    tree_index succ_other_file = node[noden_other_file].next;
+    tree_index succ = find_node(tree1,file2_line[true_line_of(succ_other_file)].ptr0);
+    // Now ask if the succ_other_file's correspondent in our file
+    // happens to be the successor of the node we're looking at.
+    // If so, we have a replacement.
+    if (succ != node[noden].next) {
+        if (debug_dump_trees_full)
+            printf("replaceable fails: succ(%d) <> next(%d).\n",
+                    succ,node[noden].next);
+        return null_node;
+        }
+#endif
+    return noden_other_file;
+}
+
+static void pass6_replace_lines(tree_index node1, tree_index node2)
+{ // 6b08
+    nchange_blocks++;
+    // Make the costs positive, indicating that the nodes now
+    // correspond to something in the other file.
+    node[node1].cost = -node[node1].cost;
+    node[node2].cost = -node[node2].cost;
+    count_node(node1, &replace1);
+    count_node(node2, &replace2);
+    tree_index prev = node[node1].prev;
+    after_header(prev);
+    print_header1("REPLACE LINE(s)");
+    print_node(node1);
+    print_header1("WITH LINE(s)");
+    print_node(node2);
+    print_trailer();
+    detach_node(node1);
+    if (prev == tree1_start) {
+        detach_node(node2);
+        node[tree1_start].branch_start = node[tree1_start].branch_end = node2;
+        node[node2].prev = node[node2].next = tree1_start;
+    } else
+        combine_nodes(prev, node2);
+    dump_trees(no_pass);
+}
+
+static void pass6_insert_lines(tree_index noden)
+{ // 6dea
+    nchange_blocks++;
+    node[noden].cost = -node[noden].cost;
+    count_node(noden, &insert);
+    tree_index i = node[noden].prev;
+    if (i == tree2_start) {
+        detach_node(noden);
+        node[tree1_start].branch_start = node[tree1_start].branch_end = noden;
+        node[noden].prev = node[noden].next = tree1_start;
+        top_msg();
+#define insert_msg() print_header1("INSERT LINE(s)")
+        insert_msg();
+        print_node(tree1_start);
+    } else {
+        tree_index j = find_node(tree1, file2_line[true_line_of(i)].ptr0);
+        after_lines(j);
+        insert_msg();
+        print_node(noden);
+        combine_nodes(j, noden);
+    }
+    print_trailer();
+    dump_trees(no_pass);
+}
+
+static void pass6_do_replace_delete()
+{
+    // Scan through first_file and identify any nodes that
+    // have no correspondent in the second_file.  See if they can be
+    // treated as replaced or deleted in the other file.
+
+    tree_index i = node[tree1_start].next;
+    while (i != tree1_end) {
+        tree_index j = node[i].next;
+        if (node[i].cost < 0) {
+            tree_index location_in_other_file = pass6_replaceable(i);
+            if (location_in_other_file == null_node)
+                delete_lines(i);
+            else
+                pass6_replace_lines(i, location_in_other_file);
+        }
+        i = j;
+    }
+}
+
+static void pass6_do_insert()
+{
+    // Scan through second_file and identify any nodes that have no
+    // correspondent in first_file.  They are treated as inserted in the
+    // first_file.
+
+    tree_index i = node[tree2_start].next;
+    while (i != tree2_end) {
+        if (node[i].cost < 0) {
+            tree_index j = node[i].next;
+            pass6_insert_lines(i);
+            i = j;
+        } else
+            i = node[i].next;
+    }
+}
+
 static void pass6()
 { // 7508
-    tree_index replaceable(tree_index noden)
-    { // 6a18
-        // Replaceable if :
-        // file1:  blk1  nodenA  blk2	file2:  blk3  nodenB  blk4
-        // where nodenA and nodenB don't match something in the other file (cost<0)
-        // and blk1=blk3 and blk2=blk4.
-        // It appears, however, that Reed took out the blk2=blk4 test.
-        // See if noden in first_file can be replaced
-        // with something else in second_file.
-        // Find the previous node to this sequence.
-        tree_index prev = node[noden].prev;
-        // Lookup that previous node in the other file.
-        tree_index prev_other_file = find_node(tree2, file1_line[true_line_of(prev)].ptr0);
-        // OK, now find the successor that node in the other file.
-        // This corresponds to our noden.
-        tree_index noden_other_file = node[prev_other_file].next;
-        // Ask if the successor node is unique (cost < 0).  Otherwise
-        // it isn't a replacement.
-        if (node[noden_other_file].cost >= 0) {
-            if (debug_dump_trees_full)
-                printf("replaceable fails: noden_other_file(%d) has neg cost.\n", noden_other_file);
-            return null_node;
-        }
-#if 0
-	// It looks like Reed removed this test.
-	// OK, it's unique.  A possible replacement.
-	// Now check the successor in the other file and find it in our file.
-	tree_index succ_other_file = node[noden_other_file].next;
-	tree_index succ = find_node(tree1,file2_line[true_line_of(succ_other_file)].ptr0);
-	// Now ask if the succ_other_file's correspondent in our file
-	// happens to be the successor of the node we're looking at.
-	// If so, we have a replacement.
-	if (succ != node[noden].next) {
-	    if (debug_dump_trees_full)
-		printf("replaceable fails: succ(%d) <> next(%d).\n",
-			succ,node[noden].next);
-	    return null_node;
-	    }
-#endif
-        return noden_other_file;
-    }
-
-    void replace_lines(tree_index node1, tree_index node2)
-    { // 6b08
-        nchange_blocks++;
-        // Make the costs positive, indicating that the nodes now
-        // correspond to something in the other file.
-        node[node1].cost = -node[node1].cost;
-        node[node2].cost = -node[node2].cost;
-        count_node(node1, &replace1);
-        count_node(node2, &replace2);
-        tree_index prev = node[node1].prev;
-        after_header(prev);
-        print_header1("REPLACE LINE(s)");
-        print_node(node1);
-        print_header1("WITH LINE(s)");
-        print_node(node2);
-        print_trailer();
-        detach_node(node1);
-        if (prev == tree1_start) {
-            detach_node(node2);
-            node[tree1_start].branch_start = node[tree1_start].branch_end = node2;
-            node[node2].prev = node[node2].next = tree1_start;
-        } else
-            combine_nodes(prev, node2);
-        dump_trees(no_pass);
-    }
-
-    void insert_lines(tree_index noden)
-    { // 6dea
-        nchange_blocks++;
-        node[noden].cost = -node[noden].cost;
-        count_node(noden, &insert);
-        tree_index i = node[noden].prev;
-        if (i == tree2_start) {
-            detach_node(noden);
-            node[tree1_start].branch_start = node[tree1_start].branch_end = noden;
-            node[noden].prev = node[noden].next = tree1_start;
-            top_msg();
-#define insert_msg() print_header1("INSERT LINE(s)")
-            insert_msg();
-            print_node(tree1_start);
-        } else {
-            tree_index j = find_node(tree1, file2_line[true_line_of(i)].ptr0);
-            after_lines(j);
-            insert_msg();
-            print_node(noden);
-            combine_nodes(j, noden);
-        }
-        print_trailer();
-        dump_trees(no_pass);
-    }
-
-    void do_replace_delete()
-    {
-        // Scan through first_file and identify any nodes that
-        // have no correspondent in the second_file.  See if they can be
-        // treated as replaced or deleted in the other file.
-
-        tree_index i = node[tree1_start].next;
-        while (i != tree1_end) {
-            tree_index j = node[i].next;
-            if (node[i].cost < 0) {
-                tree_index location_in_other_file = replaceable(i);
-                if (location_in_other_file == null_node)
-                    delete_lines(i);
-                else
-                    replace_lines(i, location_in_other_file);
-            }
-            i = j;
-        }
-    }
-
-    void do_insert()
-    {
-        // Scan through second_file and identify any nodes that have no
-        // correspondent in first_file.  They are treated as inserted in the
-        // first_file.
-
-        tree_index i = node[tree2_start].next;
-        while (i != tree2_end) {
-            if (node[i].cost < 0) {
-                tree_index j = node[i].next;
-                insert_lines(i);
-                i = j;
-            } else
-                i = node[i].next;
-        }
-    }
-
     // Reed switched the order of insert vs. replace and delete.
-    do_replace_delete();
-    do_insert();
+    pass6_do_replace_delete();
+    pass6_do_insert();
+}
+
+static bool pass7_combine_adjacent_nodes(tree_index node1)
+{ // 654c
+    // Look at adjacent nodes node1 and node2.
+    // If they are also adjacent in file 2, combine the nodes
+    // in both files.
+    tree_index node2 = node[node1].next;
+    if (debug_dump_trees_full)
+        printf("combine node1=%d ln=%d to node2=%d ln=%d\n", node1, node[node1].linen, node2,
+               node[node2].linen);
+    tree_index i = find_node(tree2, file1_line[true_line_of(node1)].ptr0);
+    tree_index j = find_node(tree2, file1_line[true_line_of(node2)].ptr0);
+    if (j == node[i].next) {
+        combine_nodes(node1, node2);
+        combine_nodes(i, j);
+        return true;
+    } else
+        return false;
 }
 
 static void pass7()
 { // 75ee
-
-    bool combine_adjacent_nodes(tree_index node1)
-    { // 654c
-        // Look at adjacent nodes node1 and node2.
-        // If they are also adjacent in file 2, combine the nodes
-        // in both files.
-        tree_index node2 = node[node1].next;
-        if (debug_dump_trees_full)
-            printf("combine node1=%d ln=%d to node2=%d ln=%d\n", node1, node[node1].linen, node2,
-                   node[node2].linen);
-        tree_index i = find_node(tree2, file1_line[true_line_of(node1)].ptr0);
-        tree_index j = find_node(tree2, file1_line[true_line_of(node2)].ptr0);
-        if (j == node[i].next) {
-            combine_nodes(node1, node2);
-            combine_nodes(i, j);
-            return true;
-        } else
-            return false;
-    }
-
     tree_index i = node[tree1_start].next;
     while (node[i].next != tree1_end) {
         tree_index j = node[i].prev;
-        i = node[combine_adjacent_nodes(i) ? j : i].next;
+        i = node[pass7_combine_adjacent_nodes(i) ? j : i].next;
     }
 }
 
@@ -1191,50 +1186,50 @@ static void insert_node_after(tree_index after_this, tree_index insert_this)
     node[after_this].next = insert_this;
 }
 
+static void pass8_move_lines(tree_index node1, tree_index node2)
+{ // 679a
+    nchange_blocks++;
+    count_node(node2, &move);
+    if (node1 == tree1_start) {
+        after_header(node1);
+#define move_msg() print_header1("MOVE LINE(s)");
+        move_msg();
+        print_node(node2);
+        print_trailer();
+        detach_node(node2);
+        insert_node_after(tree1_start, node2);
+    } else {
+        after_lines(node1);
+        move_msg();
+        print_node(node2);
+        print_trailer();
+        // Calling combine violates the 1:1 assumption.
+        detach_node(node2);
+        insert_node_after(node1, node2);
+        // combine_nodes(node1,node2);
+        // The file retains the 1:1 assumption.  Combine adjacent
+        // nodes to appropriately redistribute weight for min_cost.
+        pass7(); // See if any nodes can now be made adjacent.
+    }
+}
+
+// Find node with minimum cost between start_node and end_node.
+static tree_index pass8_min_cost_node(tree_index start_node, tree_index end_node)
+{ // 5f6a
+    tree_index min_cost = node[start_node].cost, min_node = start_node;
+    tree_index N = start_node;
+    while (N != end_node) {
+        if (min_cost > node[N].cost)
+            min_cost = node[min_node = N].cost;
+        N = node[N].next;
+    }
+    if (debug_dump_trees_full)
+        printf("min_cost_node(%d,%d)=%d\n", start_node, end_node, min_node);
+    return min_node;
+}
+
 static void pass8()
 { // 7678
-    void move_lines(tree_index node1, tree_index node2)
-    { // 679a
-        nchange_blocks++;
-        count_node(node2, &move);
-        if (node1 == tree1_start) {
-            after_header(node1);
-#define move_msg() print_header1("MOVE LINE(s)");
-            move_msg();
-            print_node(node2);
-            print_trailer();
-            detach_node(node2);
-            insert_node_after(tree1_start, node2);
-        } else {
-            after_lines(node1);
-            move_msg();
-            print_node(node2);
-            print_trailer();
-            // Calling combine violates the 1:1 assumption.
-            detach_node(node2);
-            insert_node_after(node1, node2);
-            // combine_nodes(node1,node2);
-            // The file retains the 1:1 assumption.  Combine adjacent
-            // nodes to appropriately redistribute weight for min_cost.
-            pass7(); // See if any nodes can now be made adjacent.
-        }
-    }
-
-    // Find node with minimum cost between start_node and end_node.
-    tree_index min_cost_node(tree_index start_node, tree_index end_node)
-    { // 5f6a
-        tree_index min_cost = node[start_node].cost, min_node = start_node;
-        tree_index N = start_node;
-        while (N != end_node) {
-            if (min_cost > node[N].cost)
-                min_cost = node[min_node = N].cost;
-            N = node[N].next;
-        }
-        if (debug_dump_trees_full)
-            printf("min_cost_node(%d,%d)=%d\n", start_node, end_node, min_node);
-        return min_node;
-    }
-
     // Now do the moves.
 RETRY:;
     tree_index i = tree1_start, j = tree2_start;
@@ -1250,14 +1245,14 @@ RETRY:;
             i = node[i].next, j = node[j].next;
         if (i == tree1_end)
             return;
-        tree_index k = min_cost_node(i, tree1_end);
+        tree_index k = pass8_min_cost_node(i, tree1_end);
         tree_index l = find_node(tree2, file1_line[true_line_of(k)].ptr0);
         tree_index m = node[l].prev;
         // m might be the header node with line 0; this requires
         // find_node to be able to find the header node.
         // The original ifcomp program had a bug in this line.
         tree_index n = find_node(tree1, file2_line[true_line_of(m)].ptr0);
-        move_lines(n, k);
+        pass8_move_lines(n, k);
         // We can't detach node l yet.  We require keeping all moved
         // segments within the other file, or else we will prevent
         // future scanning in parallel.
@@ -1266,11 +1261,6 @@ RETRY:;
         dump_trees(no_pass);
         goto RETRY;
     }
-}
-
-static int sum_kind(line_kinds l)
-{
-    return l.non_cosmetic + l.cosmetic;
 }
 
 static void summary()

@@ -101,7 +101,7 @@ void exit(int status)
 //
 // A test case with identical input files.
 //
-static void ab_ab(void **)
+static void ab_ab(void **unused)
 {
     const char *a = "A\n"   "B\n";
     const char *b = "A\n"   "B\n";
@@ -118,7 +118,7 @@ static void ab_ab(void **)
 //
 // A test case with deletes, moves and replacements.
 //
-static void axcydweabe_abcde(void **)
+static void axcydweabe_abcde(void **unused)
 {
     const char *a = "A\n"   "X\n"   "C\n"   "Y\n"   "D\n"
                     "W\n"   "E\n"   "A\n"   "B\n"   "E\n";
@@ -169,7 +169,7 @@ static void axcydweabe_abcde(void **)
 //
 // A test case with deletes, moves and replacements.
 //
-static void abcdeg_defgac(void **)
+static void abcdeg_defgac(void **unused)
 {
     const char *a = "A\n"   "B\n"   "C\n"   "D\n"   "E\n"   "G\n";
     const char *b = "D\n"   "E\n"   "F\n"   "G\n"   "A\n"   "C\n";
@@ -205,7 +205,7 @@ static void abcdeg_defgac(void **)
 //
 // A test case from the article.
 //
-static void much_writing(void **)
+static void much_writing(void **unused)
 {
     const char *a = "a\n"     "mass\n"     "of\n"      "latin\n"    "words\n"
                     "falls\n" "upon\n"     "the\n"     "relevant\n" "facts\n"
