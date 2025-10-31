@@ -42,7 +42,6 @@ public:
     bool debug_alloc = false;
     bool debug_read_current_line = false;
 
-private:
     // Data structures - all previously global variables
     std::vector<LineTableDecl> line_table;
     std::vector<StringDecl> string_table;
