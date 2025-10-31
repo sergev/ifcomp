@@ -6,14 +6,10 @@
 #include <string>
 #include <vector>
 
-// ============================================================================
-// Type definitions and constants (merged from ifcomp_types.h)
-// ============================================================================
-
 // File indices
-constexpr int first_file = 0;
-constexpr int second_file = 1;
-constexpr int two_files = 2;
+constexpr int FIRST_FILE = 0;
+constexpr int SECOND_FILE = 1;
+constexpr int TWO_FILES = 2;
 
 inline int other_file(int f)
 {
@@ -31,36 +27,36 @@ using line_count = int;
 
 // String index - one per distinct line
 using string_index = int;
-constexpr string_index null_string_list = 0;
+constexpr string_index NULL_STRING_LIST = 0;
 
 // Hash node index
 using hash_node_index = int16_t;
-constexpr hash_node_index null_hash_list = 0;
+constexpr hash_node_index NULL_HASH_LIST = 0;
 
 // Line table entry (for linked list of line numbers)
 struct LineTableDecl {
     line_count linen;
     line_count next;
 };
-constexpr line_count null_line_list = 0;
+constexpr line_count NULL_LINE_LIST = 0;
 
 // String declaration - records a unique line
 struct StringDecl {
     std::string text;
-    string_index next_text_with_same_hash = null_string_list; // next line with same hash code
-    uint8_t file_nlines[two_files] = { 0, 0 };
-    line_count file_list[two_files] = { null_line_list,
-                                        null_line_list }; // list of lines of text in the files
+    string_index next_text_with_same_hash = NULL_STRING_LIST; // next line with same hash code
+    uint8_t file_nlines[TWO_FILES] = { 0, 0 };
+    line_count file_list[TWO_FILES] = { NULL_LINE_LIST,
+                                        NULL_LINE_LIST }; // list of lines of text in the files
 };
 
 // Hash node declaration
 struct HashNodeDecl {
     HashInfo h;
-    string_index text_list = null_string_list;
-    hash_node_index next_in_bucket = null_hash_list;
+    string_index text_list = NULL_STRING_LIST;
+    hash_node_index next_in_bucket = NULL_HASH_LIST;
 };
 
-constexpr int nbuckets = 256;
+constexpr int NBUCKETS = 256;
 
 // Line type enumeration
 enum class LineType : int { syt_type = 1, unique_type = 2, match_type = 3 };
@@ -68,7 +64,7 @@ enum class LineType : int { syt_type = 1, unique_type = 2, match_type = 3 };
 // File line declaration
 struct FileLineDecl {
     line_count ptr0 = 0;
-    string_index file_line_text = null_string_list;
+    string_index file_line_text = NULL_STRING_LIST;
     line_count linen = 0;
     LineType ptr_type = LineType::syt_type;
 };
@@ -81,22 +77,22 @@ struct LineKinds {
 
 // Tree node index
 using tree_index = int;
-constexpr tree_index null_node = 0;
+constexpr tree_index NULL_NODE = 0;
 
 // Node declaration for trees
 struct NodeDecl {
     line_count cost = 0;
     line_count linen = 0;
-    tree_index prev = null_node;
-    tree_index next = null_node;
-    tree_index branch_start = null_node;
-    tree_index branch_end = null_node;
+    tree_index prev = NULL_NODE;
+    tree_index next = NULL_NODE;
+    tree_index branch_start = NULL_NODE;
+    tree_index branch_end = NULL_NODE;
 };
 
 // Tree bounds
 struct TreeBounds {
-    tree_index start = null_node;
-    tree_index end = null_node;
+    tree_index start = NULL_NODE;
+    tree_index end = NULL_NODE;
 };
 
 // Comparison result enum
@@ -106,8 +102,8 @@ enum CompareResult { lt = 1, eq = 2, gt = 3 };
 inline int get_which_file(line_count linen)
 {
     if (linen < 0)
-        return second_file;
-    return first_file;
+        return SECOND_FILE;
+    return FIRST_FILE;
 }
 
 inline line_count get_abs_line(line_count linen)
@@ -150,14 +146,14 @@ public:
     std::vector<LineTableDecl> line_table;
     std::vector<StringDecl> string_table;
     std::vector<HashNodeDecl> hash_node;
-    std::vector<FileLineDecl> file_line[two_files];
+    std::vector<FileLineDecl> file_line[TWO_FILES];
     std::vector<NodeDecl> node;
-    hash_node_index sec_hash_start_node[nbuckets];
-    int total_file_nlines[two_files];
+    hash_node_index sec_hash_start_node[NBUCKETS];
+    int total_file_nlines[TWO_FILES];
     short nchange_blocks;
     LineKinds delete_stats, insert_stats, move_stats, replace1_stats, replace2_stats;
     tree_index free_nodes_start;
-    TreeBounds trees[two_files];
+    TreeBounds trees[TWO_FILES];
 
     // Initialization
     void initialize_tables();

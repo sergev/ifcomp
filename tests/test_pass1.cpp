@@ -155,15 +155,15 @@ TEST_F(Pass1TestFixture, HashcodeCompare_EqualH1DifferentH2)
 
 TEST_F(Pass1TestFixture, MakeLineEntry_Basic)
 {
-    line_count entry = ifc.make_line_entry(10, null_line_list);
+    line_count entry = ifc.make_line_entry(10, NULL_LINE_LIST);
     EXPECT_GE(entry, 0) << "Should return valid entry index";
     EXPECT_EQ(ifc.line_table[entry].linen, 10);
-    EXPECT_EQ(ifc.line_table[entry].next, null_line_list);
+    EXPECT_EQ(ifc.line_table[entry].next, NULL_LINE_LIST);
 }
 
 TEST_F(Pass1TestFixture, MakeLineEntry_WithNext)
 {
-    line_count first = ifc.make_line_entry(1, null_line_list);
+    line_count first = ifc.make_line_entry(1, NULL_LINE_LIST);
     line_count second = ifc.make_line_entry(2, first);
     EXPECT_EQ(ifc.line_table[second].linen, 2);
     EXPECT_EQ(ifc.line_table[second].next, first);
@@ -171,7 +171,7 @@ TEST_F(Pass1TestFixture, MakeLineEntry_WithNext)
 
 TEST_F(Pass1TestFixture, MakeLineEntry_Chain)
 {
-    line_count entry1 = ifc.make_line_entry(1, null_line_list);
+    line_count entry1 = ifc.make_line_entry(1, NULL_LINE_LIST);
     line_count entry2 = ifc.make_line_entry(2, entry1);
     line_count entry3 = ifc.make_line_entry(3, entry2);
 
@@ -180,7 +180,7 @@ TEST_F(Pass1TestFixture, MakeLineEntry_Chain)
     EXPECT_EQ(ifc.line_table[entry2].linen, 2);
     EXPECT_EQ(ifc.line_table[entry2].next, entry1);
     EXPECT_EQ(ifc.line_table[entry1].linen, 1);
-    EXPECT_EQ(ifc.line_table[entry1].next, null_line_list);
+    EXPECT_EQ(ifc.line_table[entry1].next, NULL_LINE_LIST);
 }
 
 // ============================================================================
@@ -189,36 +189,36 @@ TEST_F(Pass1TestFixture, MakeLineEntry_Chain)
 
 TEST_F(Pass1TestFixture, SetupDistinctText_Basic)
 {
-    string_index si = ifc.setup_distinct_text("TEST", 5, first_file);
+    string_index si = ifc.setup_distinct_text("TEST", 5, FIRST_FILE);
     EXPECT_GE(si, 0);
     EXPECT_EQ(ifc.string_table[si].text, "TEST");
-    EXPECT_EQ(ifc.string_table[si].file_nlines[first_file], 1);
-    EXPECT_EQ(ifc.string_table[si].file_nlines[second_file], 0);
-    // file_list[first_file] should be set (not null) - it points to a line entry
+    EXPECT_EQ(ifc.string_table[si].file_nlines[FIRST_FILE], 1);
+    EXPECT_EQ(ifc.string_table[si].file_nlines[SECOND_FILE], 0);
+    // file_list[FIRST_FILE] should be set (not null) - it points to a line entry
     // We check that it's valid by verifying the linen is correct
-    line_count line_entry = ifc.string_table[si].file_list[first_file];
-    EXPECT_NE(line_entry, null_line_list);
+    line_count line_entry = ifc.string_table[si].file_list[FIRST_FILE];
+    EXPECT_NE(line_entry, NULL_LINE_LIST);
     EXPECT_EQ(ifc.line_table[line_entry].linen, 5);
-    EXPECT_EQ(ifc.string_table[si].file_list[second_file], null_line_list);
-    EXPECT_EQ(ifc.string_table[si].next_text_with_same_hash, null_string_list);
+    EXPECT_EQ(ifc.string_table[si].file_list[SECOND_FILE], NULL_LINE_LIST);
+    EXPECT_EQ(ifc.string_table[si].next_text_with_same_hash, NULL_STRING_LIST);
 }
 
 TEST_F(Pass1TestFixture, SetupDistinctText_SecondFile)
 {
-    string_index si = ifc.setup_distinct_text("TEST", 10, second_file);
-    EXPECT_EQ(ifc.string_table[si].file_nlines[first_file], 0);
-    EXPECT_EQ(ifc.string_table[si].file_nlines[second_file], 1);
-    EXPECT_EQ(ifc.string_table[si].file_list[first_file], null_line_list);
-    // file_list[second_file] should be set
-    line_count line_entry = ifc.string_table[si].file_list[second_file];
-    EXPECT_NE(line_entry, null_line_list);
+    string_index si = ifc.setup_distinct_text("TEST", 10, SECOND_FILE);
+    EXPECT_EQ(ifc.string_table[si].file_nlines[FIRST_FILE], 0);
+    EXPECT_EQ(ifc.string_table[si].file_nlines[SECOND_FILE], 1);
+    EXPECT_EQ(ifc.string_table[si].file_list[FIRST_FILE], NULL_LINE_LIST);
+    // file_list[SECOND_FILE] should be set
+    line_count line_entry = ifc.string_table[si].file_list[SECOND_FILE];
+    EXPECT_NE(line_entry, NULL_LINE_LIST);
     EXPECT_EQ(ifc.line_table[line_entry].linen, 10);
 }
 
 TEST_F(Pass1TestFixture, SetupDistinctText_LineNumberStored)
 {
-    string_index si = ifc.setup_distinct_text("LINE", 42, first_file);
-    line_count line_entry = ifc.string_table[si].file_list[first_file];
+    string_index si = ifc.setup_distinct_text("LINE", 42, FIRST_FILE);
+    line_count line_entry = ifc.string_table[si].file_list[FIRST_FILE];
     EXPECT_EQ(ifc.line_table[line_entry].linen, 42);
 }
 
@@ -230,14 +230,14 @@ TEST_F(Pass1TestFixture, SetupHashNode_Basic)
 {
     string_index tip;
     HashInfo h{ 0x1234, 0x5678 };
-    hash_node_index node_idx = ifc.setup_hash_node(tip, "TEST", 1, first_file, h);
+    hash_node_index node_idx = ifc.setup_hash_node(tip, "TEST", 1, FIRST_FILE, h);
 
     EXPECT_GE(node_idx, 0);
     EXPECT_GE(tip, 0);
     EXPECT_EQ(ifc.hash_node[node_idx].h.h1, h.h1);
     EXPECT_EQ(ifc.hash_node[node_idx].h.h2, h.h2);
     EXPECT_EQ(ifc.hash_node[node_idx].text_list, tip);
-    EXPECT_EQ(ifc.hash_node[node_idx].next_in_bucket, null_hash_list);
+    EXPECT_EQ(ifc.hash_node[node_idx].next_in_bucket, NULL_HASH_LIST);
     EXPECT_EQ(ifc.string_table[tip].text, "TEST");
 }
 
@@ -247,42 +247,42 @@ TEST_F(Pass1TestFixture, SetupHashNode_Basic)
 
 TEST_F(Pass1TestFixture, AddLinenToTextList_FirstFile)
 {
-    string_index si = ifc.setup_distinct_text("TEST", 1, first_file);
+    string_index si = ifc.setup_distinct_text("TEST", 1, FIRST_FILE);
 
-    ifc.add_linen_to_text_list(si, 2, first_file);
+    ifc.add_linen_to_text_list(si, 2, FIRST_FILE);
 
-    EXPECT_EQ(ifc.string_table[si].file_nlines[first_file], 2);
+    EXPECT_EQ(ifc.string_table[si].file_nlines[FIRST_FILE], 2);
     // Check that line list has both entries
-    line_count list = ifc.string_table[si].file_list[first_file];
-    EXPECT_NE(list, null_line_list);
+    line_count list = ifc.string_table[si].file_list[FIRST_FILE];
+    EXPECT_NE(list, NULL_LINE_LIST);
     EXPECT_EQ(ifc.line_table[list].linen, 2); // Most recent is first
     line_count next_entry = ifc.line_table[list].next;
-    EXPECT_NE(next_entry, null_line_list);
+    EXPECT_NE(next_entry, NULL_LINE_LIST);
     EXPECT_EQ(ifc.line_table[next_entry].linen, 1);
 }
 
 TEST_F(Pass1TestFixture, AddLinenToTextList_SecondFile)
 {
-    string_index si = ifc.setup_distinct_text("TEST", 1, second_file);
+    string_index si = ifc.setup_distinct_text("TEST", 1, SECOND_FILE);
 
-    ifc.add_linen_to_text_list(si, 5, second_file);
+    ifc.add_linen_to_text_list(si, 5, SECOND_FILE);
 
-    EXPECT_EQ(ifc.string_table[si].file_nlines[second_file], 2);
-    EXPECT_EQ(ifc.string_table[si].file_nlines[first_file], 0);
+    EXPECT_EQ(ifc.string_table[si].file_nlines[SECOND_FILE], 2);
+    EXPECT_EQ(ifc.string_table[si].file_nlines[FIRST_FILE], 0);
 }
 
 TEST_F(Pass1TestFixture, AddLinenToTextList_MultipleAdditions)
 {
-    string_index si = ifc.setup_distinct_text("TEST", 1, first_file);
+    string_index si = ifc.setup_distinct_text("TEST", 1, FIRST_FILE);
 
-    ifc.add_linen_to_text_list(si, 2, first_file);
-    ifc.add_linen_to_text_list(si, 3, first_file);
-    ifc.add_linen_to_text_list(si, 4, first_file);
+    ifc.add_linen_to_text_list(si, 2, FIRST_FILE);
+    ifc.add_linen_to_text_list(si, 3, FIRST_FILE);
+    ifc.add_linen_to_text_list(si, 4, FIRST_FILE);
 
-    EXPECT_EQ(ifc.string_table[si].file_nlines[first_file], 4);
+    EXPECT_EQ(ifc.string_table[si].file_nlines[FIRST_FILE], 4);
 
     // Verify the chain
-    line_count list = ifc.string_table[si].file_list[first_file];
+    line_count list = ifc.string_table[si].file_list[FIRST_FILE];
     EXPECT_EQ(ifc.line_table[list].linen, 4);
     list = ifc.line_table[list].next;
     EXPECT_EQ(ifc.line_table[list].linen, 3);
@@ -290,7 +290,7 @@ TEST_F(Pass1TestFixture, AddLinenToTextList_MultipleAdditions)
     EXPECT_EQ(ifc.line_table[list].linen, 2);
     list = ifc.line_table[list].next;
     EXPECT_EQ(ifc.line_table[list].linen, 1);
-    EXPECT_EQ(ifc.line_table[list].next, null_line_list);
+    EXPECT_EQ(ifc.line_table[list].next, NULL_LINE_LIST);
 }
 
 // ============================================================================
@@ -303,12 +303,12 @@ TEST_F(Pass1TestFixture, EnterLine_FirstEntryInBucket)
     hash_node_index result_hash_node;
     string_index result_string_index;
 
-    ifc.enter_line("TEST", h, 1, first_file, result_hash_node, result_string_index);
+    ifc.enter_line("TEST", h, 1, FIRST_FILE, result_hash_node, result_string_index);
 
     EXPECT_GE(result_hash_node, 0);
     EXPECT_GE(result_string_index, 0);
 
-    int bucket = h.h1 % nbuckets;
+    int bucket = h.h1 % NBUCKETS;
     EXPECT_EQ(ifc.sec_hash_start_node[bucket], result_hash_node);
     EXPECT_EQ(ifc.hash_node[result_hash_node].text_list, result_string_index);
     EXPECT_EQ(ifc.string_table[result_string_index].text, "TEST");
@@ -320,14 +320,14 @@ TEST_F(Pass1TestFixture, EnterLine_DuplicateLineSameFile)
     hash_node_index result_hash_node1, result_hash_node2;
     string_index result_string_index1, result_string_index2;
 
-    ifc.enter_line("TEST", h, 1, first_file, result_hash_node1, result_string_index1);
-    ifc.enter_line("TEST", h, 2, first_file, result_hash_node2, result_string_index2);
+    ifc.enter_line("TEST", h, 1, FIRST_FILE, result_hash_node1, result_string_index1);
+    ifc.enter_line("TEST", h, 2, FIRST_FILE, result_hash_node2, result_string_index2);
 
     // Should reuse same string entry (same text, same hash)
     EXPECT_EQ(result_string_index1, result_string_index2)
         << "Duplicate line should reuse same string entry";
     EXPECT_EQ(result_hash_node1, result_hash_node2) << "Duplicate line should reuse same hash node";
-    EXPECT_EQ(ifc.string_table[result_string_index1].file_nlines[first_file], 2);
+    EXPECT_EQ(ifc.string_table[result_string_index1].file_nlines[FIRST_FILE], 2);
 }
 
 TEST_F(Pass1TestFixture, EnterLine_DifferentLinesSameHash)
@@ -338,14 +338,14 @@ TEST_F(Pass1TestFixture, EnterLine_DifferentLinesSameHash)
     HashInfo h2 = Ifcomp::hash_line("B");
 
     // If they're in same bucket, they should be ordered correctly
-    if ((h1.h1 % nbuckets) == (h2.h1 % nbuckets)) {
+    if ((h1.h1 % NBUCKETS) == (h2.h1 % NBUCKETS)) {
         hash_node_index node1, node2;
         string_index si1, si2;
 
-        ifc.enter_line("A", h1, 1, first_file, node1, si1);
-        ifc.enter_line("B", h2, 2, first_file, node2, si2);
+        ifc.enter_line("A", h1, 1, FIRST_FILE, node1, si1);
+        ifc.enter_line("B", h2, 2, FIRST_FILE, node2, si2);
 
-        int bucket = h1.h1 % nbuckets;
+        int bucket = h1.h1 % NBUCKETS;
         hash_node_index start = ifc.sec_hash_start_node[bucket];
         // The bucket should contain both nodes in sorted order
         EXPECT_TRUE(start == node1 || start == node2);
@@ -358,8 +358,8 @@ TEST_F(Pass1TestFixture, EnterLine_ExactMatchReusesString)
     hash_node_index node1, node2;
     string_index si1, si2;
 
-    ifc.enter_line("SAME", h, 1, first_file, node1, si1);
-    ifc.enter_line("SAME", h, 2, first_file, node2, si2);
+    ifc.enter_line("SAME", h, 1, FIRST_FILE, node1, si1);
+    ifc.enter_line("SAME", h, 2, FIRST_FILE, node2, si2);
 
     EXPECT_EQ(si1, si2) << "Exact text match should reuse string entry";
     EXPECT_EQ(node1, node2) << "Exact text match should use same hash node";
@@ -375,8 +375,8 @@ TEST_F(Pass1TestFixture, EnterLine_SameHashDifferentText)
     hash_node_index node1, node2;
     string_index si1, si2;
 
-    ifc.enter_line("LINE1", h_manual, 1, first_file, node1, si1);
-    ifc.enter_line("LINE2", h_manual, 2, first_file, node2, si2);
+    ifc.enter_line("LINE1", h_manual, 1, FIRST_FILE, node1, si1);
+    ifc.enter_line("LINE2", h_manual, 2, FIRST_FILE, node2, si2);
 
     // They should share the same hash node (same hash)
     EXPECT_EQ(node1, node2) << "Same hash should use same hash node";
@@ -396,37 +396,37 @@ TEST_F(Pass1TestFixture, EnterLine_SameHashDifferentText)
 TEST_F(Pass1TestFixture, ReadLines_SingleLine)
 {
     std::istringstream input("LINE1\n");
-    ifc.read_lines(first_file, input);
+    ifc.read_lines(FIRST_FILE, input);
 
-    EXPECT_EQ(ifc.total_file_nlines[first_file], 1);
-    EXPECT_EQ(ifc.file_line[first_file].size(), 2u); // Index 0 + line 1
-    EXPECT_NE(ifc.file_line[first_file][1].file_line_text, null_string_list);
-    EXPECT_EQ(ifc.string_table[ifc.file_line[first_file][1].file_line_text].text, "LINE1");
-    EXPECT_EQ(ifc.file_line[first_file][1].linen, 1);
-    EXPECT_EQ(ifc.file_line[first_file][1].ptr_type, LineType::syt_type);
+    EXPECT_EQ(ifc.total_file_nlines[FIRST_FILE], 1);
+    EXPECT_EQ(ifc.file_line[FIRST_FILE].size(), 2u); // Index 0 + line 1
+    EXPECT_NE(ifc.file_line[FIRST_FILE][1].file_line_text, NULL_STRING_LIST);
+    EXPECT_EQ(ifc.string_table[ifc.file_line[FIRST_FILE][1].file_line_text].text, "LINE1");
+    EXPECT_EQ(ifc.file_line[FIRST_FILE][1].linen, 1);
+    EXPECT_EQ(ifc.file_line[FIRST_FILE][1].ptr_type, LineType::syt_type);
 }
 
 TEST_F(Pass1TestFixture, ReadLines_MultipleLines)
 {
     std::istringstream input("LINE1\nLINE2\nLINE3\n");
-    ifc.read_lines(first_file, input);
+    ifc.read_lines(FIRST_FILE, input);
 
-    EXPECT_EQ(ifc.total_file_nlines[first_file], 3);
-    EXPECT_EQ(ifc.string_table[ifc.file_line[first_file][1].file_line_text].text, "LINE1");
-    EXPECT_EQ(ifc.string_table[ifc.file_line[first_file][2].file_line_text].text, "LINE2");
-    EXPECT_EQ(ifc.string_table[ifc.file_line[first_file][3].file_line_text].text, "LINE3");
+    EXPECT_EQ(ifc.total_file_nlines[FIRST_FILE], 3);
+    EXPECT_EQ(ifc.string_table[ifc.file_line[FIRST_FILE][1].file_line_text].text, "LINE1");
+    EXPECT_EQ(ifc.string_table[ifc.file_line[FIRST_FILE][2].file_line_text].text, "LINE2");
+    EXPECT_EQ(ifc.string_table[ifc.file_line[FIRST_FILE][3].file_line_text].text, "LINE3");
 }
 
 TEST_F(Pass1TestFixture, ReadLines_DuplicateLines)
 {
     std::istringstream input("SAME\nSAME\nSAME\n");
-    ifc.read_lines(first_file, input);
+    ifc.read_lines(FIRST_FILE, input);
 
-    EXPECT_EQ(ifc.total_file_nlines[first_file], 3);
+    EXPECT_EQ(ifc.total_file_nlines[FIRST_FILE], 3);
     // All should reference the same string entry if duplicates are detected
-    string_index si1 = ifc.file_line[first_file][1].file_line_text;
-    string_index si2 = ifc.file_line[first_file][2].file_line_text;
-    string_index si3 = ifc.file_line[first_file][3].file_line_text;
+    string_index si1 = ifc.file_line[FIRST_FILE][1].file_line_text;
+    string_index si2 = ifc.file_line[FIRST_FILE][2].file_line_text;
+    string_index si3 = ifc.file_line[FIRST_FILE][3].file_line_text;
 
     // Verify all lines have the same text
     EXPECT_EQ(ifc.string_table[si1].text, "SAME");
@@ -436,53 +436,53 @@ TEST_F(Pass1TestFixture, ReadLines_DuplicateLines)
     // If duplicate detection is working, they should share the same entry
     // Note: This depends on enter_line() correctly detecting duplicates
     if (si1 == si2 && si2 == si3) {
-        EXPECT_EQ(ifc.string_table[si1].file_nlines[first_file], 3);
+        EXPECT_EQ(ifc.string_table[si1].file_nlines[FIRST_FILE], 3);
     } else {
         // If duplicates aren't merged, each would have count 1
-        EXPECT_EQ(ifc.string_table[si1].file_nlines[first_file], 1);
+        EXPECT_EQ(ifc.string_table[si1].file_nlines[FIRST_FILE], 1);
     }
 }
 
 TEST_F(Pass1TestFixture, ReadLines_EmptyLines)
 {
     std::istringstream input("\n\nLINE\n");
-    ifc.read_lines(first_file, input);
+    ifc.read_lines(FIRST_FILE, input);
 
-    EXPECT_EQ(ifc.total_file_nlines[first_file], 3);
-    EXPECT_EQ(ifc.string_table[ifc.file_line[first_file][1].file_line_text].text, "");
-    EXPECT_EQ(ifc.string_table[ifc.file_line[first_file][2].file_line_text].text, "");
-    EXPECT_EQ(ifc.string_table[ifc.file_line[first_file][3].file_line_text].text, "LINE");
+    EXPECT_EQ(ifc.total_file_nlines[FIRST_FILE], 3);
+    EXPECT_EQ(ifc.string_table[ifc.file_line[FIRST_FILE][1].file_line_text].text, "");
+    EXPECT_EQ(ifc.string_table[ifc.file_line[FIRST_FILE][2].file_line_text].text, "");
+    EXPECT_EQ(ifc.string_table[ifc.file_line[FIRST_FILE][3].file_line_text].text, "LINE");
 }
 
 TEST_F(Pass1TestFixture, ReadLines_NoTrailingNewline)
 {
     std::istringstream input("LINE1\nLINE2");
-    ifc.read_lines(first_file, input);
+    ifc.read_lines(FIRST_FILE, input);
 
-    EXPECT_EQ(ifc.total_file_nlines[first_file], 2);
-    EXPECT_EQ(ifc.string_table[ifc.file_line[first_file][1].file_line_text].text, "LINE1");
-    EXPECT_EQ(ifc.string_table[ifc.file_line[first_file][2].file_line_text].text, "LINE2");
+    EXPECT_EQ(ifc.total_file_nlines[FIRST_FILE], 2);
+    EXPECT_EQ(ifc.string_table[ifc.file_line[FIRST_FILE][1].file_line_text].text, "LINE1");
+    EXPECT_EQ(ifc.string_table[ifc.file_line[FIRST_FILE][2].file_line_text].text, "LINE2");
 }
 
 TEST_F(Pass1TestFixture, ReadLines_LongLine)
 {
     std::string long_line(1000, 'X');
     std::istringstream input(long_line + "\n");
-    ifc.read_lines(first_file, input);
+    ifc.read_lines(FIRST_FILE, input);
 
-    EXPECT_EQ(ifc.total_file_nlines[first_file], 1);
-    EXPECT_EQ(ifc.string_table[ifc.file_line[first_file][1].file_line_text].text, long_line);
+    EXPECT_EQ(ifc.total_file_nlines[FIRST_FILE], 1);
+    EXPECT_EQ(ifc.string_table[ifc.file_line[FIRST_FILE][1].file_line_text].text, long_line);
 }
 
 TEST_F(Pass1TestFixture, ReadLines_SpecialCharacters)
 {
     std::istringstream input("LINE\tWITH\tTABS\nLINE WITH SPACES\n");
-    ifc.read_lines(first_file, input);
+    ifc.read_lines(FIRST_FILE, input);
 
-    EXPECT_EQ(ifc.total_file_nlines[first_file], 2);
-    EXPECT_EQ(ifc.string_table[ifc.file_line[first_file][1].file_line_text].text,
+    EXPECT_EQ(ifc.total_file_nlines[FIRST_FILE], 2);
+    EXPECT_EQ(ifc.string_table[ifc.file_line[FIRST_FILE][1].file_line_text].text,
               "LINE\tWITH\tTABS");
-    EXPECT_EQ(ifc.string_table[ifc.file_line[first_file][2].file_line_text].text,
+    EXPECT_EQ(ifc.string_table[ifc.file_line[FIRST_FILE][2].file_line_text].text,
               "LINE WITH SPACES");
 }
 
@@ -497,13 +497,13 @@ TEST_F(Pass1TestFixture, Pass1_TwoIdenticalFiles)
 
     ifc.pass1(file1, file2);
 
-    EXPECT_EQ(ifc.total_file_nlines[first_file], 3);
-    EXPECT_EQ(ifc.total_file_nlines[second_file], 3);
+    EXPECT_EQ(ifc.total_file_nlines[FIRST_FILE], 3);
+    EXPECT_EQ(ifc.total_file_nlines[SECOND_FILE], 3);
 
     // Identical lines in both files should map to the same string entry
     // (the string table tracks which files contain each distinct line)
-    string_index si1_a = ifc.file_line[first_file][1].file_line_text;
-    string_index si2_a = ifc.file_line[second_file][1].file_line_text;
+    string_index si1_a = ifc.file_line[FIRST_FILE][1].file_line_text;
+    string_index si2_a = ifc.file_line[SECOND_FILE][1].file_line_text;
     // Note: They might be different indices if pass1 doesn't reuse across files,
     // but the text should match
     EXPECT_EQ(ifc.string_table[si1_a].text, "A");
@@ -520,12 +520,12 @@ TEST_F(Pass1TestFixture, Pass1_TwoDifferentFiles)
 
     ifc.pass1(file1, file2);
 
-    EXPECT_EQ(ifc.total_file_nlines[first_file], 2);
-    EXPECT_EQ(ifc.total_file_nlines[second_file], 2);
+    EXPECT_EQ(ifc.total_file_nlines[FIRST_FILE], 2);
+    EXPECT_EQ(ifc.total_file_nlines[SECOND_FILE], 2);
 
     // Different lines should map to different string entries
-    string_index si_a = ifc.file_line[first_file][1].file_line_text;
-    string_index si_c = ifc.file_line[second_file][1].file_line_text;
+    string_index si_a = ifc.file_line[FIRST_FILE][1].file_line_text;
+    string_index si_c = ifc.file_line[SECOND_FILE][1].file_line_text;
     EXPECT_NE(si_a, si_c) << "Different lines should map to different string entries";
 }
 
@@ -536,20 +536,20 @@ TEST_F(Pass1TestFixture, Pass1_PartialOverlap)
 
     ifc.pass1(file1, file2);
 
-    EXPECT_EQ(ifc.total_file_nlines[first_file], 3);
-    EXPECT_EQ(ifc.total_file_nlines[second_file], 3);
+    EXPECT_EQ(ifc.total_file_nlines[FIRST_FILE], 3);
+    EXPECT_EQ(ifc.total_file_nlines[SECOND_FILE], 3);
 
     // Line 1 (A) should be in both - text should match
-    string_index si_a1 = ifc.file_line[first_file][1].file_line_text;
-    string_index si_a2 = ifc.file_line[second_file][1].file_line_text;
+    string_index si_a1 = ifc.file_line[FIRST_FILE][1].file_line_text;
+    string_index si_a2 = ifc.file_line[SECOND_FILE][1].file_line_text;
     EXPECT_EQ(ifc.string_table[si_a1].text, "A");
     EXPECT_EQ(ifc.string_table[si_a2].text, "A");
     // Note: The implementation may or may not reuse string entries across files
     // The important thing is that the text matches
 
     // Line 3 (C) should be in both - text should match
-    string_index si_c1 = ifc.file_line[first_file][3].file_line_text;
-    string_index si_c2 = ifc.file_line[second_file][3].file_line_text;
+    string_index si_c1 = ifc.file_line[FIRST_FILE][3].file_line_text;
+    string_index si_c2 = ifc.file_line[SECOND_FILE][3].file_line_text;
     EXPECT_EQ(ifc.string_table[si_c1].text, "C");
     EXPECT_EQ(ifc.string_table[si_c2].text, "C");
 }
@@ -561,30 +561,30 @@ TEST_F(Pass1TestFixture, Pass1_DuplicateLinesInBothFiles)
 
     ifc.pass1(file1, file2);
 
-    EXPECT_EQ(ifc.total_file_nlines[first_file], 2);
-    EXPECT_EQ(ifc.total_file_nlines[second_file], 3);
+    EXPECT_EQ(ifc.total_file_nlines[FIRST_FILE], 2);
+    EXPECT_EQ(ifc.total_file_nlines[SECOND_FILE], 3);
 
     // Within each file, verify all "SAME" lines have the same text
-    string_index si1 = ifc.file_line[first_file][1].file_line_text;
-    string_index si2 = ifc.file_line[first_file][2].file_line_text;
+    string_index si1 = ifc.file_line[FIRST_FILE][1].file_line_text;
+    string_index si2 = ifc.file_line[FIRST_FILE][2].file_line_text;
     EXPECT_EQ(ifc.string_table[si1].text, "SAME");
     EXPECT_EQ(ifc.string_table[si2].text, "SAME");
 
     // If duplicate detection works, they share the entry
     if (si1 == si2) {
-        EXPECT_EQ(ifc.string_table[si1].file_nlines[first_file], 2);
+        EXPECT_EQ(ifc.string_table[si1].file_nlines[FIRST_FILE], 2);
     }
 
     // In file2, verify all "SAME" lines
-    string_index si3 = ifc.file_line[second_file][1].file_line_text;
-    string_index si4 = ifc.file_line[second_file][2].file_line_text;
-    string_index si5 = ifc.file_line[second_file][3].file_line_text;
+    string_index si3 = ifc.file_line[SECOND_FILE][1].file_line_text;
+    string_index si4 = ifc.file_line[SECOND_FILE][2].file_line_text;
+    string_index si5 = ifc.file_line[SECOND_FILE][3].file_line_text;
     EXPECT_EQ(ifc.string_table[si3].text, "SAME");
     EXPECT_EQ(ifc.string_table[si4].text, "SAME");
     EXPECT_EQ(ifc.string_table[si5].text, "SAME");
 
     if (si3 == si4 && si4 == si5) {
-        EXPECT_EQ(ifc.string_table[si3].file_nlines[second_file], 3);
+        EXPECT_EQ(ifc.string_table[si3].file_nlines[SECOND_FILE], 3);
     }
 }
 
@@ -612,8 +612,8 @@ TEST_F(Pass1TestFixture, Pass1_FileWithManyLines)
 
     ifc.pass1(file1, file2);
 
-    EXPECT_EQ(ifc.total_file_nlines[first_file], 100);
-    EXPECT_EQ(ifc.total_file_nlines[second_file], 100);
+    EXPECT_EQ(ifc.total_file_nlines[FIRST_FILE], 100);
+    EXPECT_EQ(ifc.total_file_nlines[SECOND_FILE], 100);
 }
 
 // ============================================================================
@@ -629,7 +629,7 @@ TEST_F(Pass1TestFixture, EnterLine_ManyCollisionsInSameBucket)
         HashInfo h = Ifcomp::hash_line(line);
         hash_node_index hash_node_idx;
         string_index si;
-        ifc.enter_line(line, h, i + 1, first_file, hash_node_idx, si);
+        ifc.enter_line(line, h, i + 1, FIRST_FILE, hash_node_idx, si);
         EXPECT_GE(si, 0);
     }
 }
@@ -646,7 +646,7 @@ TEST_F(Pass1TestFixture, HashLine_AllASCIICharacters)
 
 TEST_F(Pass1TestFixture, MakeLineEntry_ManyEntries)
 {
-    line_count prev = null_line_list;
+    line_count prev = NULL_LINE_LIST;
     for (int i = 1; i <= 100; i++) {
         prev = ifc.make_line_entry(i, prev);
     }
@@ -657,5 +657,5 @@ TEST_F(Pass1TestFixture, MakeLineEntry_ManyEntries)
         EXPECT_EQ(ifc.line_table[current].linen, i);
         current = ifc.line_table[current].next;
     }
-    EXPECT_EQ(current, null_line_list);
+    EXPECT_EQ(current, NULL_LINE_LIST);
 }

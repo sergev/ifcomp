@@ -10,21 +10,21 @@
 Ifcomp::Ifcomp()
 {
     // Initialize member variables
-    total_file_nlines[first_file] = 0;
-    total_file_nlines[second_file] = 0;
+    total_file_nlines[FIRST_FILE] = 0;
+    total_file_nlines[SECOND_FILE] = 0;
     nchange_blocks = 0;
     delete_stats = LineKinds{};
     insert_stats = LineKinds{};
     move_stats = LineKinds{};
     replace1_stats = LineKinds{};
     replace2_stats = LineKinds{};
-    free_nodes_start = null_node;
-    trees[first_file] = TreeBounds{};
-    trees[second_file] = TreeBounds{};
+    free_nodes_start = NULL_NODE;
+    trees[FIRST_FILE] = TreeBounds{};
+    trees[SECOND_FILE] = TreeBounds{};
 
     initialize_tables();
-    for (int i = 0; i < nbuckets; i++)
-        sec_hash_start_node[i] = null_hash_list;
+    for (int i = 0; i < NBUCKETS; i++)
+        sec_hash_start_node[i] = NULL_HASH_LIST;
 }
 
 void Ifcomp::initialize_tables()
@@ -33,12 +33,12 @@ void Ifcomp::initialize_tables()
     string_table.reserve(1);
     line_table.reserve(2);
     node.reserve(2);
-    file_line[first_file].reserve(1);
-    file_line[second_file].reserve(1);
+    file_line[FIRST_FILE].reserve(1);
+    file_line[SECOND_FILE].reserve(1);
 
     // Initialize file_line arrays with index 0 entry
-    file_line[first_file].resize(1);
-    file_line[second_file].resize(1);
+    file_line[FIRST_FILE].resize(1);
+    file_line[SECOND_FILE].resize(1);
 }
 
 std::ifstream Ifcomp::open_file(const char *fn)
@@ -73,17 +73,17 @@ void Ifcomp::format_file_line(const FileLineDecl &p) const
 
 void Ifcomp::test_list(int pass) const
 {
-    int i = (total_file_nlines[first_file] > total_file_nlines[second_file])
-                ? total_file_nlines[first_file]
-                : total_file_nlines[second_file];
+    int i = (total_file_nlines[FIRST_FILE] > total_file_nlines[SECOND_FILE])
+                ? total_file_nlines[FIRST_FILE]
+                : total_file_nlines[SECOND_FILE];
     std::printf("test list after pass%d\n", pass);
     for (line_count j = 1; j <= i; j++) {
-        if (j > total_file_nlines[first_file])
+        if (j > total_file_nlines[FIRST_FILE])
             std::printf("=============\n");
         else
-            format_file_line(file_line[first_file][j]);
-        if (j <= total_file_nlines[second_file])
-            format_file_line(file_line[second_file][j]);
+            format_file_line(file_line[FIRST_FILE][j]);
+        if (j <= total_file_nlines[SECOND_FILE])
+            format_file_line(file_line[SECOND_FILE][j]);
     }
     std::printf("\n");
 }
@@ -104,13 +104,13 @@ void Ifcomp::compare(const char *first_fname, const char *second_fname)
     line_table.clear();
     string_table.clear();
     hash_node.clear();
-    file_line[first_file].clear();
-    file_line[second_file].clear();
+    file_line[FIRST_FILE].clear();
+    file_line[SECOND_FILE].clear();
     node.clear();
 
     // Reinitialize with proper size (at least index 0)
-    file_line[first_file].resize(1);
-    file_line[second_file].resize(1);
+    file_line[FIRST_FILE].resize(1);
+    file_line[SECOND_FILE].resize(1);
 
     // Open input files.
     std::ifstream file1 = open_file(first_fname);
@@ -124,8 +124,8 @@ void Ifcomp::compare(const char *first_fname, const char *second_fname)
     replace1_stats = LineKinds{};
     replace2_stats = LineKinds{};
 
-    for (int i = 0; i < nbuckets; i++)
-        sec_hash_start_node[i] = null_hash_list;
+    for (int i = 0; i < NBUCKETS; i++)
+        sec_hash_start_node[i] = NULL_HASH_LIST;
 
     // Execute passes 1-4
     this->pass1(file1, file2);
@@ -183,16 +183,16 @@ void Ifcomp::print_statistics() const
                 line_table.capacity(), msize, "line_table");
     mem_used += msize;
 
-    // file_line[first_file]
-    msize = static_cast<unsigned>(file_line[first_file].size() * sizeof(FileLineDecl));
-    std::printf("%8zu (%zu max, %u bytes) %s entries used.\n", file_line[first_file].size(),
-                file_line[first_file].capacity(), msize, "file_line[first_file]");
+    // file_line[FIRST_FILE]
+    msize = static_cast<unsigned>(file_line[FIRST_FILE].size() * sizeof(FileLineDecl));
+    std::printf("%8zu (%zu max, %u bytes) %s entries used.\n", file_line[FIRST_FILE].size(),
+                file_line[FIRST_FILE].capacity(), msize, "file_line[FIRST_FILE]");
     mem_used += msize;
 
-    // file_line[second_file]
-    msize = static_cast<unsigned>(file_line[second_file].size() * sizeof(FileLineDecl));
-    std::printf("%8zu (%zu max, %u bytes) %s entries used.\n", file_line[second_file].size(),
-                file_line[second_file].capacity(), msize, "file_line[second_file]");
+    // file_line[SECOND_FILE]
+    msize = static_cast<unsigned>(file_line[SECOND_FILE].size() * sizeof(FileLineDecl));
+    std::printf("%8zu (%zu max, %u bytes) %s entries used.\n", file_line[SECOND_FILE].size(),
+                file_line[SECOND_FILE].capacity(), msize, "file_line[SECOND_FILE]");
     mem_used += msize;
 
     std::printf("\t\thash_node space was freed before allocating nodes:\n");

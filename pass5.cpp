@@ -17,7 +17,7 @@ inline int _max(int a, int b)
 
 bool Ifcomp::leaf(tree_index n) const
 {
-    return node[n].branch_start == null_node;
+    return node[n].branch_start == NULL_NODE;
 }
 
 line_count Ifcomp::true_line_of(tree_index N) const
@@ -107,7 +107,7 @@ void Ifcomp::format_node(tree_index noden, int pad) const
     L = get_abs_line(L);
     std::printf("(%d)", file_line[fileno][L].ptr0);
 
-    if (n.branch_start != null_node || n.branch_end != null_node)
+    if (n.branch_start != NULL_NODE || n.branch_end != NULL_NODE)
         std::printf(" bs=%2d be=%2d", n.branch_start, n.branch_end);
     std::printf("]\n");
 }
@@ -115,7 +115,7 @@ void Ifcomp::format_node(tree_index noden, int pad) const
 void Ifcomp::print_node1(tree_index noden, bool always, int starting_line) const
 {
     static auto print_node1_callback = [](int which_file, const std::string &text, int lineno) {
-        std::printf("%c%6d|%s\n", which_file == first_file ? ' ' : '+', lineno, text.c_str());
+        std::printf("%c%6d|%s\n", which_file == FIRST_FILE ? ' ' : '+', lineno, text.c_str());
     };
 
     each_line_in_node(noden, always, starting_line, print_node1_callback);
@@ -131,7 +131,7 @@ void Ifcomp::dump_tree(tree_index tree_start) const
     std::printf("Tree %d:\n", tree_start);
     bool branch = false;
     tree_index T = tree_start;
-    while (T != null_node) {
+    while (T != NULL_NODE) {
         tree_index T2 = T;
         if (leaf(T)) {
             format_node(T, branch ? 8 : 1);
@@ -157,8 +157,8 @@ void Ifcomp::dump_trees(int pass) const
         return;
     constexpr int no_pass_value = 99;
     std::printf(pass == no_pass_value ? "dump trees\n" : "dump_trees after pass%d\n", pass);
-    dump_tree(trees[first_file].start);
-    dump_tree(trees[second_file].start);
+    dump_tree(trees[FIRST_FILE].start);
+    dump_tree(trees[SECOND_FILE].start);
 }
 
 void Ifcomp::pass5_doit(int fileno, NodeDecl &Np)
@@ -195,7 +195,7 @@ void Ifcomp::pass5_doit(int fileno, NodeDecl &Np)
             Np.cost = i - Np.linen;
         }
 
-        if (fileno == second_file)
+        if (fileno == SECOND_FILE)
             Np.linen = -Np.linen;
 
         tree_index j = make_node(Np);
@@ -207,55 +207,55 @@ void Ifcomp::pass5_doit(int fileno, NodeDecl &Np)
 void Ifcomp::pass5()
 {
     // Ensure file_line arrays have at least index 0
-    if (file_line[first_file].empty()) {
-        file_line[first_file].resize(1);
+    if (file_line[FIRST_FILE].empty()) {
+        file_line[FIRST_FILE].resize(1);
     }
-    if (file_line[second_file].empty()) {
-        file_line[second_file].resize(1);
+    if (file_line[SECOND_FILE].empty()) {
+        file_line[SECOND_FILE].resize(1);
     }
 
     NodeDecl N;
     N.cost = 0;
     N.linen = 0;
-    N.next = N.prev = null_node;
-    N.branch_start = N.branch_end = null_node;
+    N.next = N.prev = NULL_NODE;
+    N.branch_start = N.branch_end = NULL_NODE;
 
     // Make header nodes.
-    trees[first_file].start = make_node(N);
-    trees[second_file].start = make_node(N);
-    N.prev = trees[first_file].start;
+    trees[FIRST_FILE].start = make_node(N);
+    trees[SECOND_FILE].start = make_node(N);
+    N.prev = trees[FIRST_FILE].start;
 
-    pass5_doit(first_file, N);
+    pass5_doit(FIRST_FILE, N);
 
     N.cost = 0;
-    int file1_tlinesp = total_file_nlines[first_file] + 1;
+    int file1_tlinesp = total_file_nlines[FIRST_FILE] + 1;
     N.linen = file1_tlinesp;
-    trees[first_file].end = make_node(N);
-    node[N.prev].next = trees[first_file].end;
+    trees[FIRST_FILE].end = make_node(N);
+    node[N.prev].next = trees[FIRST_FILE].end;
 
-    N.prev = trees[second_file].start;
-    pass5_doit(second_file, N);
+    N.prev = trees[SECOND_FILE].start;
+    pass5_doit(SECOND_FILE, N);
 
     N.cost = 0;
-    int file2_tlinesp = total_file_nlines[second_file] + 1;
+    int file2_tlinesp = total_file_nlines[SECOND_FILE] + 1;
     N.linen = -file2_tlinesp;
-    trees[second_file].end = make_node(N);
-    node[N.prev].next = trees[second_file].end;
+    trees[SECOND_FILE].end = make_node(N);
+    node[N.prev].next = trees[SECOND_FILE].end;
 
     // Now be sure that the header records can refer to each other,
     // since it may occur (e.g. pass8) that we look up line 0 in
     // the other file.
-    if (static_cast<size_t>(file1_tlinesp + 1) > file_line[first_file].size()) {
-        file_line[first_file].resize(file1_tlinesp + 1);
+    if (static_cast<size_t>(file1_tlinesp + 1) > file_line[FIRST_FILE].size()) {
+        file_line[FIRST_FILE].resize(file1_tlinesp + 1);
     }
-    if (static_cast<size_t>(file2_tlinesp + 1) > file_line[second_file].size()) {
-        file_line[second_file].resize(file2_tlinesp + 1);
+    if (static_cast<size_t>(file2_tlinesp + 1) > file_line[SECOND_FILE].size()) {
+        file_line[SECOND_FILE].resize(file2_tlinesp + 1);
     }
 
-    file_line[first_file][0].ptr0 = 0;
-    file_line[second_file][0].ptr0 = 0;
+    file_line[FIRST_FILE][0].ptr0 = 0;
+    file_line[SECOND_FILE][0].ptr0 = 0;
 
     // Also make the trailers talk to each other.
-    file_line[first_file][file1_tlinesp].ptr0 = file2_tlinesp;
-    file_line[second_file][file2_tlinesp].ptr0 = file1_tlinesp;
+    file_line[FIRST_FILE][file1_tlinesp].ptr0 = file2_tlinesp;
+    file_line[SECOND_FILE][file2_tlinesp].ptr0 = file1_tlinesp;
 }
