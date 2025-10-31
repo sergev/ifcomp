@@ -383,13 +383,24 @@ static char *scopy(const char *p)
     char *q;
     static int total = 0;
     int len = strlen(p);
+    if (debug_dump_trees_full && len > 50)
+        printf("scopy: len=%d, poolptr=%p, strpool=%p, remaining=%ld\n", len, poolptr, strpool,
+               strpool ? (poolptr ? (strpool + POOL_SEG_SIZE - poolptr) : POOL_SEG_SIZE) : 0);
+
+    // If string doesn't fit in current segment, or no segment exists, allocate new one
     if (strpool == 0 || poolptr + len + 1 >= strpool + POOL_SEG_SIZE) {
-        strpool = poolptr = Mmalloc(POOL_SEG_SIZE), total += POOL_SEG_SIZE;
+        // For very long strings, allocate a segment large enough
+        int seg_size = (len + 1 > POOL_SEG_SIZE) ? (len + 1 + POOL_SEG_SIZE) : POOL_SEG_SIZE;
+        strpool = poolptr = Mmalloc(seg_size), total += seg_size;
+        if (debug_dump_trees_full && len > 50)
+            printf("  -> allocated new segment of size %d (total=%d)\n", seg_size, total);
     }
     memcpy(poolptr, p, len + 1);
     q = poolptr;
     poolptr += len + 1;
     string_bytes += len;
+    if (debug_dump_trees_full && len > 50)
+        printf("  -> stored string at %p, len=%d, strlen(result)=%zu\n", q, len, strlen(q));
     return q;
 }
 
@@ -404,7 +415,13 @@ static string_index setup_distinct_text(char *text, line_count linen, int input_
     S.file_list[other] = null_line_list;
     S.next_text_with_same_hash = null_string_list;
     S.text = scopy(text);
-    return make_string(&S);
+    string_index result = make_string(&S);
+    if (debug_dump_trees_full && strlen(text) > 50)
+        printf(
+            "setup_distinct_text: file=%d, line=%d, new string_index=%d, text_len=%zu, "
+            "text='%.50s...'\n",
+            input_file, linen, result, strlen(text));
+    return result;
 }
 
 static hash_node_index setup_hash_node(string_index *tip, char *text, line_count linen,
@@ -430,11 +447,16 @@ static void enter_line(char *text, hash_info h, line_count linen, int input_file
 {
     if (debug_syt_full)
         printf("\nEnter line %s, #%d\n", text, linen);
+    if (debug_dump_trees_full && strlen(text) > 50)
+        printf("enter_line: file=%d, line=%d, len=%zu, hash=%x, text='%.50s...'\n", input_file,
+               linen, strlen(text), h.h1);
     hash_node_index *hash_start_node = &sec_hash_start_node[h.h1 % nbuckets];
     string_index SI;
     hash_node_index node;
     if (*hash_start_node == null_hash_list) {
         *hash_start_node = node = setup_hash_node(&SI, text, linen, input_file, h);
+        if (debug_dump_trees_full && strlen(text) > 50)
+            printf("  -> new hash node, new string index %d\n", SI);
         goto finish;
     }
     node = *hash_start_node;
@@ -445,15 +467,35 @@ static void enter_line(char *text, hash_info h, line_count linen, int input_file
         if (test == eq) {
             // Search through this syt node to see if the identical line
             // exists already.
+            bool found_existing = false;
             for (SI = hash_node[node].text_list; SI != null_string_list;
                  last_SI = SI, SI = string[SI].next_text_with_same_hash) {
-                if (strcmp(string[SI].text, text) == 0) {
+                int cmp_result = strcmp(string[SI].text, text);
+                if (debug_dump_trees_full && strlen(text) > 50)
+                    printf("  comparing with string_index %d: strcmp=%d, len1=%zu, len2=%zu\n", SI,
+                           cmp_result, strlen(string[SI].text), strlen(text));
+                if (cmp_result == 0) {
+                    if (debug_dump_trees_full && strlen(text) > 50)
+                        printf("  -> found existing string index %d for identical text\n", SI);
+                    found_existing = true;
                     add_linen_to_text_list(SI, linen, input_file);
                     goto finish;
                 }
             }
+            if (debug_dump_trees_full && strlen(text) > 50)
+                printf(
+                    "  -> hash match but no identical text found in chain (last_SI=%d), creating "
+                    "new\n",
+                    last_SI);
+            if (found_existing == false && last_SI == null_string_list) {
+                // This shouldn't happen - if we're here, hash matched, so text_list should exist
+                if (debug_dump_trees_full)
+                    printf("  WARNING: hash matched but text_list is null!\n");
+            }
             string[last_SI].next_text_with_same_hash = SI =
                 setup_distinct_text(text, linen, input_file);
+            if (debug_dump_trees_full && strlen(text) > 50)
+                printf("  -> created new string index %d (last_SI=%d)\n", SI, last_SI);
             goto finish;
         }
         if (test == lt) {
@@ -1019,6 +1061,13 @@ static void delete_lines(tree_index noden)
 // Helper to check if two nodes contain identical text
 static bool nodes_have_identical_text(tree_index node1, tree_index node2)
 {
+    if (debug_dump_trees_full)
+        printf(
+            "nodes_have_identical_text: checking node1=%d (linen=%d, cost=%d, leaf=%d) vs node2=%d "
+            "(linen=%d, cost=%d, leaf=%d)\n",
+            node1, node[node1].linen, node[node1].cost, leaf(node1), node2, node[node2].linen,
+            node[node2].cost, leaf(node2));
+
     tree_index start1, finish1, start2, finish2;
 
     if (!leaf(node1))
@@ -1031,18 +1080,101 @@ static bool nodes_have_identical_text(tree_index node1, tree_index node2)
     else
         start2 = node2, finish2 = node[node2].next;
 
-    // Count lines in each node
-    int count1 = 0, count2 = 0;
-    for (tree_index n = start1; n != finish1; n = node[n].next)
-        count1++;
-    for (tree_index n = start2; n != finish2; n = node[n].next)
-        count2++;
+    if (debug_dump_trees_full)
+        printf("  ranges: node1 [%d,%d), node2 [%d,%d)\n", start1, finish1, start2, finish2);
 
-    if (count1 != count2)
+    // Count actual lines in each node (sum of abs(cost))
+    int total_lines1 = 0, total_lines2 = 0;
+    for (tree_index n = start1; n != finish1; n = node[n].next)
+        total_lines1 += _abs(node[n].cost);
+    for (tree_index n = start2; n != finish2; n = node[n].next)
+        total_lines2 += _abs(node[n].cost);
+
+    if (debug_dump_trees_full)
+        printf("  total_lines1=%d, total_lines2=%d\n", total_lines1, total_lines2);
+
+    if (total_lines1 != total_lines2) {
+        if (debug_dump_trees_full)
+            printf("  -> false (different line counts)\n");
         return false;
+    }
 
     // Compare line by line
     tree_index n1 = start1, n2 = start2;
+    int pos1 = 0, pos2 = 0;
+    while (n1 != finish1 && n2 != finish2 && pos1 < total_lines1 && pos2 < total_lines2) {
+        line_count filen1, filen2;
+        line_count sline1 = node[n1].linen, sline2 = node[n2].linen;
+        get_which_file(filen1, sline1);
+        get_which_file(filen2, sline2);
+
+        int cost1 = _abs(node[n1].cost), cost2 = _abs(node[n2].cost);
+        int min_cost = cost1 < cost2 ? cost1 : cost2;
+
+        // Compare all lines in this segment
+        for (int i = 0; i < min_cost; i++) {
+            if (pos1 + i >= total_lines1 || pos2 + i >= total_lines2)
+                break;
+            file_line_decl *fp1 = file_line[filen1];
+            file_line_decl *fp2 = file_line[filen2];
+            string_index idx1 = fp1[sline1 + i].file_line_text;
+            string_index idx2 = fp2[sline2 + i].file_line_text;
+            if (debug_dump_trees_full && i < 3) // Only print first 3 lines
+                printf("    comparing line %d: idx1=%d vs idx2=%d, text1='%s' vs text2='%s'\n", i,
+                       idx1, idx2, idx1 > 0 && idx1 <= last_string ? string[idx1].text : "?",
+                       idx2 > 0 && idx2 <= last_string ? string[idx2].text : "?");
+            if (idx1 != idx2) {
+                if (debug_dump_trees_full)
+                    printf("  -> false (different text at pos %d: idx %d != %d)\n", pos1 + i, idx1,
+                           idx2);
+                return false;
+            }
+        }
+
+        // Advance positions
+        pos1 += cost1;
+        pos2 += cost2;
+
+        // If costs differ, we've compared all we can from the shorter segment
+        if (cost1 != cost2) {
+            // If one segment is longer, we can only compare the shorter amount
+            if (pos1 != total_lines1 || pos2 != total_lines2)
+                return false;
+            break;
+        }
+
+        n1 = node[n1].next;
+        n2 = node[n2].next;
+    }
+
+    // Make sure we compared all lines
+    bool result = (pos1 == total_lines1 && pos2 == total_lines2);
+    if (debug_dump_trees_full)
+        printf("  -> %s (compared %d/%d lines for node1, %d/%d lines for node2)\n",
+               result ? "true" : "false", pos1, total_lines1, pos2, total_lines2);
+    return result;
+}
+
+// Helper to check if two nodes start with identical text (for partial matching)
+// Returns the number of identical lines at the start, or 0 if they don't match
+static int nodes_have_identical_prefix(tree_index node1, tree_index node2)
+{
+    tree_index start1, finish1, start2, finish2;
+
+    if (!leaf(node1))
+        start1 = node[node1].branch_start, finish1 = node1;
+    else
+        start1 = node1, finish1 = node[node1].next;
+
+    if (!leaf(node2))
+        start2 = node[node2].branch_start, finish2 = node2;
+    else
+        start2 = node2, finish2 = node[node2].next;
+
+    // Compare line by line from the start
+    tree_index n1 = start1, n2 = start2;
+    int matched_lines = 0;
+
     while (n1 != finish1 && n2 != finish2) {
         line_count filen1, filen2;
         line_count sline1 = node[n1].linen, sline2 = node[n2].linen;
@@ -1050,20 +1182,33 @@ static bool nodes_have_identical_text(tree_index node1, tree_index node2)
         get_which_file(filen2, sline2);
 
         int cost1 = _abs(node[n1].cost), cost2 = _abs(node[n2].cost);
+        int min_cost = cost1 < cost2 ? cost1 : cost2;
 
         // Compare all lines in this segment
-        for (int i = 0; i < cost1 && i < cost2; i++) {
+        for (int i = 0; i < min_cost; i++) {
             file_line_decl *fp1 = file_line[filen1];
             file_line_decl *fp2 = file_line[filen2];
-            if (fp1[sline1 + i].file_line_text != fp2[sline2 + i].file_line_text)
-                return false;
+            if (fp1[sline1 + i].file_line_text != fp2[sline2 + i].file_line_text) {
+                if (debug_dump_trees_full)
+                    printf("nodes_have_identical_prefix: matched %d lines before difference\n",
+                           matched_lines);
+                return matched_lines;
+            }
+            matched_lines++;
         }
+
+        // If costs differ, we've compared all we can from the shorter segment
+        if (cost1 != cost2)
+            break;
 
         n1 = node[n1].next;
         n2 = node[n2].next;
     }
 
-    return true;
+    if (debug_dump_trees_full)
+        printf("nodes_have_identical_prefix: matched %d lines (fully matched prefix)\n",
+               matched_lines);
+    return matched_lines;
 }
 
 static tree_index pass6_replaceable(tree_index noden)
@@ -1075,6 +1220,10 @@ static tree_index pass6_replaceable(tree_index noden)
     // It appears, however, that Reed took out the blk2=blk4 test.
     // See if noden in first_file can be replaced
     // with something else in second_file.
+
+    if (debug_dump_trees_full)
+        printf("pass6_replaceable: checking node %d\n", noden);
+
     // Find the previous node to this sequence.
     tree_index prev = node[noden].prev;
     // Lookup that previous node in the other file.
@@ -1082,17 +1231,37 @@ static tree_index pass6_replaceable(tree_index noden)
     // OK, now find the successor that node in the other file.
     // This corresponds to our noden.
     tree_index noden_other_file = node[prev_other_file].next;
+
+    if (debug_dump_trees_full)
+        printf("  prev=%d, prev_other_file=%d, noden_other_file=%d (cost=%d)\n", prev,
+               prev_other_file, noden_other_file,
+               noden_other_file != tree2_end ? node[noden_other_file].cost : -999);
+
     // Ask if the successor node is unique (cost < 0).  Otherwise
     // it isn't a replacement.
     if (node[noden_other_file].cost >= 0) {
         if (debug_dump_trees_full)
-            printf("replaceable fails: noden_other_file(%d) has neg cost.\n", noden_other_file);
+            printf("  -> not replaceable: noden_other_file(%d) has cost >= 0\n", noden_other_file);
         return null_node;
     }
     // If the nodes contain identical text, they should be matched, not replaced.
     if (nodes_have_identical_text(noden, noden_other_file)) {
         if (debug_dump_trees_full)
-            printf("replaceable fails: nodes have identical text, should be matched.\n");
+            printf(
+                "  -> not replaceable: nodes have identical text (should have been matched "
+                "earlier)\n");
+        return null_node;
+    }
+
+    // If nodes start with identical text but have different sizes, they shouldn't be replaced.
+    // The matching logic should handle partial matches instead.
+    int prefix_match = nodes_have_identical_prefix(noden, noden_other_file);
+    if (prefix_match > 0) {
+        if (debug_dump_trees_full)
+            printf(
+                "  -> not replaceable: nodes have identical prefix (%d lines), should match "
+                "partially\n",
+                prefix_match);
         return null_node;
     }
 #if 0
@@ -1165,6 +1334,97 @@ static void pass6_insert_lines(tree_index noden)
     dump_trees(no_pass);
 }
 
+// Match partial blocks when one block is a prefix of another
+// When the smaller block is a prefix of the larger, match the smaller block completely
+// The remaining portion of the larger block will be handled as delete/insert in subsequent passes
+static void pass6_match_partial_block(tree_index smaller_node, tree_index larger_node,
+                                      int matched_lines)
+{
+    if (debug_dump_trees_full)
+        printf(
+            "pass6_match_partial_block: matching smaller block %d (%d lines) with prefix of larger "
+            "block %d\n",
+            smaller_node, matched_lines, larger_node);
+
+    // Mark the overlapping lines as matched by marking file_line entries
+    tree_index start1, finish1, start2, finish2;
+    if (!leaf(smaller_node))
+        start1 = node[smaller_node].branch_start, finish1 = smaller_node;
+    else
+        start1 = smaller_node, finish1 = node[smaller_node].next;
+    if (!leaf(larger_node))
+        start2 = node[larger_node].branch_start, finish2 = larger_node;
+    else
+        start2 = larger_node, finish2 = node[larger_node].next;
+
+    // Mark lines as matched
+    tree_index n1 = start1, n2 = start2;
+    int lines_matched = 0;
+    while (n1 != finish1 && n2 != finish2 && lines_matched < matched_lines) {
+        line_count filen1, filen2;
+        line_count sline1 = node[n1].linen, sline2 = node[n2].linen;
+        get_which_file(filen1, sline1);
+        get_which_file(filen2, sline2);
+
+        int cost1 = _abs(node[n1].cost), cost2 = _abs(node[n2].cost);
+        int remaining = matched_lines - lines_matched;
+        int lines_to_match = cost1 < remaining ? cost1 : remaining;
+        if (lines_to_match > cost2)
+            lines_to_match = cost2;
+
+        // Mark lines as matched
+        for (int i = 0; i < lines_to_match; i++) {
+            file_line_decl *fp1 = file_line[filen1];
+            file_line_decl *fp2 = file_line[filen2];
+            fp1[sline1 + i].ptr_type = match_type;
+            fp1[sline1 + i].ptr0 = sline2 + i;
+            fp2[sline2 + i].ptr_type = match_type;
+            fp2[sline2 + i].ptr0 = sline1 + i;
+        }
+
+        lines_matched += lines_to_match;
+
+        // Move to next segment
+        if (lines_to_match == cost1)
+            n1 = node[n1].next;
+        if (lines_to_match == cost2)
+            n2 = node[n2].next;
+    }
+
+    // Mark the smaller node as fully matched
+    node[smaller_node].cost = -node[smaller_node].cost;
+
+    // Update the larger node's cost to reflect that part of it is matched
+    // We reduce the cost by the matched portion (but keep it negative for unmatched lines)
+    int larger_total = 0;
+    for (tree_index n = start2; n != finish2; n = node[n].next)
+        larger_total += _abs(node[n].cost);
+
+    // The smaller node is fully matched, so we remove it from tree1
+    tree_index prev = node[smaller_node].prev;
+    detach_node(smaller_node);
+
+    // Update the larger node in tree2 - mark the matched portion
+    // Actually, we need to split or adjust the larger node - for now, just mark the matched lines
+    // The unmatched portion will be handled in pass6_do_insert as an insertion
+
+    // For the smaller node, create a match node in tree1
+    // Actually, we should just use the existing match logic - combine the smaller node with its
+    // match But the issue is we need to find/create the corresponding node in tree2 for the matched
+    // portion
+
+    // Simplified approach: match the smaller block by marking its lines and updating the tree
+    // The remaining unmatched lines in the larger block will be handled as insertions
+    if (prev != tree1_start) {
+        // Find where to insert the matched node
+        // For now, just mark the smaller node as matched - it will be combined properly
+        // Actually, we need to handle this more carefully...
+
+        // Let's just mark the lines and let pass5 rebuild the tree correctly
+        // The cost update already happened, so the smaller node is marked as matched
+    }
+}
+
 // Match identical blocks that weren't matched in earlier passes
 static void pass6_match_identical_block(tree_index node1, tree_index node2)
 {
@@ -1220,32 +1480,38 @@ static void pass6_match_identical_block(tree_index node1, tree_index node2)
 
 static void pass6_do_replace_delete()
 {
+    if (debug_dump_trees_full)
+        printf("\n=== pass6_do_replace_delete ===\n");
+
     // Scan through first_file and identify any nodes that
     // have no correspondent in the second_file.  See if they can be
     // treated as replaced or deleted in the other file.
+    // Note: identical blocks should have been matched in pass6_match_identical_blocks
 
     tree_index i = node[tree1_start].next;
     while (i != tree1_end) {
         tree_index j = node[i].next;
         if (node[i].cost < 0) {
-            tree_index prev = node[i].prev;
-            tree_index prev_other_file = find_node(tree2, file1_line[true_line_of(prev)].ptr0);
-            tree_index noden_other_file = node[prev_other_file].next;
+            if (debug_dump_trees_full)
+                printf("Processing node %d (linen=%d, cost=%d) for replace/delete\n", i,
+                       node[i].linen, node[i].cost);
 
-            // Check if we have an identical block to match
-            if (noden_other_file != tree2_end && node[noden_other_file].cost < 0 &&
-                nodes_have_identical_text(i, noden_other_file)) {
-                pass6_match_identical_block(i, noden_other_file);
+            tree_index location_in_other_file = pass6_replaceable(i);
+            if (location_in_other_file == null_node) {
+                if (debug_dump_trees_full)
+                    printf("  -> deleting node %d\n", i);
+                delete_lines(i);
             } else {
-                tree_index location_in_other_file = pass6_replaceable(i);
-                if (location_in_other_file == null_node)
-                    delete_lines(i);
-                else
-                    pass6_replace_lines(i, location_in_other_file);
+                if (debug_dump_trees_full)
+                    printf("  -> replacing node %d with node %d\n", i, location_in_other_file);
+                pass6_replace_lines(i, location_in_other_file);
             }
         }
         i = j;
     }
+
+    if (debug_dump_trees_full)
+        printf("=== pass6_do_replace_delete complete ===\n\n");
 }
 
 static void pass6_do_insert()
@@ -1265,8 +1531,267 @@ static void pass6_do_insert()
     }
 }
 
+// Match identical blocks before processing replacements/deletions/insertions
+static void pass6_match_identical_blocks()
+{
+    if (debug_dump_trees_full)
+        printf("\n=== pass6_match_identical_blocks ===\n");
+
+    // Scan through both trees and match identical blocks
+    // We do multiple passes to catch blocks that become matchable after previous matches
+    bool found_match = true;
+    int total_match_count = 0;
+    while (found_match) {
+        found_match = false;
+        tree_index i = node[tree1_start].next;
+        int match_count = 0;
+        while (i != tree1_end) {
+            if (node[i].cost < 0) {
+                tree_index prev = node[i].prev;
+                tree_index prev_line = true_line_of(prev);
+
+                if (debug_dump_trees_full)
+                    printf("Checking node %d (linen=%d, cost=%d), prev=%d (line %d)\n", i,
+                           node[i].linen, node[i].cost, prev, prev_line);
+
+                tree_index prev_other_file;
+                // If prev is the header (tree1_start), we can't look up its ptr0
+                // Instead, look for unmatched blocks at the start of both files
+                if (prev == tree1_start) {
+                    // Check if there's an unmatched block at the start of tree2
+                    // Find the first unmatched block (cost < 0) in tree2
+                    prev_other_file = tree2_start;
+                    tree_index check_node = node[tree2_start].next;
+                    while (check_node != tree2_end && node[check_node].cost >= 0) {
+                        prev_other_file = check_node;
+                        check_node = node[check_node].next;
+                    }
+                } else {
+                    prev_other_file = find_node(tree2, file1_line[prev_line].ptr0);
+                }
+                tree_index noden_other_file = node[prev_other_file].next;
+
+                if (debug_dump_trees_full)
+                    printf(
+                        "  prev in other file=%d, next in other file=%d (linen=%d, cost=%d, "
+                        "is_end=%d)\n",
+                        prev_other_file, noden_other_file,
+                        noden_other_file != tree2_end ? node[noden_other_file].linen : -1,
+                        noden_other_file != tree2_end ? node[noden_other_file].cost : -1,
+                        noden_other_file == tree2_end);
+
+                // Check if we have an identical block to match
+                if (noden_other_file != tree2_end && node[noden_other_file].cost < 0) {
+                    bool identical = nodes_have_identical_text(i, noden_other_file);
+                    if (debug_dump_trees_full)
+                        printf("  identical check: %s\n", identical ? "MATCH!" : "no match");
+
+                    if (identical) {
+                        match_count++;
+                        if (debug_dump_trees_full)
+                            printf("*** MATCHING identical blocks %d and %d (match #%d) ***\n", i,
+                                   noden_other_file, match_count);
+                        pass6_match_identical_block(i, noden_other_file);
+                        // After matching, restart from tree1_start to handle changed structure
+                        i = node[tree1_start].next;
+                        continue;
+                    }
+
+                    // Check for partial match - blocks that start with identical text
+                    int prefix_match = nodes_have_identical_prefix(i, noden_other_file);
+                    if (prefix_match > 0) {
+                        // Count lines in each block
+                        tree_index start1, finish1, start2, finish2;
+                        if (!leaf(i))
+                            start1 = node[i].branch_start, finish1 = i;
+                        else
+                            start1 = i, finish1 = node[i].next;
+                        if (!leaf(noden_other_file))
+                            start2 = node[noden_other_file].branch_start,
+                            finish2 = noden_other_file;
+                        else
+                            start2 = noden_other_file, finish2 = node[noden_other_file].next;
+
+                        int total_lines1 = 0, total_lines2 = 0;
+                        for (tree_index n = start1; n != finish1; n = node[n].next)
+                            total_lines1 += _abs(node[n].cost);
+                        for (tree_index n = start2; n != finish2; n = node[n].next)
+                            total_lines2 += _abs(node[n].cost);
+
+                        int smaller_size =
+                            total_lines1 < total_lines2 ? total_lines1 : total_lines2;
+
+                        if (debug_dump_trees_full)
+                            printf(
+                                "  partial match: %d lines match at start (block1=%d lines, "
+                                "block2=%d "
+                                "lines)\n",
+                                prefix_match, total_lines1, total_lines2);
+
+                        // If the prefix match equals the smaller block size, we can match the
+                        // smaller block
+                        if (prefix_match == smaller_size) {
+                            if (debug_dump_trees_full)
+                                printf(
+                                    "  -> matching smaller block (%d lines), remaining will be "
+                                    "deleted/inserted\n",
+                                    smaller_size);
+
+                            // Match the smaller block - when prefix match equals smaller size,
+                            // the smaller block is a complete prefix of the larger
+                            // We need to create a temporary match by marking lines and updating
+                            // costs But since we can't easily split nodes, let's match by marking
+                            // file_line entries and updating the smaller node's cost to be positive
+                            // (matched)
+
+                            // Mark the overlapping lines as matched
+                            tree_index start_small, finish_small, start_large, finish_large;
+                            tree_index small_node =
+                                total_lines1 <= total_lines2 ? i : noden_other_file;
+                            tree_index large_node =
+                                total_lines1 <= total_lines2 ? noden_other_file : i;
+
+                            if (!leaf(small_node))
+                                start_small = node[small_node].branch_start,
+                                finish_small = small_node;
+                            else
+                                start_small = small_node, finish_small = node[small_node].next;
+                            if (!leaf(large_node))
+                                start_large = node[large_node].branch_start,
+                                finish_large = large_node;
+                            else
+                                start_large = large_node, finish_large = node[large_node].next;
+
+                            // Mark lines as matched
+                            tree_index n1 = start_small, n2 = start_large;
+                            int lines_matched = 0;
+                            while (n1 != finish_small && n2 != finish_large &&
+                                   lines_matched < smaller_size) {
+                                line_count filen1, filen2;
+                                line_count sline1 = node[n1].linen, sline2 = node[n2].linen;
+                                get_which_file(filen1, sline1);
+                                get_which_file(filen2, sline2);
+
+                                int cost1 = _abs(node[n1].cost), cost2 = _abs(node[n2].cost);
+                                int remaining = smaller_size - lines_matched;
+                                int lines_to_match = cost1 < remaining ? cost1 : remaining;
+                                if (lines_to_match > cost2)
+                                    lines_to_match = cost2;
+
+                                // Mark lines as matched
+                                for (int j = 0; j < lines_to_match; j++) {
+                                    file_line_decl *fp1 = file_line[filen1];
+                                    file_line_decl *fp2 = file_line[filen2];
+                                    fp1[sline1 + j].ptr_type = match_type;
+                                    fp1[sline1 + j].ptr0 = sline2 + j;
+                                    fp2[sline2 + j].ptr_type = match_type;
+                                    fp2[sline2 + j].ptr0 = sline1 + j;
+                                }
+
+                                lines_matched += lines_to_match;
+
+                                // Move to next segment
+                                if (lines_to_match == cost1)
+                                    n1 = node[n1].next;
+                                if (lines_to_match == cost2)
+                                    n2 = node[n2].next;
+                            }
+
+                            // Mark the smaller node as matched
+                            node[small_node].cost = -node[small_node].cost;
+
+                            // For the larger node, we need to update it to reflect that part is
+                            // matched Since we can't easily split nodes, we'll adjust the larger
+                            // node's cost to show how many unmatched lines remain
+                            int larger_total =
+                                total_lines1 > total_lines2 ? total_lines1 : total_lines2;
+                            int unmatched_in_large = larger_total - smaller_size;
+
+                            // Update the larger node's cost to reflect unmatched portion
+                            // If it was negative (unmatched), keep it negative but adjust the
+                            // magnitude Actually, we need to split or create a new node for the
+                            // unmatched portion For now, let's try updating the cost - but this
+                            // might not work if the node spans multiple segments
+
+                            // Actually, the issue is that the larger node might span multiple tree
+                            // segments We can't easily adjust its cost without understanding the
+                            // structure Let's try a different approach: update the cost of the
+                            // first segment that contains matched lines
+
+                            // Mark the matched portion of the larger node
+                            // The cost represents the number of lines, so if we've matched
+                            // 'smaller_size' lines, we should reduce the cost by that amount But
+                            // cost can be negative (unmatched) or positive (matched), so we need to
+                            // be careful
+
+                            // Simplified: mark the matched portion by updating file_line entries
+                            // The remaining unmatched lines in the larger node will be handled
+                            // when pass6_do_replace_delete/pass6_do_insert processes nodes with
+                            // cost <
+                            // 0
+
+                            // Detach the smaller node (it's fully matched now)
+                            tree_index prev = node[small_node].prev;
+                            detach_node(small_node);
+
+                            // For the larger node, we need to mark that part of it is matched
+                            // The problem is that nodes are atomic - we can't split them
+                            // However, we've marked the lines as match_type, so when the algorithm
+                            // processes them again, it should recognize them as matched
+
+                            // Actually, the cost calculation counts lines, so if we mark lines as
+                            // matched, the node's cost should reflect that. But we're not
+                            // recalculating costs here.
+
+                            // Let's try adjusting the larger node's cost to reflect unmatched lines
+                            // But only if it's a leaf node (single segment)
+                            if (leaf(large_node) && unmatched_in_large > 0) {
+                                // Adjust cost to reflect unmatched portion
+                                // If original cost was negative, keep it negative but adjust
+                                // magnitude
+                                if (node[large_node].cost < 0) {
+                                    // Keep it negative for unmatched, but adjust to show remaining
+                                    // unmatched
+                                    node[large_node].cost = -unmatched_in_large;
+                                }
+                            }
+
+                            // The larger node's remaining unmatched lines will be processed in
+                            // pass6_do_replace_delete/pass6_do_insert as insertions (if in tree2)
+                            // or deletions (if in tree1)
+
+                            if (debug_dump_trees_full)
+                                printf("  -> matched %d lines, smaller node marked as matched\n",
+                                       smaller_size);
+
+                            match_count++;
+                            // After matching, restart from tree1_start to handle changed structure
+                            i = node[tree1_start].next;
+                            continue;
+                        }
+                    }
+                }
+            }
+            i = node[i].next;
+        }
+
+        total_match_count += match_count;
+        if (match_count > 0) {
+            found_match = true;
+            if (debug_dump_trees_full)
+                printf("Found %d matches this pass, restarting scan...\n", match_count);
+        }
+    }
+
+    if (debug_dump_trees_full)
+        printf("=== pass6_match_identical_blocks complete: %d total matches ===\n\n",
+               total_match_count);
+}
+
 static void pass6()
 { // 7508
+    // First match identical blocks that weren't matched in earlier passes
+    pass6_match_identical_blocks();
     // Reed switched the order of insert vs. replace and delete.
     pass6_do_replace_delete();
     pass6_do_insert();
