@@ -1049,6 +1049,7 @@ The algorithm guarantees:
 12. **Iterator safety**: Pass6 saves iterators before node detachment to prevent invalidation during tree traversal when nodes are removed from linked lists
 13. **Pass7 branch node skipping**: Pass7 only processes leaf nodes, skipping branch nodes created by pass6. Branch nodes' `ptr0` mappings don't correctly map to file2 branch structures, causing infinite loops if attempted. The fix explicitly checks `leaf()` before combining, preventing infinite loops when pass7 runs after pass6
 14. **Pass7 safety check**: Added iteration count limit (10,000) to prevent infinite loops on edge cases, providing defensive programming protection
+15. **Pass8 safety check**: Added iteration count limit (10,000) to prevent infinite loops during move detection, matching Pass7's defensive programming approach
 
 ---
 
@@ -1059,7 +1060,7 @@ The algorithm guarantees:
 3. **Many moves**: Pass 8 may be slow with many small moves
 4. **Identical lines**: Multiple occurrences require unique anchors
 5. **Complete rewrites**: No anchors means few matches detected
-6. **Duplicate-only files**: If all lines are duplicates (appear multiple times), Pass 2 won't mark any as unique, so Pass 3 has no anchors to extend from
+6. **Duplicate-only files**: If all lines are duplicates (appear multiple times), Pass 2 won't mark any as unique, so Pass 3 has no anchors to extend from. This means identical files containing only duplicate lines will incorrectly show as replacements rather than no changes. This is by design: Pass 2 marks lines as unique only if they appear once, and Pass 3 requires unique anchors to extend matches. No workaround exists for truly duplicate-only files
 7. **File length mismatches**: Pass 3 stops when one file runs out of lines, even if the other continues
 8. **Index bounds**: Must ensure table accesses stay within bounds when files have different lengths
 9. **Pass7 branch node limitation**: Pass7 cannot combine branch nodes created by pass6 (REPLACE/INSERT operations). This is by design - branch nodes represent already-processed segments and should not be combined again. Pass7 only processes leaf nodes
