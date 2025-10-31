@@ -205,8 +205,8 @@ void dump_syt(hash_node_index start_node)
     }
 }
 
-// Read lines from a file and build hash table
-void read_lines(int which_file, std::ifstream &input_file)
+// Read lines from an input stream and build hash table
+void read_lines(int which_file, std::istream &input_file)
 {
     int current_line = 0;
     std::string line;
@@ -244,7 +244,7 @@ void read_lines(int which_file, std::ifstream &input_file)
 }
 
 // Pass 1: Read both files and build hash tables
-void pass1(std::ifstream &file1, std::ifstream &file2)
+void pass1(std::istream &file1, std::istream &file2)
 {
     read_lines(first_file, file1);
     read_lines(second_file, file2);

@@ -1,11 +1,7 @@
 #include <gtest/gtest.h>
-#include <unistd.h>
 
-#include <cstdio>
-#include <fstream>
 #include <sstream>
 #include <string>
-#include <vector>
 
 #include "ifcomp_types.h"
 #include "pass1.h"
@@ -38,46 +34,12 @@ protected:
         // Initialize file_line arrays with index 0 entry
         file_line[first_file].resize(1);
         file_line[second_file].resize(1);
-
-        // Initialize temp file tracking
-        temp_files.clear();
     }
 
     void TearDown() override
     {
-        // Clean up temporary files
-        for (const std::string &fname : temp_files) {
-            std::remove(fname.c_str());
-        }
-        temp_files.clear();
+        // Clean up (vectors are automatically cleaned up)
     }
-
-    // Helper to create a temporary file with content and return filename
-    std::string create_temp_file(const std::string &content)
-    {
-        char template_name[] = "/tmp/test_pass1_XXXXXX";
-        int fd = mkstemp(template_name);
-        if (fd < 0) {
-            return "";
-        }
-        std::string fname(template_name);
-        std::ofstream file(fname);
-        file << content;
-        file.close();
-        close(fd);
-        temp_files.push_back(fname);
-        return fname;
-    }
-
-    // Helper to create an ifstream from string content
-    std::ifstream create_ifstream(const std::string &content)
-    {
-        std::string fname = create_temp_file(content);
-        return std::ifstream(fname);
-    }
-
-private:
-    std::vector<std::string> temp_files;
 };
 
 // ============================================================================
@@ -453,9 +415,8 @@ TEST_F(Pass1TestFixture, EnterLine_SameHashDifferentText)
 
 TEST_F(Pass1TestFixture, ReadLines_SingleLine)
 {
-    std::ifstream input = create_ifstream("LINE1\n");
+    std::istringstream input("LINE1\n");
     read_lines(first_file, input);
-    input.close();
 
     EXPECT_EQ(total_file_nlines[first_file], 1);
     EXPECT_EQ(file_line[first_file].size(), 2u); // Index 0 + line 1
@@ -467,9 +428,8 @@ TEST_F(Pass1TestFixture, ReadLines_SingleLine)
 
 TEST_F(Pass1TestFixture, ReadLines_MultipleLines)
 {
-    std::ifstream input = create_ifstream("LINE1\nLINE2\nLINE3\n");
+    std::istringstream input("LINE1\nLINE2\nLINE3\n");
     read_lines(first_file, input);
-    input.close();
 
     EXPECT_EQ(total_file_nlines[first_file], 3);
     EXPECT_EQ(string_table[file_line[first_file][1].file_line_text].text, "LINE1");
@@ -479,9 +439,8 @@ TEST_F(Pass1TestFixture, ReadLines_MultipleLines)
 
 TEST_F(Pass1TestFixture, ReadLines_DuplicateLines)
 {
-    std::ifstream input = create_ifstream("SAME\nSAME\nSAME\n");
+    std::istringstream input("SAME\nSAME\nSAME\n");
     read_lines(first_file, input);
-    input.close();
 
     EXPECT_EQ(total_file_nlines[first_file], 3);
     // All should reference the same string entry if duplicates are detected
@@ -506,9 +465,8 @@ TEST_F(Pass1TestFixture, ReadLines_DuplicateLines)
 
 TEST_F(Pass1TestFixture, ReadLines_EmptyLines)
 {
-    std::ifstream input = create_ifstream("\n\nLINE\n");
+    std::istringstream input("\n\nLINE\n");
     read_lines(first_file, input);
-    input.close();
 
     EXPECT_EQ(total_file_nlines[first_file], 3);
     EXPECT_EQ(string_table[file_line[first_file][1].file_line_text].text, "");
@@ -518,9 +476,8 @@ TEST_F(Pass1TestFixture, ReadLines_EmptyLines)
 
 TEST_F(Pass1TestFixture, ReadLines_NoTrailingNewline)
 {
-    std::ifstream input = create_ifstream("LINE1\nLINE2");
+    std::istringstream input("LINE1\nLINE2");
     read_lines(first_file, input);
-    input.close();
 
     EXPECT_EQ(total_file_nlines[first_file], 2);
     EXPECT_EQ(string_table[file_line[first_file][1].file_line_text].text, "LINE1");
@@ -530,9 +487,8 @@ TEST_F(Pass1TestFixture, ReadLines_NoTrailingNewline)
 TEST_F(Pass1TestFixture, ReadLines_LongLine)
 {
     std::string long_line(1000, 'X');
-    std::ifstream input = create_ifstream(long_line + "\n");
+    std::istringstream input(long_line + "\n");
     read_lines(first_file, input);
-    input.close();
 
     EXPECT_EQ(total_file_nlines[first_file], 1);
     EXPECT_EQ(string_table[file_line[first_file][1].file_line_text].text, long_line);
@@ -540,9 +496,8 @@ TEST_F(Pass1TestFixture, ReadLines_LongLine)
 
 TEST_F(Pass1TestFixture, ReadLines_SpecialCharacters)
 {
-    std::ifstream input = create_ifstream("LINE\tWITH\tTABS\nLINE WITH SPACES\n");
+    std::istringstream input("LINE\tWITH\tTABS\nLINE WITH SPACES\n");
     read_lines(first_file, input);
-    input.close();
 
     EXPECT_EQ(total_file_nlines[first_file], 2);
     EXPECT_EQ(string_table[file_line[first_file][1].file_line_text].text, "LINE\tWITH\tTABS");
@@ -555,13 +510,10 @@ TEST_F(Pass1TestFixture, ReadLines_SpecialCharacters)
 
 TEST_F(Pass1TestFixture, Pass1_TwoIdenticalFiles)
 {
-    std::ifstream file1 = create_ifstream("A\nB\nC\n");
-    std::ifstream file2 = create_ifstream("A\nB\nC\n");
+    std::istringstream file1("A\nB\nC\n");
+    std::istringstream file2("A\nB\nC\n");
 
     pass1(file1, file2);
-
-    file1.close();
-    file2.close();
 
     EXPECT_EQ(total_file_nlines[first_file], 3);
     EXPECT_EQ(total_file_nlines[second_file], 3);
@@ -581,13 +533,10 @@ TEST_F(Pass1TestFixture, Pass1_TwoIdenticalFiles)
 
 TEST_F(Pass1TestFixture, Pass1_TwoDifferentFiles)
 {
-    std::ifstream file1 = create_ifstream("A\nB\n");
-    std::ifstream file2 = create_ifstream("C\nD\n");
+    std::istringstream file1("A\nB\n");
+    std::istringstream file2("C\nD\n");
 
     pass1(file1, file2);
-
-    file1.close();
-    file2.close();
 
     EXPECT_EQ(total_file_nlines[first_file], 2);
     EXPECT_EQ(total_file_nlines[second_file], 2);
@@ -600,13 +549,10 @@ TEST_F(Pass1TestFixture, Pass1_TwoDifferentFiles)
 
 TEST_F(Pass1TestFixture, Pass1_PartialOverlap)
 {
-    std::ifstream file1 = create_ifstream("A\nB\nC\n");
-    std::ifstream file2 = create_ifstream("A\nX\nC\n");
+    std::istringstream file1("A\nB\nC\n");
+    std::istringstream file2("A\nX\nC\n");
 
     pass1(file1, file2);
-
-    file1.close();
-    file2.close();
 
     EXPECT_EQ(total_file_nlines[first_file], 3);
     EXPECT_EQ(total_file_nlines[second_file], 3);
@@ -628,13 +574,10 @@ TEST_F(Pass1TestFixture, Pass1_PartialOverlap)
 
 TEST_F(Pass1TestFixture, Pass1_DuplicateLinesInBothFiles)
 {
-    std::ifstream file1 = create_ifstream("SAME\nSAME\n");
-    std::ifstream file2 = create_ifstream("SAME\nSAME\nSAME\n");
+    std::istringstream file1("SAME\nSAME\n");
+    std::istringstream file2("SAME\nSAME\nSAME\n");
 
     pass1(file1, file2);
-
-    file1.close();
-    file2.close();
 
     EXPECT_EQ(total_file_nlines[first_file], 2);
     EXPECT_EQ(total_file_nlines[second_file], 3);
@@ -665,13 +608,10 @@ TEST_F(Pass1TestFixture, Pass1_DuplicateLinesInBothFiles)
 
 TEST_F(Pass1TestFixture, Pass1_ClearsHashNodesAfterCompletion)
 {
-    std::ifstream file1 = create_ifstream("A\nB\n");
-    std::ifstream file2 = create_ifstream("C\nD\n");
+    std::istringstream file1("A\nB\n");
+    std::istringstream file2("C\nD\n");
 
     pass1(file1, file2);
-
-    file1.close();
-    file2.close();
 
     // pass1 should clear hash_node at the end
     EXPECT_TRUE(hash_node.empty()) << "pass1 should clear hash_node after completion";
@@ -685,13 +625,10 @@ TEST_F(Pass1TestFixture, Pass1_FileWithManyLines)
         file2_content << "LINE" << i << "\n";
     }
 
-    std::ifstream file1 = create_ifstream(file1_content.str());
-    std::ifstream file2 = create_ifstream(file2_content.str());
+    std::istringstream file1(file1_content.str());
+    std::istringstream file2(file2_content.str());
 
     pass1(file1, file2);
-
-    file1.close();
-    file2.close();
 
     EXPECT_EQ(total_file_nlines[first_file], 100);
     EXPECT_EQ(total_file_nlines[second_file], 100);
