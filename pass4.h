@@ -1,4 +1,4 @@
 #pragma once
 
 // Pass 4: Extend matches backward from unique pairs
-void pass4();
+// Implemented as Ifcomp::pass4() member method

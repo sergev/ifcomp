@@ -1,8 +1,9 @@
 #include "pass3.h"
 
+#include "ifcomp.h"
 #include "ifcomp_types.h"
 
-void pass3()
+void Ifcomp::pass3()
 {
     line_count m = 1;
     while (m <= total_file_nlines[first_file]) {

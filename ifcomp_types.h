@@ -93,20 +93,11 @@ struct TreeBounds {
     tree_index end = null_node;
 };
 
-// Global data structures (will be defined in appropriate source files)
-extern std::vector<LineTableDecl> line_table;
-extern std::vector<StringDecl> string_table;
-extern std::vector<HashNodeDecl> hash_node;
-extern std::vector<FileLineDecl> file_line[two_files];
-extern std::vector<NodeDecl> node;
-extern hash_node_index sec_hash_start_node[nbuckets];
-extern int total_file_nlines[two_files];
-extern short nchange_blocks;
-extern LineKinds delete_stats, insert_stats, move_stats, replace1_stats, replace2_stats;
-extern tree_index free_nodes_start;
-extern TreeBounds trees[two_files];
+// Global data structures - DEPRECATED: Now members of Ifcomp class
+// These extern declarations are kept for backward compatibility
+// All data is now encapsulated in the Ifcomp class - see ifcomp.h
 
-// Debug flags
+// Debug flags (still global for backward compatibility)
 extern bool debug_dont_free;
 extern bool debug_syt_full;
 extern bool debug_syt;
@@ -114,9 +105,6 @@ extern bool debug_dump_trees;
 extern bool debug_dump_trees_full;
 extern bool debug_alloc;
 extern bool debug_read_current_line;
-
-// Initialization function
-void initialize_tables();
 
 // Comparison result enum
 enum CompareResult { lt = 1, eq = 2, gt = 3 };

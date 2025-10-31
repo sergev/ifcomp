@@ -16,7 +16,61 @@
 #include "pass7.h"
 #include "pass8.h"
 
-static void format_file_line(const FileLineDecl &p)
+// Ifcomp class implementation
+Ifcomp::Ifcomp()
+{
+    // Initialize member variables
+    total_file_nlines[first_file] = 0;
+    total_file_nlines[second_file] = 0;
+    nchange_blocks = 0;
+    delete_stats = LineKinds{};
+    insert_stats = LineKinds{};
+    move_stats = LineKinds{};
+    replace1_stats = LineKinds{};
+    replace2_stats = LineKinds{};
+    free_nodes_start = null_node;
+    trees[first_file] = TreeBounds{};
+    trees[second_file] = TreeBounds{};
+
+    // Initialize debug flags from globals
+    debug_dont_free = ::debug_dont_free;
+    debug_syt_full = ::debug_syt_full;
+    debug_syt = ::debug_syt;
+    debug_dump_trees = ::debug_dump_trees;
+    debug_dump_trees_full = ::debug_dump_trees_full;
+    debug_alloc = ::debug_alloc;
+    debug_read_current_line = ::debug_read_current_line;
+
+    initialize_tables();
+    for (int i = 0; i < nbuckets; i++)
+        sec_hash_start_node[i] = null_hash_list;
+}
+
+void Ifcomp::initialize_tables()
+{
+    hash_node.reserve(1);
+    string_table.reserve(1);
+    line_table.reserve(2);
+    node.reserve(2);
+    file_line[first_file].reserve(1);
+    file_line[second_file].reserve(1);
+
+    // Initialize file_line arrays with index 0 entry
+    file_line[first_file].resize(1);
+    file_line[second_file].resize(1);
+}
+
+std::ifstream Ifcomp::open_file(const char *fn)
+{
+    std::ifstream file(fn);
+    if (!file.is_open()) {
+        std::perror(std::string("Can't open file " + std::string(fn)).c_str());
+        std::exit(1);
+    }
+    return file;
+}
+
+void Ifcomp::format_file_line(const FileLineDecl &p) const
 {
     std::printf("|%3d|", p.linen);
     switch (p.ptr_type) {
@@ -36,14 +90,11 @@ static void format_file_line(const FileLineDecl &p)
     std::printf("|%s|\n", string_table[p.file_line_text].text.c_str());
 }
 
-static inline int _max(int a, int b)
+void Ifcomp::test_list(int pass) const
 {
-    return (a > b) ? a : b;
-}
-
-static void test_list(int pass)
-{
-    line_count i = _max(total_file_nlines[first_file], total_file_nlines[second_file]);
+    int i = (total_file_nlines[first_file] > total_file_nlines[second_file])
+                ? total_file_nlines[first_file]
+                : total_file_nlines[second_file];
     std::printf("test list after pass%d\n", pass);
     for (line_count j = 1; j <= i; j++) {
         if (j > total_file_nlines[first_file])
@@ -56,17 +107,7 @@ static void test_list(int pass)
     std::printf("\n");
 }
 
-static std::ifstream open_file(const char *fn)
-{
-    std::ifstream file(fn);
-    if (!file.is_open()) {
-        std::perror(std::string("Can't open file " + std::string(fn)).c_str());
-        std::exit(1);
-    }
-    return file;
-}
-
-void summary()
+void Ifcomp::summary() const
 {
     std::printf("%8d lines deleted from old.\n", delete_stats.non_cosmetic);
     std::printf("%8d lines inserted in new.\n", insert_stats.non_cosmetic);
@@ -76,11 +117,8 @@ void summary()
     std::printf("%8d change blocks.\n", nchange_blocks);
 }
 
-void ifcomp(const char *first_fname, const char *second_fname)
+void Ifcomp::compare(const char *first_fname, const char *second_fname)
 {
-    // Initialize tables
-    initialize_tables();
-
     // Clear all vectors
     line_table.clear();
     string_table.clear();
@@ -109,33 +147,33 @@ void ifcomp(const char *first_fname, const char *second_fname)
         sec_hash_start_node[i] = null_hash_list;
 
     // Execute passes 1-4
-    pass1(file1, file2);
+    this->pass1(file1, file2);
     if (debug_syt)
         test_list(1);
 
-    pass2();
+    this->pass2();
     if (debug_syt)
         test_list(2);
 
-    pass3();
+    this->pass3();
     if (debug_syt)
         test_list(3);
 
-    pass4();
+    this->pass4();
     if (debug_syt)
         test_list(4);
 
     // Execute passes 5-8
-    pass5();
+    this->pass5();
     dump_trees(5);
 
-    pass6();
+    this->pass6();
     dump_trees(6);
 
-    pass7();
+    this->pass7();
     dump_trees(7);
 
-    pass8();
+    this->pass8();
     dump_trees(8);
 
     summary();
@@ -144,7 +182,7 @@ void ifcomp(const char *first_fname, const char *second_fname)
     file2.close();
 }
 
-void print_statistics()
+void Ifcomp::print_statistics() const
 {
     long mem_used = 0;
     unsigned msize;
@@ -192,4 +230,19 @@ void print_statistics()
     std::printf("%8ld bytes of line texts.\n", string_bytes);
     mem_used += string_bytes;
     std::printf("%8ld total bytes of memory used.\n", mem_used);
+}
+
+// Pass function implementations are in pass*.cpp files
+
+// Legacy functions for backward compatibility
+void ifcomp(const char *first_fname, const char *second_fname)
+{
+    Ifcomp ifc;
+    ifc.compare(first_fname, second_fname);
+}
+
+void print_statistics()
+{
+    // This is a no-op for legacy compatibility since we need an instance
+    // Users should use Ifcomp::print_statistics() instead
 }

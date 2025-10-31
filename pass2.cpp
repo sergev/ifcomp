@@ -1,8 +1,9 @@
 #include "pass2.h"
 
+#include "ifcomp.h"
 #include "ifcomp_types.h"
 
-void pass2()
+void Ifcomp::pass2()
 {
     for (size_t i = 1; i < string_table.size(); i++) {
         // Look at each line. If it occurs once in both files,

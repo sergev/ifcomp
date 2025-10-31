@@ -56,10 +56,21 @@ int main(int argc, char **argv)
         help(argv[0]);
 
     std::printf("Comparing: %s %s\n\n", first_fname, second_fname);
-    ifcomp(first_fname, second_fname);
+
+    // Create Ifcomp instance and set debug flags
+    Ifcomp ifc;
+    ifc.debug_dont_free = debug_dont_free;
+    ifc.debug_syt_full = debug_syt_full;
+    ifc.debug_syt = debug_syt;
+    ifc.debug_dump_trees = debug_dump_trees;
+    ifc.debug_dump_trees_full = debug_dump_trees_full;
+    ifc.debug_alloc = debug_alloc;
+    ifc.debug_read_current_line = debug_read_current_line;
+
+    ifc.compare(first_fname, second_fname);
 
     if (statistics) {
         std::printf("\nStatistics:\n");
-        print_statistics();
+        ifc.print_statistics();
     }
 }

@@ -1,8 +1,9 @@
 #include "pass4.h"
 
+#include "ifcomp.h"
 #include "ifcomp_types.h"
 
-void pass4()
+void Ifcomp::pass4()
 {
     line_count m = total_file_nlines[first_file];
     while (m > 0) {

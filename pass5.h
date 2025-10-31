@@ -30,7 +30,6 @@ void pass5();
 // Debug functions
 void dump_tree(tree_index tree_start);
 void dump_trees(int pass);
-extern const int no_pass;
 
 // Helper for iterating through nodes
 void each_line_in_node(
