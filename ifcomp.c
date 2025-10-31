@@ -749,7 +749,9 @@ static void count_node_callback(int which_file, char *text, int lineno, void *ar
 
 static void count_node(int noden, line_kinds *p)
 {
-    each_line_in_node(noden, false, 0, count_node_callback, p);
+    // For moves, we need to count all lines regardless of cost sign
+    // Use always=true to ensure we count lines even when cost is negative
+    each_line_in_node(noden, true, 0, count_node_callback, p);
 }
 
 static void format_node(tree_index noden, int pad)
