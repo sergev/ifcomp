@@ -34,6 +34,7 @@ add_executable(test_ifcomp
     test_pass3.cpp
     test_pass4.cpp
     test_pass5.cpp
+    test_pass6.cpp
     ${CMAKE_SOURCE_DIR}/ifcomp.cpp
     ${CMAKE_SOURCE_DIR}/pass1.cpp
     ${CMAKE_SOURCE_DIR}/pass2.cpp

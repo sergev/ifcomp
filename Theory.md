@@ -516,94 +516,254 @@ Tree2: [header] → [AB: +2] → [XY: -2] → [EF: +2] → [trailer]
 
 ## Pass 6: Replace/Delete/Insert Operations
 
-**Purpose**: Identify and process deletions, insertions, and replacements between the files.
+**Purpose**: Identify and process deletions, insertions, and replacements between the files. Converts unmatched segments (negative cost) from pass5 into explicit change operations with formatted output.
 
-Pass 6 consists of two phases:
+**Input**: Trees from pass5 with unmatched segments (negative cost nodes) representing lines that don't match between files.
+
+**Output**:
+- Formatted change operations (DELETE, INSERT, REPLACE)
+- Updated tree structures with branch nodes for replacements
+- Statistics for delete, insert, and replace operations
+
+Pass 6 consists of two phases executed sequentially:
 1. **Replace/Delete**: Process unmatched segments in file1
 2. **Insert**: Process unmatched segments in file2
 
-### Phase 1: Replace/Delete
+### Phase 1: Replace/Delete (`pass6_do_replace_delete`)
 
-Scans file1 tree looking for nodes with negative cost (unmatched segments).
+Scans file1 tree sequentially looking for nodes with negative cost (unmatched segments created by pass5).
 
 For each unmatched segment in file1:
 
 1. **Check if replaceable**: Call `pass6_replaceable(node1)`
-   - Find corresponding location in file2
+   - Find corresponding location in file2 based on previous matched node
    - Check if file2 has an unmatched segment at that position
    - If yes → **REPLACE**
    - If no → **DELETE**
 
 2. **Replace operation** (`pass6_replace_lines`):
-   - Make costs positive (now matched)
-   - Count lines for statistics
-   - Print output blocks
-   - Combine nodes using `combine_nodes()` which creates a branch structure
-   - Detach old node from file1
+   - Increment `nchange_blocks` counter
+   - Make both node costs positive (now matched)
+   - Count lines for statistics (`replace1_stats`, `replace2_stats`)
+   - Print context with `after_header()`
+   - Print "REPLACE LINE(s)" header
+   - Print lines from file1
+   - Print "WITH LINE(s)" header
+   - Print lines from file2
+   - Print trailer
+   - Detach file1 node from its tree
+   - If previous node is header: attach file2 node to header as branch
+   - Otherwise: combine previous node with file2 node (creates branch structure)
 
 3. **Delete operation** (`delete_lines`):
-   - Increment change block counter
-   - Print "AFTER LINE(s)" context
-   - Print "DELETE LINE(s)"
-   - Count statistics
-   - Detach node from tree
+   - Increment `nchange_blocks` counter
+   - Make cost positive (for output purposes, but node is detached)
+   - Print context with `after_header()` (shows where deletion occurs)
+   - Print "DELETE LINE(s)" header
+   - Print deleted lines
+   - Print trailer
+   - Count statistics (`delete_stats`)
+   - Detach node from tree (removed from linked list)
 
-### Replaceability Check
+**Important**: The iterator `j` is saved before processing because nodes may be detached during processing.
 
-A node is replaceable if:
-- There's a corresponding unmatched node in file2
-- The nodes are adjacent to matching segments
+### Replaceability Check (`pass6_replaceable`)
 
-The algorithm:
+A node in file1 is replaceable if there's a corresponding unmatched node in file2 at the same relative position.
+
+**Algorithm:**
 ```cpp
-prev = node1.prev  // Previous node in file1
-prev_other = find_node_in_file2(prev's corresponding line)
-noden_other = prev_other.next  // Next node in file2
-if noden_other.cost < 0:  // Unmatched
+prev = node1.prev  // Previous node in file1 tree
+prev_other = find_node(file2_tree, file1_line[true_line_of(prev)].ptr0)
+noden_other = prev_other.next  // Next node after prev_other in file2
+if noden_other.cost < 0:  // Unmatched segment
     return noden_other  // Replaceable!
+else:
+    return NULL_NODE  // Not replaceable → will be DELETE
 ```
 
-### Phase 2: Insert
+**Key Points:**
+- Replacement requires both files to have unmatched segments at the same position
+- The position is determined by finding the corresponding previous matched node
+- If file2's next node has `cost >= 0`, it's matched, so file1's unmatched segment becomes a DELETE
+- The check does NOT verify that following segments match (Reed removed this test)
 
-Scans file2 tree looking for unmatched segments (negative cost).
+### Phase 2: Insert (`pass6_do_insert`)
+
+Scans file2 tree sequentially looking for remaining unmatched segments (negative cost).
 
 For each unmatched segment in file2:
 
 1. **Insert operation** (`pass6_insert_lines`):
+   - Increment `nchange_blocks` counter
    - Make cost positive (now inserted)
-   - Count statistics
-   - Find insertion point in file1
-   - Print output blocks
-   - If inserting at top: attach to header
-   - Otherwise: combine with previous node in file1
+   - Count statistics (`insert_stats`)
+   - Find insertion point in file1 based on previous matched node
+   - Print context with `after_lines()` or `top_msg()` if at start
+   - Print "INSERT LINE(s)" header
+   - Print inserted lines
+   - Print trailer
+   - Detach node from file2 tree
+   - If previous node is header: attach to file1 header as branch
+   - Otherwise: combine with previous matched node in file1 (creates branch structure)
 
-2. **Output format**:
-   - "AFTER LINE(s)" or "AFTER TOP" context
-   - "INSERT LINE(s)" header
-   - Lines from file2
-   - Trailer
+**Important**: The iterator `j` is saved before processing because nodes may be detached during processing.
 
-### Node Combination
+### Helper Functions
 
-`combine_nodes(node1, node2)` creates a branch structure:
-- Creates new parent node
-- `branch_start` points to node1's sequence
-- `branch_end` points to node2's sequence
-- Links branches together
-- Frees original leaf nodes
+**find_node(TreeBounds T, tree_index linen)**: Finds node containing specified line number in a tree
+- Searches linearly through tree nodes
+- Handles negative line numbers (uses absolute value)
+- Returns node index or exits with error if not found
+- Used to find corresponding nodes between file1 and file2 trees
 
-This transforms the linear tree into a tree with branches.
+**detach_node(tree_index noden)**: Removes node from its doubly-linked list
+- Updates `prev.next = next` and `next.prev = prev`
+- Node remains in `node` table but is no longer in tree structure
+- Used for DELETE and INSERT operations
+
+**combine_nodes(tree_index node1, tree_index node2)**: Creates branch structure by combining two nodes
+- Creates new parent node with combined cost
+- Sets `branch_start = node1` (or node1's branch_start if node1 is already a branch)
+- Sets `branch_end = node2` (or node2's branch_end if node2 is already a branch)
+- Detaches both original nodes
+- Frees original nodes if they were branches (leaves are kept as branch ends)
+- Inserts new parent node at node1's position
+- Links branch nodes together in sequence
+- Transforms linear tree segments into tree branches
+
+**unique_find(tree_index noden)**: Finds first unique line in a node by scanning backward
+- Scans from `end_line + cost - 1` down to `end_line`
+- Returns first line with `ptr_type == UNIQUE_TYPE`
+- Returns `NULL_NODE` if no unique line found
+- Used by `after_lines()` to find context anchor point
+
+**after_lines(tree_index noden)**: Prints context lines before a change operation
+- Prints "AFTER LINE(s)" header
+- Searches backward for unique line to start context
+- Handles both leaf and branch nodes when traversing
+- Prints all nodes from unique line to the change point
+
+**after_header(tree_index noden)**: Chooses appropriate context header
+- If `noden == tree1_start`: calls `top_msg()` → "AFTER TOP"
+- Otherwise: calls `after_lines(noden)` → "AFTER LINE(s)"
+
+**top_msg()**: Prints "AFTER TOP" header for insertions at start of file
+
+**print_header(const char *s)**: Prints formatted header with equals separator
+- Format: `*** <text> ======================================= ***`
+
+**print_header1(const char *s)**: Prints formatted header with dash separator
+- Format: `*** <text> -------------------------------------- ***`
+
+**print_trailer()**: Prints formatted trailer separator
+- Format: `*** ===================================================== ***\n`
+
+### Node Combination Details
+
+`combine_nodes(node1, node2)` creates a branch structure when nodes are combined:
+
+**Process:**
+1. Calculate combined cost: `cost = node1.cost + node2.cost`
+2. Use node1's starting line number
+3. Detach node2 from its tree
+4. Detach node1 from its tree
+5. If node1 is a branch (not leaf): extract its branch structure
+6. If node2 is a branch (not leaf): extract its branch structure
+7. Create new parent node
+8. Insert new node at node1's original position
+9. Link branch nodes together in sequence
+
+**Result Structure:**
+```
+Before: [prev] → [node1] → [next]
+        [prev2] → [node2] → [next2]
+
+After:  [prev] → [parent (branch)]
+                      ↓
+              [branch_start] → ... → [branch_end]
+                     ↑                    ↑
+                  node1 sequence      node2 sequence
+```
+
+This transforms linear tree segments into tree branches, enabling move detection in pass8.
+
+### Statistics Tracking
+
+Pass6 updates separate statistics for each operation type:
+
+- **delete_stats**: Counts lines deleted from file1
+  - Updated by `count_node(noden, delete_stats)` in `delete_lines()`
+  - Uses `always=false`, so only counts non-cosmetic lines
+  
+- **insert_stats**: Counts lines inserted from file2
+  - Updated by `count_node(noden, insert_stats)` in `pass6_insert_lines()`
+  
+- **replace1_stats**: Counts lines replaced in file1
+  - Updated by `count_node(node1, replace1_stats)` in `pass6_replace_lines()`
+  
+- **replace2_stats**: Counts lines replaced in file2
+  - Updated by `count_node(node2, replace2_stats)` in `pass6_replace_lines()`
+
+- **nchange_blocks**: Incremented for each DELETE, INSERT, or REPLACE operation
 
 ### Output Format
 
-Pass 6 produces output like:
+Pass 6 produces formatted output for each operation:
+
+**DELETE operation:**
 ```
 *** AFTER LINE(s) ======================================= ***
-     10|matched line
+     10|matched line before deletion
 *** DELETE LINE(s) -------------------------------------- ***
      11|deleted line
 *** ===================================================== ***
 ```
+
+**INSERT operation:**
+```
+*** AFTER LINE(s) ======================================= ***
+     10|matched line before insertion
+*** INSERT LINE(s) -------------------------------------- ***
++    11|inserted line
+*** ===================================================== ***
+```
+
+**REPLACE operation:**
+```
+*** AFTER LINE(s) ======================================= ***
+     10|matched line before replacement
+*** REPLACE LINE(s) ------------------------------------- ***
+     11|old line
+*** WITH LINE(s) ---------------------------------------- ***
++    11|new line
+*** ===================================================== ***
+```
+
+**Insert at top:**
+```
+*** AFTER TOP =========================================== ***
+*** INSERT LINE(s) -------------------------------------- ***
++     1|inserted at start
+*** ===================================================== ***
+```
+
+Line numbers are prefixed with `+` for file2 lines (insertions/replacements) to distinguish from file1 line numbers.
+
+### Important Implementation Details
+
+1. **Iterator Safety**: In `pass6_do_replace_delete()` and `pass6_do_insert()`, the iterator `j` is saved before processing because nodes may be detached during processing, which would invalidate `node[i].next`.
+
+2. **Cost Sign Change**:
+   - In `delete_lines()`: Cost is made positive before counting (for output purposes)
+   - In `pass6_replace_lines()`: Both costs are made positive (now matched)
+   - In `pass6_insert_lines()`: Cost is made positive (now inserted)
+
+3. **Branch Creation**: Replace and insert operations create branch structures, transforming the initially linear trees from pass5 into trees with branches. This is necessary for pass8 to detect moved segments.
+
+4. **Context Printing**: `after_lines()` traverses backward through the tree (handling branches) to find a unique line for context, ensuring users can identify where changes occur.
+
+5. **Order of Operations**: Pass6 processes replace/delete before insert. This was switched by Reed from the original order (likely to handle replacements before insertions for better output organization).
 
 ---
 
@@ -858,6 +1018,8 @@ The algorithm guarantees:
 8. **SYT_TYPE requirement for extension**: Pass 3 only extends from `syt_type` lines, ensuring unique pairs remain unique while allowing duplicate matches to be extended contextually
 9. **Node table dummy entry**: Pass5 initializes node table with dummy entry at index 0, maintaining 1-based indexing consistency
 10. **Negative cost semantics**: Negative cost segments (unmatched) are handled differently - `each_line_in_node(always=false)` skips them, requiring `always=true` to iterate
+11. **Branch structure creation**: Pass6 creates branch structures via `combine_nodes()` for replace/insert operations, transforming linear trees into trees with branches to enable move detection in pass8
+12. **Iterator safety**: Pass6 saves iterators before node detachment to prevent invalidation during tree traversal when nodes are removed from linked lists
 
 ---
 
