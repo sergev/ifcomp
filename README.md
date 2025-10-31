@@ -26,6 +26,8 @@ Copyright               Work of the US Gov. Public Use Permitted.
 
 # Build
 
+## Using Make
+
 On Mac:
 ```
 $ brew install cmocka
@@ -42,3 +44,26 @@ Run tests:
 ```
 $ make test
 ```
+
+## Using CMake
+
+CMake is supported with C11 and C++17 standards:
+
+```
+$ mkdir build && cd build
+$ cmake ..
+$ cmake --build .
+```
+
+Run tests:
+```
+$ ctest --verbose
+```
+
+Or build in Debug mode:
+```
+$ cmake -DCMAKE_BUILD_TYPE=Debug ..
+$ cmake --build .
+```
+
+On Mac, cmocka is detected automatically via Homebrew. On Ubuntu, install `libcmocka-dev`.

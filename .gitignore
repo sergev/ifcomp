@@ -4,3 +4,5 @@ unit_tests
 *.input
 *.output
 ?
+build
+Testing
