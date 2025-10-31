@@ -1016,6 +1016,56 @@ static void delete_lines(tree_index noden)
     dump_trees(no_pass);
 }
 
+// Helper to check if two nodes contain identical text
+static bool nodes_have_identical_text(tree_index node1, tree_index node2)
+{
+    tree_index start1, finish1, start2, finish2;
+
+    if (!leaf(node1))
+        start1 = node[node1].branch_start, finish1 = node1;
+    else
+        start1 = node1, finish1 = node[node1].next;
+
+    if (!leaf(node2))
+        start2 = node[node2].branch_start, finish2 = node2;
+    else
+        start2 = node2, finish2 = node[node2].next;
+
+    // Count lines in each node
+    int count1 = 0, count2 = 0;
+    for (tree_index n = start1; n != finish1; n = node[n].next)
+        count1++;
+    for (tree_index n = start2; n != finish2; n = node[n].next)
+        count2++;
+
+    if (count1 != count2)
+        return false;
+
+    // Compare line by line
+    tree_index n1 = start1, n2 = start2;
+    while (n1 != finish1 && n2 != finish2) {
+        line_count filen1, filen2;
+        line_count sline1 = node[n1].linen, sline2 = node[n2].linen;
+        get_which_file(filen1, sline1);
+        get_which_file(filen2, sline2);
+
+        int cost1 = _abs(node[n1].cost), cost2 = _abs(node[n2].cost);
+
+        // Compare all lines in this segment
+        for (int i = 0; i < cost1 && i < cost2; i++) {
+            file_line_decl *fp1 = file_line[filen1];
+            file_line_decl *fp2 = file_line[filen2];
+            if (fp1[sline1 + i].file_line_text != fp2[sline2 + i].file_line_text)
+                return false;
+        }
+
+        n1 = node[n1].next;
+        n2 = node[n2].next;
+    }
+
+    return true;
+}
+
 static tree_index pass6_replaceable(tree_index noden)
 { // 6a18
     // Replaceable if :
@@ -1037,6 +1087,12 @@ static tree_index pass6_replaceable(tree_index noden)
     if (node[noden_other_file].cost >= 0) {
         if (debug_dump_trees_full)
             printf("replaceable fails: noden_other_file(%d) has neg cost.\n", noden_other_file);
+        return null_node;
+    }
+    // If the nodes contain identical text, they should be matched, not replaced.
+    if (nodes_have_identical_text(noden, noden_other_file)) {
+        if (debug_dump_trees_full)
+            printf("replaceable fails: nodes have identical text, should be matched.\n");
         return null_node;
     }
 #if 0
@@ -1109,6 +1165,59 @@ static void pass6_insert_lines(tree_index noden)
     dump_trees(no_pass);
 }
 
+// Match identical blocks that weren't matched in earlier passes
+static void pass6_match_identical_block(tree_index node1, tree_index node2)
+{
+    // Mark the nodes as matched by making costs positive and updating ptr0 values
+    node[node1].cost = -node[node1].cost;
+    node[node2].cost = -node[node2].cost;
+
+    // Update file_line arrays to mark lines as matched
+    tree_index start1, finish1, start2, finish2;
+    if (!leaf(node1))
+        start1 = node[node1].branch_start, finish1 = node1;
+    else
+        start1 = node1, finish1 = node[node1].next;
+    if (!leaf(node2))
+        start2 = node[node2].branch_start, finish2 = node2;
+    else
+        start2 = node2, finish2 = node[node2].next;
+
+    tree_index n1 = start1, n2 = start2;
+    while (n1 != finish1 && n2 != finish2) {
+        line_count filen1, filen2;
+        line_count sline1 = node[n1].linen, sline2 = node[n2].linen;
+        get_which_file(filen1, sline1);
+        get_which_file(filen2, sline2);
+
+        int cost1 = _abs(node[n1].cost), cost2 = _abs(node[n2].cost);
+        int min_cost = cost1 < cost2 ? cost1 : cost2;
+
+        // Mark all lines in this segment as matched
+        for (int i = 0; i < min_cost; i++) {
+            file_line_decl *fp1 = file_line[filen1];
+            file_line_decl *fp2 = file_line[filen2];
+            fp1[sline1 + i].ptr_type = match_type;
+            fp1[sline1 + i].ptr0 = sline2 + i;
+            fp2[sline2 + i].ptr_type = match_type;
+            fp2[sline2 + i].ptr0 = sline1 + i;
+        }
+
+        n1 = node[n1].next;
+        n2 = node[n2].next;
+    }
+
+    // Combine the matched nodes
+    tree_index prev = node[node1].prev;
+    detach_node(node1);
+    detach_node(node2);
+    if (prev == tree1_start) {
+        node[tree1_start].branch_start = node[tree1_start].branch_end = node2;
+        node[node2].prev = node[node2].next = tree1_start;
+    } else
+        combine_nodes(prev, node2);
+}
+
 static void pass6_do_replace_delete()
 {
     // Scan through first_file and identify any nodes that
@@ -1119,11 +1228,21 @@ static void pass6_do_replace_delete()
     while (i != tree1_end) {
         tree_index j = node[i].next;
         if (node[i].cost < 0) {
-            tree_index location_in_other_file = pass6_replaceable(i);
-            if (location_in_other_file == null_node)
-                delete_lines(i);
-            else
-                pass6_replace_lines(i, location_in_other_file);
+            tree_index prev = node[i].prev;
+            tree_index prev_other_file = find_node(tree2, file1_line[true_line_of(prev)].ptr0);
+            tree_index noden_other_file = node[prev_other_file].next;
+
+            // Check if we have an identical block to match
+            if (noden_other_file != tree2_end && node[noden_other_file].cost < 0 &&
+                nodes_have_identical_text(i, noden_other_file)) {
+                pass6_match_identical_block(i, noden_other_file);
+            } else {
+                tree_index location_in_other_file = pass6_replaceable(i);
+                if (location_in_other_file == null_node)
+                    delete_lines(i);
+                else
+                    pass6_replace_lines(i, location_in_other_file);
+            }
         }
         i = j;
     }
