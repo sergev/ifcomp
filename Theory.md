@@ -775,23 +775,29 @@ Line numbers are prefixed with `+` for file2 lines (insertions/replacements) to 
 
 ```cpp
 for each node in file1:
-    if node and next_node are also adjacent in file2:
-        combine_nodes(node, next_node)  // In both files
+    if node is a leaf AND next_node is a leaf:
+        if node and next_node are also adjacent in file2:
+            combine_nodes(node, next_node)  // In both files
 ```
 
 ### Adjacency Check
 
 Two nodes are adjacent if:
 - They are consecutive in file1's tree (`node1.next == node2`)
+- They are both **leaf nodes** (not branch structures)
 - Their corresponding nodes in file2 are also consecutive
 
 ### Process
 
 1. **Scan file1 tree**: For each node, check if it can combine with next
-2. **Verify adjacency in file2**:
-   - Find file2 nodes corresponding to file1 nodes
+2. **Skip branch nodes**: Branch nodes (created by pass6 replacements/insertions) are skipped
+   - Branch nodes represent replaced/inserted segments
+   - They're already "combined" structures and shouldn't be combined again
+   - Attempting to combine branch nodes causes infinite loops (bug fixed)
+3. **Verify adjacency in file2**:
+   - Find file2 nodes corresponding to file1 nodes using `ptr0` values
    - Check if they're consecutive
-3. **Combine**: If adjacent in both files, merge them
+4. **Combine**: If adjacent in both files, merge them
    - Creates larger matched segments
    - Simplifies tree structure
    - Updates costs
@@ -802,6 +808,25 @@ Combining reduces tree complexity:
 - Fewer nodes to process
 - Better representation of unchanged regions
 - Cleaner output
+
+### Branch Node Handling
+
+**Important**: Pass 7 only processes **leaf nodes** (nodes without branch structures).
+
+Branch nodes are skipped because:
+- They're created by pass6's REPLACE and INSERT operations
+- They represent segments that have already been processed
+- Branch nodes' `ptr0` values may not correctly map to file2 branch structures
+- Attempting to combine branch nodes causes infinite loops in the original implementation
+
+**Bug Fix**: The implementation now explicitly checks `leaf(node1)` and `leaf(node2)` before attempting to combine nodes. This prevents infinite loops when pass7 runs after pass6.
+
+### Safety Check
+
+A safety check prevents infinite loops:
+- Tracks iteration count (max 10,000 iterations)
+- Exits with error if limit exceeded
+- Prevents hangs on edge cases
 
 ### Example
 
@@ -816,6 +841,8 @@ File2: [ABC: +3]
 ```
 
 If A, B, C are adjacent in both files, they're combined into one node.
+
+**Note**: If pass6 has created branch structures (REPLACE/INSERT operations), pass7 will skip those branches and only combine remaining leaf nodes.
 
 ---
 
@@ -1020,6 +1047,8 @@ The algorithm guarantees:
 10. **Negative cost semantics**: Negative cost segments (unmatched) are handled differently - `each_line_in_node(always=false)` skips them, requiring `always=true` to iterate
 11. **Branch structure creation**: Pass6 creates branch structures via `combine_nodes()` for replace/insert operations, transforming linear trees into trees with branches to enable move detection in pass8
 12. **Iterator safety**: Pass6 saves iterators before node detachment to prevent invalidation during tree traversal when nodes are removed from linked lists
+13. **Pass7 branch node skipping**: Pass7 only processes leaf nodes, skipping branch nodes created by pass6. Branch nodes' `ptr0` mappings don't correctly map to file2 branch structures, causing infinite loops if attempted. The fix explicitly checks `leaf()` before combining, preventing infinite loops when pass7 runs after pass6
+14. **Pass7 safety check**: Added iteration count limit (10,000) to prevent infinite loops on edge cases, providing defensive programming protection
 
 ---
 
@@ -1033,6 +1062,7 @@ The algorithm guarantees:
 6. **Duplicate-only files**: If all lines are duplicates (appear multiple times), Pass 2 won't mark any as unique, so Pass 3 has no anchors to extend from
 7. **File length mismatches**: Pass 3 stops when one file runs out of lines, even if the other continues
 8. **Index bounds**: Must ensure table accesses stay within bounds when files have different lengths
+9. **Pass7 branch node limitation**: Pass7 cannot combine branch nodes created by pass6 (REPLACE/INSERT operations). This is by design - branch nodes represent already-processed segments and should not be combined again. Pass7 only processes leaf nodes
 
 ---
 
