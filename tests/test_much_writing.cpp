@@ -3,11 +3,8 @@
 #include "ifcomp_driver.h"
 
 // Test case from the article
-TEST(IfcompTest, MuchWritingExample)
+TEST_F(IfcompDriver, MuchWritingExample)
 {
-    IfcompDriver driver;
-    driver.SetUp();
-
     const char *a =
         "a\nmass\nof\nlatin\nwords\n"
         "falls\nupon\nthe\nrelevant\nfacts\n"
@@ -61,12 +58,6 @@ TEST(IfcompTest, MuchWritingExample)
         "       3 lines moved in old.\n"
         "       5 change blocks.\n";
 
-    driver.create_file(driver.fname_a, a);
-    driver.create_file(driver.fname_b, b);
-    ifcomp(driver.fname_a, driver.fname_b);
-
-    std::string result = driver.get_output();
+    std::string result = run_ifcomp(a, b);
     EXPECT_EQ(result, std::string(expect));
-
-    driver.TearDown();
 }

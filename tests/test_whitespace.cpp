@@ -4,106 +4,58 @@
 #include "test_helpers.h"
 
 // Test leading whitespace
-TEST(IfcompWhitespace, LeadingWhitespace)
+TEST_F(IfcompDriver, LeadingWhitespace)
 {
-    IfcompDriver driver;
-    driver.SetUp();
-
     const char *a = "   LINE\n   MORE\n";
     const char *b = "   LINE\n   MORE\n";
 
-    driver.create_file(driver.fname_a, a);
-    driver.create_file(driver.fname_b, b);
-    ifcomp(driver.fname_a, driver.fname_b);
-
-    std::string result = driver.get_output();
+    std::string result = run_ifcomp(a, b);
     assert_statistics(result, 0, 0, 0, 0, 0, 0);
-
-    driver.TearDown();
 }
 
 // Test trailing whitespace
-TEST(IfcompWhitespace, TrailingWhitespace)
+TEST_F(IfcompDriver, TrailingWhitespace)
 {
-    IfcompDriver driver;
-    driver.SetUp();
-
     const char *a = "LINE   \nMORE   \n";
     const char *b = "LINE   \nMORE   \n";
 
-    driver.create_file(driver.fname_a, a);
-    driver.create_file(driver.fname_b, b);
-    ifcomp(driver.fname_a, driver.fname_b);
-
-    std::string result = driver.get_output();
+    std::string result = run_ifcomp(a, b);
     assert_statistics(result, 0, 0, 0, 0, 0, 0);
-
-    driver.TearDown();
 }
 
 // Test leading whitespace differences
-TEST(IfcompWhitespace, LeadingWhitespaceDifferent)
+TEST_F(IfcompDriver, LeadingWhitespaceDifferent)
 {
-    IfcompDriver driver;
-    driver.SetUp();
-
     const char *a = "   LINE\n";
     const char *b = "LINE\n";
 
-    driver.create_file(driver.fname_a, a);
-    driver.create_file(driver.fname_b, b);
-    ifcomp(driver.fname_a, driver.fname_b);
-
-    std::string result = driver.get_output();
+    std::string result = run_ifcomp(a, b);
     assert_statistics(result, 0, 0, 1, 1, 0, 1);
-
-    driver.TearDown();
 }
 
 // Test trailing whitespace differences
-TEST(IfcompWhitespace, TrailingWhitespaceDifferent)
+TEST_F(IfcompDriver, TrailingWhitespaceDifferent)
 {
-    IfcompDriver driver;
-    driver.SetUp();
-
     const char *a = "LINE   \n";
     const char *b = "LINE\n";
 
-    driver.create_file(driver.fname_a, a);
-    driver.create_file(driver.fname_b, b);
-    ifcomp(driver.fname_a, driver.fname_b);
-
-    std::string result = driver.get_output();
+    std::string result = run_ifcomp(a, b);
     assert_statistics(result, 0, 0, 1, 1, 0, 1);
-
-    driver.TearDown();
 }
 
 // Test lines with only spaces/tabs
-TEST(IfcompWhitespace, OnlyWhitespaceLines)
+TEST_F(IfcompDriver, OnlyWhitespaceLines)
 {
-    IfcompDriver driver;
-    driver.SetUp();
-
     const char *a = "   \n\t\t\t\nLINE\n";
     const char *b = "   \n\t\t\t\nLINE\n";
 
-    driver.create_file(driver.fname_a, a);
-    driver.create_file(driver.fname_b, b);
-    ifcomp(driver.fname_a, driver.fname_b);
-
-    std::string result = driver.get_output();
+    std::string result = run_ifcomp(a, b);
     assert_statistics(result, 0, 0, 0, 0, 0, 0);
-
-    driver.TearDown();
 }
 
 // Test mix of spaces and tabs
-TEST(IfcompWhitespace, MixedSpacesAndTabs)
+TEST_F(IfcompDriver, MixedSpacesAndTabs)
 {
-    IfcompDriver driver;
-    driver.SetUp();
-
     const char *a =
         "\t   \tLINE\n"
         "   \t\tMORE\n";
@@ -111,60 +63,33 @@ TEST(IfcompWhitespace, MixedSpacesAndTabs)
         "\t   \tLINE\n"
         "   \t\tMORE\n";
 
-    driver.create_file(driver.fname_a, a);
-    driver.create_file(driver.fname_b, b);
-    ifcomp(driver.fname_a, driver.fname_b);
-
-    std::string result = driver.get_output();
+    std::string result = run_ifcomp(a, b);
     assert_statistics(result, 0, 0, 0, 0, 0, 0);
-
-    driver.TearDown();
 }
 
 // Test empty lines (just newline)
-TEST(IfcompWhitespace, EmptyLines)
+TEST_F(IfcompDriver, EmptyLines)
 {
-    IfcompDriver driver;
-    driver.SetUp();
-
     const char *a = "A\n\nB\n\nC\n";
     const char *b = "A\n\nB\n\nC\n";
 
-    driver.create_file(driver.fname_a, a);
-    driver.create_file(driver.fname_b, b);
-    ifcomp(driver.fname_a, driver.fname_b);
-
-    std::string result = driver.get_output();
+    std::string result = run_ifcomp(a, b);
     assert_statistics(result, 0, 0, 0, 0, 0, 0);
-
-    driver.TearDown();
 }
 
 // Test empty lines in different positions
-TEST(IfcompWhitespace, EmptyLinesDifferent)
+TEST_F(IfcompDriver, EmptyLinesDifferent)
 {
-    IfcompDriver driver;
-    driver.SetUp();
-
     const char *a = "A\nB\nC\n";
     const char *b = "A\n\nB\n\nC\n";
 
-    driver.create_file(driver.fname_a, a);
-    driver.create_file(driver.fname_b, b);
-    ifcomp(driver.fname_a, driver.fname_b);
-
-    std::string result = driver.get_output();
+    std::string result = run_ifcomp(a, b);
     assert_statistics(result, 0, 2, 0, 0, 0, 2);
-
-    driver.TearDown();
 }
 
 // Test indentation changes
-TEST(IfcompWhitespace, IndentationChanges)
+TEST_F(IfcompDriver, IndentationChanges)
 {
-    IfcompDriver driver;
-    driver.SetUp();
-
     const char *a =
         "  if (x) {\n"
         "    return;\n"
@@ -174,70 +99,37 @@ TEST(IfcompWhitespace, IndentationChanges)
         "      return;\n"
         "    }\n";
 
-    driver.create_file(driver.fname_a, a);
-    driver.create_file(driver.fname_b, b);
-    ifcomp(driver.fname_a, driver.fname_b);
-
-    std::string result = driver.get_output();
+    std::string result = run_ifcomp(a, b);
     assert_statistics(result, 0, 0, 3, 3, 0, 3);
-
-    driver.TearDown();
 }
 
 // Test whitespace-only line differences
-TEST(IfcompWhitespace, WhitespaceOnlyDifferences)
+TEST_F(IfcompDriver, WhitespaceOnlyDifferences)
 {
-    IfcompDriver driver;
-    driver.SetUp();
-
     const char *a = "LINE\n   \nMORE\n";
     const char *b = "LINE\n     \nMORE\n";
 
-    driver.create_file(driver.fname_a, a);
-    driver.create_file(driver.fname_b, b);
-    ifcomp(driver.fname_a, driver.fname_b);
-
-    std::string result = driver.get_output();
+    std::string result = run_ifcomp(a, b);
     assert_statistics(result, 0, 0, 1, 1, 0, 1);
-
-    driver.TearDown();
 }
 
 // Test tabs vs spaces
-TEST(IfcompWhitespace, TabsVsSpaces)
+TEST_F(IfcompDriver, TabsVsSpaces)
 {
-    IfcompDriver driver;
-    driver.SetUp();
-
     const char *a = "\tLINE\n";
     const char *b = "    LINE\n";
 
-    driver.create_file(driver.fname_a, a);
-    driver.create_file(driver.fname_b, b);
-    ifcomp(driver.fname_a, driver.fname_b);
-
-    std::string result = driver.get_output();
+    std::string result = run_ifcomp(a, b);
     // Should be different
     assert_statistics(result, 0, 0, 1, 1, 0, 1);
-
-    driver.TearDown();
 }
 
 // Test multiple empty lines
-TEST(IfcompWhitespace, MultipleEmptyLines)
+TEST_F(IfcompDriver, MultipleEmptyLines)
 {
-    IfcompDriver driver;
-    driver.SetUp();
-
     const char *a = "START\n\n\n\nEND\n";
     const char *b = "START\n\n\n\nEND\n";
 
-    driver.create_file(driver.fname_a, a);
-    driver.create_file(driver.fname_b, b);
-    ifcomp(driver.fname_a, driver.fname_b);
-
-    std::string result = driver.get_output();
+    std::string result = run_ifcomp(a, b);
     assert_statistics(result, 0, 0, 0, 0, 0, 0);
-
-    driver.TearDown();
 }

@@ -2,6 +2,20 @@
 
 This document provides a detailed explanation of the IFCOMP (IF COMPare) algorithm, an 8-pass file comparison algorithm originally designed by Reed Kotler in 1979. The algorithm compares two text files and identifies deletions, insertions, replacements, and moves between them.
 
+## Contents
+
+- Overview: High-level algorithm description
+- Data Structures: Explanation of key structures (HashInfo, StringDecl, FileLineDecl, NodeDecl)
+- Pass 1: Hash table construction with details on the hash function
+- Pass 2: Unique pair identification
+- Pass 3: Forward match extension
+- Pass 4: Backward match extension
+- Pass 5: Tree construction
+- Pass 6: Replace/Delete/Insert operations (two phases)
+- Pass 7: Combine adjacent nodes
+- Pass 8: Move detection and processing
+- Additional sections: Output format, complexity analysis, design decisions, limitations
+
 ## Overview
 
 IFCOMP uses an 8-pass algorithm to perform file comparison:
@@ -141,7 +155,7 @@ After Pass 1, the hash node table is cleared (no longer needed after initial ind
 
 ```cpp
 for each string in string_table:
-    if string.file_nlines[first_file] == 1 AND 
+    if string.file_nlines[first_file] == 1 AND
        string.file_nlines[second_file] == 1:
         // Found a unique pair
         Mark both lines as unique_type
@@ -191,7 +205,7 @@ Then:
 for each line m in file1:
     if file1_line[m].ptr_type == unique_type:
         n = file1_line[m].ptr0  // Corresponding line in file2
-        
+
         // Extend forward while lines match
         while (next lines are syt_type AND text matches):
             Mark both lines as match_type
@@ -242,7 +256,7 @@ Lines B and C are matched because they follow unique anchors and match.
 for each line m in file1 (scanning backward):
     if file1_line[m].ptr_type == unique_type:
         n = file1_line[m].ptr0  // Corresponding line in file2
-        
+
         // Extend backward while lines match
         while (previous lines are syt_type AND text matches):
             Mark both lines as match_type
@@ -468,7 +482,7 @@ Two nodes are adjacent if:
 ### Process
 
 1. **Scan file1 tree**: For each node, check if it can combine with next
-2. **Verify adjacency in file2**: 
+2. **Verify adjacency in file2**:
    - Find file2 nodes corresponding to file1 nodes
    - Check if they're consecutive
 3. **Combine**: If adjacent in both files, merge them
@@ -513,28 +527,28 @@ Pass 8 repeatedly scans both trees in parallel, looking for misalignments that i
 while true:
     i = tree1_start
     j = tree2_start
-    
+
     // Skip headers
     i = i.next
     j = j.next
-    
+
     // Scan in parallel while aligned
     while i != tree1_end AND file1[i].ptr0 == file2[j].line:
         i = i.next
         j = j.next
-    
+
     // Misalignment found
     if i == tree1_end: break  // Done
-    
+
     // Find minimum cost node in misaligned region
     min_node = pass8_min_cost_node(i, tree1_end)
-    
+
     // Find where it should go in file2
     target_pos = find_node_in_file1(corresponding_to_prev_in_file2)
-    
+
     // Move the segment
     pass8_move_lines(target_pos, min_node)
-    
+
     // Restart from beginning
 ```
 
@@ -716,4 +730,3 @@ The IFCOMP algorithm provides a sophisticated approach to file comparison that g
 - Producing readable pseudo-update output
 
 The 8-pass design allows for progressive refinement, ensuring accurate change detection even in complex scenarios with multiple changes, moves, and replacements.
-

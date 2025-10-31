@@ -3,11 +3,8 @@
 #include "ifcomp_driver.h"
 
 // Test case with deletes, moves and replacements
-TEST(IfcompTest, ComplexChanges)
+TEST_F(IfcompDriver, ComplexChanges)
 {
-    IfcompDriver driver;
-    driver.SetUp();
-
     const char *a = "A\nX\nC\nY\nD\nW\nE\nA\nB\nE\n";
     const char *b = "A\nB\nC\nD\nE\n";
     const char *expect =
@@ -50,12 +47,6 @@ TEST(IfcompTest, ComplexChanges)
         "       2 lines moved in old.\n"
         "       5 change blocks.\n";
 
-    driver.create_file(driver.fname_a, a);
-    driver.create_file(driver.fname_b, b);
-    ifcomp(driver.fname_a, driver.fname_b);
-
-    std::string result = driver.get_output();
+    std::string result = run_ifcomp(a, b);
     EXPECT_EQ(result, std::string(expect));
-
-    driver.TearDown();
 }

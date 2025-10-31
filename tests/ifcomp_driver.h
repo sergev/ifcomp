@@ -1,6 +1,7 @@
 #pragma once
 
 #include <fcntl.h>
+#include <gtest/gtest.h>
 #include <unistd.h>
 
 #include <cstdio>
@@ -14,9 +15,9 @@
 #include "../ifcomp.h"
 
 // Driver for running ifcomp tests
-class IfcompDriver {
+class IfcompDriver : public ::testing::Test {
 public:
-    void SetUp()
+    void SetUp() override
     {
         // Create unique temporary file names
         char template_a[] = "ifcomp_test_a_XXXXXX";
@@ -41,7 +42,7 @@ public:
         dup2(fd_out, STDOUT_FILENO);
     }
 
-    void TearDown()
+    void TearDown() override
     {
         // Restore stdout
         if (original_stdout >= 0) {
@@ -61,6 +62,15 @@ public:
         unlink(fname_a);
         unlink(fname_b);
         unlink(fname_out);
+    }
+
+    // Helper method to run ifcomp with two file contents and return output
+    std::string run_ifcomp(const char *content_a, const char *content_b)
+    {
+        create_file(fname_a, content_a);
+        create_file(fname_b, content_b);
+        ifcomp(fname_a, fname_b);
+        return get_output();
     }
 
     void create_file(const char *fname, const char *content)

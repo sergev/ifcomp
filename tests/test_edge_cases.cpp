@@ -12,11 +12,8 @@ TEST(IfcompEdgeCases, EmptyFileHandling)
 }
 
 // Test files with single identical line
-TEST(IfcompEdgeCases, SingleIdenticalLine)
+TEST_F(IfcompDriver, SingleIdenticalLine)
 {
-    IfcompDriver driver;
-    driver.SetUp();
-
     const char *a = "HELLO\n";
     const char *b = "HELLO\n";
     const char *expect =
@@ -26,22 +23,13 @@ TEST(IfcompEdgeCases, SingleIdenticalLine)
         "       0 lines moved in old.\n"
         "       0 change blocks.\n";
 
-    driver.create_file(driver.fname_a, a);
-    driver.create_file(driver.fname_b, b);
-    ifcomp(driver.fname_a, driver.fname_b);
-
-    std::string result = driver.get_output();
+    std::string result = run_ifcomp(a, b);
     EXPECT_EQ(result, std::string(expect));
-
-    driver.TearDown();
 }
 
 // Test files with single different line
-TEST(IfcompEdgeCases, SingleDifferentLine)
+TEST_F(IfcompDriver, SingleDifferentLine)
 {
-    IfcompDriver driver;
-    driver.SetUp();
-
     const char *a = "OLD\n";
     const char *b = "NEW\n";
     const char *expect =
@@ -58,109 +46,58 @@ TEST(IfcompEdgeCases, SingleDifferentLine)
         "       0 lines moved in old.\n"
         "       1 change blocks.\n";
 
-    driver.create_file(driver.fname_a, a);
-    driver.create_file(driver.fname_b, b);
-    ifcomp(driver.fname_a, driver.fname_b);
-
-    std::string result = driver.get_output();
+    std::string result = run_ifcomp(a, b);
     EXPECT_EQ(result, std::string(expect));
-
-    driver.TearDown();
 }
 
 // Test two lines - both identical
-TEST(IfcompEdgeCases, TwoLinesIdentical)
+TEST_F(IfcompDriver, TwoLinesIdentical)
 {
-    IfcompDriver driver;
-    driver.SetUp();
-
     const char *a = "LINE1\nLINE2\n";
     const char *b = "LINE1\nLINE2\n";
 
-    driver.create_file(driver.fname_a, a);
-    driver.create_file(driver.fname_b, b);
-    ifcomp(driver.fname_a, driver.fname_b);
-
-    std::string result = driver.get_output();
+    std::string result = run_ifcomp(a, b);
     assert_statistics(result, 0, 0, 0, 0, 0, 0);
-
-    driver.TearDown();
 }
 
 // Test two lines - second different
-TEST(IfcompEdgeCases, TwoLinesSecondDifferent)
+TEST_F(IfcompDriver, TwoLinesSecondDifferent)
 {
-    IfcompDriver driver;
-    driver.SetUp();
-
     const char *a = "LINE1\nOLD\n";
     const char *b = "LINE1\nNEW\n";
 
-    driver.create_file(driver.fname_a, a);
-    driver.create_file(driver.fname_b, b);
-    ifcomp(driver.fname_a, driver.fname_b);
-
-    std::string result = driver.get_output();
+    std::string result = run_ifcomp(a, b);
     assert_statistics(result, 0, 0, 1, 1, 0, 1);
-
-    driver.TearDown();
 }
 
 // Test three lines - all identical
-TEST(IfcompEdgeCases, ThreeLinesIdentical)
+TEST_F(IfcompDriver, ThreeLinesIdentical)
 {
-    IfcompDriver driver;
-    driver.SetUp();
-
     const char *a = "A\nB\nC\n";
     const char *b = "A\nB\nC\n";
 
-    driver.create_file(driver.fname_a, a);
-    driver.create_file(driver.fname_b, b);
-    ifcomp(driver.fname_a, driver.fname_b);
-
-    std::string result = driver.get_output();
+    std::string result = run_ifcomp(a, b);
     assert_statistics(result, 0, 0, 0, 0, 0, 0);
-
-    driver.TearDown();
 }
 
 // Test file with only spaces (as lines)
-TEST(IfcompEdgeCases, LinesWithOnlySpaces)
+TEST_F(IfcompDriver, LinesWithOnlySpaces)
 {
-    IfcompDriver driver;
-    driver.SetUp();
-
     const char *a = "   \n   \nLINE\n";
     const char *b = "   \nLINE\n";
 
-    driver.create_file(driver.fname_a, a);
-    driver.create_file(driver.fname_b, b);
-    ifcomp(driver.fname_a, driver.fname_b);
-
     // This should delete one line
-    std::string result = driver.get_output();
+    std::string result = run_ifcomp(a, b);
     assert_statistics(result, 1, 0, 0, 0, 0, 1);
-
-    driver.TearDown();
 }
 
 // Test file without trailing newline
-TEST(IfcompEdgeCases, NoTrailingNewline)
+TEST_F(IfcompDriver, NoTrailingNewline)
 {
-    IfcompDriver driver;
-    driver.SetUp();
-
     const char *a = "A\nB";
     const char *b = "A\nB\n";
 
-    driver.create_file(driver.fname_a, a);
-    driver.create_file(driver.fname_b, b);
-    ifcomp(driver.fname_a, driver.fname_b);
-
     // Should detect the line difference
-    std::string result = driver.get_output();
+    std::string result = run_ifcomp(a, b);
     assert_statistics(result, 0, 0, 0, 0, 0, 0);
-
-    driver.TearDown();
 }
