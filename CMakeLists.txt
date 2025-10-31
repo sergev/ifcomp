@@ -35,13 +35,13 @@ set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}
     /usr/local/include
-    /opt/homebrew/include
+#   /opt/homebrew/include
 )
 
 # Link directories
 link_directories(
     /usr/local/lib
-    /opt/homebrew/lib
+#   /opt/homebrew/lib
 )
 
 # Enable testing

@@ -19,12 +19,22 @@ add_executable(test_ifcomp
     test_complex_changes.cpp
     test_permutation_changes.cpp
     test_much_writing.cpp
+    test_edge_cases.cpp
+    test_line_length.cpp
+    test_duplicates.cpp
+    test_hash_collisions.cpp
+    test_special_chars.cpp
+    test_whitespace.cpp
+    test_large_files.cpp
+    test_advanced_patterns.cpp
+    test_algorithm_behavior.cpp
+    test_output_validation.cpp
     ${CMAKE_SOURCE_DIR}/ifcomp.c
 )
 
 # Link with GoogleTest and its main function
 target_link_libraries(test_ifcomp
-    PRIVATE GTest::gtest GTest::gtest_main
+    PRIVATE GTest::gtest_main
 )
 
 # Add test to CTest
@@ -39,3 +49,6 @@ set_target_properties(test_ifcomp PROPERTIES
     CXX_STANDARD 17
     CXX_STANDARD_REQUIRED ON
 )
+
+include(GoogleTest)
+gtest_discover_tests(test_ifcomp EXTRA_ARGS --gtest_repeat=1 PROPERTIES TIMEOUT 5)
