@@ -26,33 +26,14 @@ Original publication: [https://ntrs.nasa.gov/citations/19820000365](https://ntrs
 
 ## Features
 
-- **Detects Multiple Change Types**: Identifies deletions, insertions, replacements, and movements of code blocks
-- **Pseudo-Update Output**: Presents differences in a format similar to source code update commands
-- **Efficient Algorithm**: Uses an 8-pass algorithm with hash-based line matching and tree structures
-- **Change Statistics**: Provides summary statistics including:
-  - Lines deleted from old file
-  - Lines inserted in new file
-  - Lines replaced
-  - Lines moved
-  - Number of change blocks
+- Detects deletions, insertions, replacements, and moves
+- Pseudo-update output format
+- Hash-based matching for efficiency
+- Change statistics summary
 
 ## Algorithm Overview
 
-The IFCOMP algorithm performs an 8-pass comparison:
-
-**Passes 1-4 (Initial Matching)**:
-- **Pass 1**: Builds hash tables for both input files
-- **Pass 2**: Identifies unique line pairs (lines that appear once in each file)
-- **Pass 3**: Extends matches forward from unique pairs
-- **Pass 4**: Extends matches backward from unique pairs
-
-**Passes 5-8 (Tree Building)**:
-- **Pass 5**: Identifies lines that don't match and builds initial trees
-- **Pass 6**: Handles deletions in old file
-- **Pass 7**: Handles insertions and replacements
-- **Pass 8**: Finalizes output formatting
-
-The algorithm uses a sophisticated hash function to quickly identify matching and unique lines across both files, enabling efficient detection of moved code blocks.
+IFCOMP uses an 8-pass algorithm with hash-based line matching and tree structures to identify deletions, insertions, replacements, and moves between two files. For detailed algorithm theory, data structures, and implementation details for each pass, see [Theory.md](Theory.md).
 
 ## Usage
 
@@ -62,13 +43,6 @@ Compare two files:
 ```bash
 $ ifcomp oldfile.txt newfile.txt
 ```
-
-The program will produce output showing differences in pseudo-update form, including:
-- Deleted lines from the old file
-- Inserted lines in the new file  
-- Replaced blocks (old lines → new lines)
-- Moved blocks
-- Summary statistics
 
 ### Command Line Options
 
@@ -165,6 +139,7 @@ ifcomp/
 ├── ifcomp.c            # Core algorithm implementation (1376 lines)
 ├── ifcomp.h            # Header file with public API
 ├── unit_tests.c        # Unit tests
+├── Theory.md           # Detailed algorithm theory and documentation
 ├── tests/              # GoogleTest-based C++ tests
 │   ├── test_identical_files.cpp
 │   ├── test_complex_changes.cpp
@@ -180,44 +155,16 @@ ifcomp/
 
 ## Testing
 
-The project includes comprehensive tests using GoogleTest:
-
+Run tests:
 ```bash
-# Run all tests
 $ make test
-
 # Or with CMake
 $ ctest --verbose
 ```
 
-Tests cover:
-- Identical files
-- Simple changes (insert, delete)
-- Complex changes (replace, move)
-- Permutations of similar content
-- Edge cases (empty files, etc.)
-
 ## Implementation
 
-### C Implementation (Main)
-
-The primary implementation is in C with the following key components:
-
-- **Hash-based Line Matching**: Custom hash function for efficient line comparison
-- **8-Pass Algorithm**: Multi-pass comparison for accurate change detection
-- **Tree Structures**: Internal tree representation for tracking changes
-- **Memory Management**: Dynamic allocation with statistics tracking
-
-**Standards**: C11 with standard library only
-
-**Build System**: CMake 3.15+ with optional Make wrapper
-
-### Rust Implementation (Experimental)
-
-A Rust version exists in the `rust/` directory using:
-- `clap` for command-line argument parsing
-- `hdiff` for difference computation
-- Integration tests with expected output files
+The primary implementation is in C++ (originally C), with an experimental Rust version in the `rust/` directory. See [Theory.md](Theory.md) for implementation details.
 
 ## License
 
@@ -229,7 +176,7 @@ See [MIT-LICENSE](MIT-LICENSE) for full text.
 
 ## References
 
-- NASA Tech Brief: [IFCOMP File Comparator](https://ntrs.nasa.gov/citations/19820000365)
-- Algorithm: Hash-based text file comparison with 8-pass processing
-- Original Language: XPL (1979)
-- Port: MetaWare High C (Tom Penello)
+- [NASA Tech Brief](https://ntrs.nasa.gov/citations/19820000365): Original algorithm description
+- [Theory.md](Theory.md): Detailed algorithm documentation
+- Original implementation: XPL (1979) by Reed Kotler
+- Port: MetaWare High C by Tom Penello
