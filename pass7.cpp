@@ -2,6 +2,9 @@
 
 #include "ifcomp.h"
 
+//
+// Check if two adjacent nodes in file1 are also adjacent in file2, and combine them if so.
+//
 bool Ifcomp::pass7_combine_adjacent_nodes(tree_index node1)
 {
     // Look at adjacent nodes node1 and node2.
@@ -22,6 +25,20 @@ bool Ifcomp::pass7_combine_adjacent_nodes(tree_index node1)
     }
 }
 
+//
+// Pass 7: Combine Adjacent Nodes
+//
+// Purpose: Merge adjacent nodes that are also adjacent in the other file,
+// reducing tree complexity and creating larger matched segments.
+//
+// Essence: This pass scans file1 tree sequentially, checking if each node
+// and its successor are adjacent in both files. When adjacency is confirmed
+// in both files, the nodes are combined into a branch structure. This
+// simplifies the tree representation, creates larger matched segments, and
+// improves the clarity of change detection. The combination process creates
+// parent nodes with branch_start and branch_end pointing to the original
+// nodes, maintaining the tree structure while reducing node count.
+//
 void Ifcomp::pass7()
 {
     tree_index i = node[trees[FIRST_FILE].start].next;

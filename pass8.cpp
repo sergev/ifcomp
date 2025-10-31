@@ -2,6 +2,9 @@
 
 #include "ifcomp.h"
 
+//
+// Insert a node after another node in the linked list structure.
+//
 void Ifcomp::insert_node_after(tree_index after_this, tree_index insert_this)
 {
     node[insert_this].prev = after_this;
@@ -11,6 +14,9 @@ void Ifcomp::insert_node_after(tree_index after_this, tree_index insert_this)
     node[after_this].next = insert_this;
 }
 
+//
+// Find the node with minimum cost in a range of nodes (prefers smaller segments).
+//
 tree_index Ifcomp::pass8_min_cost_node(tree_index start_node, tree_index end_node) const
 {
     tree_index min_cost = node[start_node].cost;
@@ -28,6 +34,9 @@ tree_index Ifcomp::pass8_min_cost_node(tree_index start_node, tree_index end_nod
     return min_node;
 }
 
+//
+// Process and output a move operation, relocating a segment to its correct position.
+//
 void Ifcomp::pass8_move_lines(tree_index node1, tree_index node2)
 {
     nchange_blocks++;
@@ -53,6 +62,22 @@ void Ifcomp::pass8_move_lines(tree_index node1, tree_index node2)
     }
 }
 
+//
+// Pass 8: Move Detection and Processing
+//
+// Purpose: Detect and process moved code blocks by identifying misalignments
+// between files and relocating segments to their correct positions.
+//
+// Essence: This pass repeatedly scans both trees in parallel, looking for
+// misalignments where file1 references a different line in file2 than expected.
+// When a misalignment is found, it selects the minimum cost node (smallest
+// segment) in the misaligned region and moves it to the correct position
+// based on where it appears in file2. After each move, Pass 7 is re-run
+// to combine adjacent nodes. The process restarts from the beginning after
+// each move because moves change the tree structure and may enable earlier
+// segments to be moved. The pass terminates when scanning reaches the end
+// without finding misalignments, indicating all segments are properly aligned.
+//
 void Ifcomp::pass8()
 {
     // Now do the moves.

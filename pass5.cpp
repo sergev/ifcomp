@@ -15,16 +15,25 @@ inline int _max(int a, int b)
     return (a > b) ? a : b;
 }
 
+//
+// Check if a node is a leaf (has no branch structure).
+//
 bool Ifcomp::leaf(tree_index n) const
 {
     return node[n].branch_start == NULL_NODE;
 }
 
+//
+// Get absolute line number from node (handle negative file2 line numbers).
+//
 line_count Ifcomp::true_line_of(tree_index N) const
 {
     return (node[N].linen < 0) ? -node[N].linen : node[N].linen;
 }
 
+//
+// Free a node by adding it to the free node list for reuse.
+//
 void Ifcomp::free_node(tree_index n)
 {
     if (debug_dont_free)
@@ -33,6 +42,9 @@ void Ifcomp::free_node(tree_index n)
     free_nodes_start = n;
 }
 
+//
+// Create a new tree node and return its index.
+//
 tree_index Ifcomp::make_node(const NodeDecl &p)
 {
     node.push_back(p);
@@ -44,7 +56,9 @@ tree_index Ifcomp::make_node(const NodeDecl &p)
     return i;
 }
 
-// Call a function for each line.
+//
+// Iterate through all lines in a node and call function for each line.
+//
 void Ifcomp::each_line_in_node(
     tree_index noden, bool always, int starting_line,
     std::function<void(int which_file, const std::string &text, int lineno)> func) const
@@ -78,12 +92,17 @@ void Ifcomp::each_line_in_node(
     }
 }
 
-// Cosmetic line check (always false for now)
+//
+// Check if a line is cosmetic (currently always returns false).
+//
 inline bool cosmetic_line(char first_byte)
 {
     return false;
 }
 
+//
+// Count cosmetic and non-cosmetic lines in a node for statistics.
+//
 void Ifcomp::count_node(tree_index noden, LineKinds &p)
 {
     each_line_in_node(noden, false, 0, [&p](int which_file, const std::string &text, int lineno) {
@@ -94,6 +113,9 @@ void Ifcomp::count_node(tree_index noden, LineKinds &p)
     });
 }
 
+//
+// Format and print node information for debugging.
+//
 void Ifcomp::format_node(tree_index noden, int pad) const
 {
     for (int i = 0; i < pad; i++)
@@ -112,6 +134,9 @@ void Ifcomp::format_node(tree_index noden, int pad) const
     std::printf("]\n");
 }
 
+//
+// Print all lines in a node (for output formatting).
+//
 void Ifcomp::print_node1(tree_index noden, bool always, int starting_line) const
 {
     static auto print_node1_callback = [](int which_file, const std::string &text, int lineno) {
@@ -121,11 +146,17 @@ void Ifcomp::print_node1(tree_index noden, bool always, int starting_line) const
     each_line_in_node(noden, always, starting_line, print_node1_callback);
 }
 
+//
+// Print lines in a node (convenience wrapper).
+//
 void Ifcomp::print_node(tree_index noden) const
 {
     print_node1(noden, false, 0);
 }
 
+//
+// Dump tree structure for debugging.
+//
 void Ifcomp::dump_tree(tree_index tree_start) const
 {
     std::printf("Tree %d:\n", tree_start);
@@ -151,6 +182,9 @@ void Ifcomp::dump_tree(tree_index tree_start) const
     }
 }
 
+//
+// Dump both file trees for debugging after a pass.
+//
 void Ifcomp::dump_trees(int pass) const
 {
     if (!debug_dump_trees)
@@ -161,6 +195,9 @@ void Ifcomp::dump_trees(int pass) const
     dump_tree(trees[SECOND_FILE].start);
 }
 
+//
+// Build tree structure for a single file by grouping consecutive lines into segments.
+//
 void Ifcomp::pass5_doit(int fileno, NodeDecl &Np)
 {
     if (debug_dump_trees)
@@ -204,6 +241,22 @@ void Ifcomp::pass5_doit(int fileno, NodeDecl &Np)
     }
 }
 
+//
+// Pass 5: Tree Construction
+//
+// Purpose: Build initial tree structures representing file segments (matched
+// and unmatched). Converts the linear file representation into a tree-based
+// structure that groups consecutive lines into segments for efficient change
+// detection.
+//
+// Essence: This pass groups consecutive lines into contiguous segments based
+// on their ptr_type. SYT_TYPE lines (unmatched) are grouped into segments
+// with negative cost (indicating deletions). Matched and unique lines are
+// grouped into segments with positive cost. Each file gets a doubly-linked
+// list structure with header and trailer nodes. The tree starts linear but
+// will acquire branch structures in later passes when nodes are combined.
+// Negative line numbers distinguish file2 from file1.
+//
 void Ifcomp::pass5()
 {
     // Ensure file_line arrays have at least index 0

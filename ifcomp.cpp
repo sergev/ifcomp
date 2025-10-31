@@ -27,6 +27,9 @@ Ifcomp::Ifcomp()
         sec_hash_start_node[i] = NULL_HASH_LIST;
 }
 
+//
+// Initialize data structure tables with dummy entries at index 0 for 1-based indexing.
+//
 void Ifcomp::initialize_tables()
 {
     hash_node.reserve(1);
@@ -47,6 +50,9 @@ void Ifcomp::initialize_tables()
     hash_node.emplace_back();    // Dummy entry at index 0
 }
 
+//
+// Open a file for reading, exiting with error if file cannot be opened.
+//
 std::ifstream Ifcomp::open_file(const char *fn)
 {
     std::ifstream file(fn);
@@ -57,6 +63,9 @@ std::ifstream Ifcomp::open_file(const char *fn)
     return file;
 }
 
+//
+// Format and print a file line entry for debugging output.
+//
 void Ifcomp::format_file_line(const FileLineDecl &p) const
 {
     std::printf("|%3d|", p.linen);
@@ -77,6 +86,9 @@ void Ifcomp::format_file_line(const FileLineDecl &p) const
     std::printf("|%s|\n", string_table[p.file_line_text].text.c_str());
 }
 
+//
+// Print test listing of all file lines after a pass (debug function).
+//
 void Ifcomp::test_list(int pass) const
 {
     int i = (total_file_nlines[FIRST_FILE] > total_file_nlines[SECOND_FILE])
@@ -94,6 +106,9 @@ void Ifcomp::test_list(int pass) const
     std::printf("\n");
 }
 
+//
+// Print summary statistics of changes detected.
+//
 void Ifcomp::summary() const
 {
     std::printf("%8d lines deleted from old.\n", delete_stats.non_cosmetic);
@@ -104,6 +119,9 @@ void Ifcomp::summary() const
     std::printf("%8d change blocks.\n", nchange_blocks);
 }
 
+//
+// Main comparison function that orchestrates all 8 passes of the algorithm.
+//
 void Ifcomp::compare(const char *first_fname, const char *second_fname)
 {
     // Clear all vectors
@@ -174,6 +192,9 @@ void Ifcomp::compare(const char *first_fname, const char *second_fname)
     file2.close();
 }
 
+//
+// Print detailed memory usage statistics for all data structures.
+//
 void Ifcomp::print_statistics() const
 {
     long mem_used = 0;

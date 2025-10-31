@@ -1,5 +1,20 @@
 #include "ifcomp.h"
 
+//
+// Pass 4: Backward Match Extension
+//
+// Purpose: Extend matches backward from unique pairs by checking if previous
+// lines match. Complements Pass 3 by building matched regions in the reverse
+// direction from unique anchors.
+//
+// Essence: This pass scans file1 backward, and when it encounters a
+// UNIQUE_TYPE line, it extends the match backward by checking if the previous
+// lines in both files are SYT_TYPE and have matching text. Extension continues
+// as long as lines match consecutively in reverse order. Together with Pass 3,
+// this pass ensures maximum match coverage by extending in both directions
+// from unique anchors, maximizing the number of lines that are identified
+// as matching between the two files.
+//
 void Ifcomp::pass4()
 {
     line_count m = total_file_nlines[FIRST_FILE];

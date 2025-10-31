@@ -5,7 +5,10 @@
 
 #include "ifcomp.h"
 
-// Hash a line string (static method - pure function, no state)
+//
+// Hash a line string to compute primary and secondary hash values.
+// Returns HashInfo with h1 (length and XOR value) and h2 (bit-set of character pairs).
+//
 HashInfo Ifcomp::hash_line(const std::string &line)
 {
     char xor_val = 0;
@@ -25,7 +28,10 @@ HashInfo Ifcomp::hash_line(const std::string &line)
     return h;
 }
 
-// Comparison function for hash codes (static method - pure function, no state)
+//
+// Compare two hash codes lexicographically (h1 first, then h2).
+// Used to maintain sorted order in hash table buckets.
+//
 CompareResult Ifcomp::hashcode_compare(const HashInfo &ha, const HashInfo &hb)
 {
     if (ha.h1 < hb.h1)
@@ -39,7 +45,9 @@ CompareResult Ifcomp::hashcode_compare(const HashInfo &ha, const HashInfo &hb)
     return CompareResult::EQ;
 }
 
-// Create a line entry in the line table
+//
+// Create a new entry in the line table for tracking line numbers.
+//
 line_count Ifcomp::make_line_entry(line_count linen, line_count next)
 {
     line_table.emplace_back();
@@ -48,7 +56,9 @@ line_count Ifcomp::make_line_entry(line_count linen, line_count next)
     return static_cast<line_count>(line_table.size() - 1);
 }
 
-// Setup a distinct text string
+//
+// Create a new string entry in the string table for a unique line of text.
+//
 string_index Ifcomp::setup_distinct_text(const std::string &text, line_count linen, int input_file)
 {
     StringDecl s;
@@ -64,7 +74,9 @@ string_index Ifcomp::setup_distinct_text(const std::string &text, line_count lin
     return static_cast<string_index>(string_table.size() - 1);
 }
 
-// Setup a hash node
+//
+// Create a new hash node entry linking a hash code to its text string.
+//
 hash_node_index Ifcomp::setup_hash_node(string_index &tip, const std::string &text,
                                         line_count linen, int input_file, const HashInfo &h)
 {
@@ -77,7 +89,9 @@ hash_node_index Ifcomp::setup_hash_node(string_index &tip, const std::string &te
     return static_cast<hash_node_index>(hash_node.size() - 1);
 }
 
-// Add a line number to a text list
+//
+// Add a line number occurrence to an existing text string's file list.
+//
 void Ifcomp::add_linen_to_text_list(string_index T, line_count linen, int input_file)
 {
     string_table[T].file_nlines[input_file]++;
@@ -85,7 +99,10 @@ void Ifcomp::add_linen_to_text_list(string_index T, line_count linen, int input_
     p = make_line_entry(linen, p);
 }
 
-// Enter a line into the hash table
+//
+// Insert a line into the hash table, maintaining sorted order within buckets.
+// Creates new hash node and string entry if needed, or updates existing entry.
+//
 void Ifcomp::enter_line(const std::string &text, const HashInfo &h, line_count linen,
                         int input_file, hash_node_index &result_hash_node,
                         string_index &result_string_index)
@@ -178,6 +195,9 @@ static void print_string(const StringDecl &p)
                 p.file_list[FIRST_FILE], p.file_list[SECOND_FILE]);
 }
 
+//
+// Dump hash node information for debugging (symbol table debug function).
+//
 void Ifcomp::dump_hash_node(hash_node_index node_idx) const
 {
     std::printf("hash_node  %d: ", node_idx);
@@ -210,6 +230,9 @@ void Ifcomp::dump_hash_node(hash_node_index node_idx) const
     }
 }
 
+//
+// Dump entire symbol table bucket chain for debugging.
+//
 void Ifcomp::dump_syt(hash_node_index start_node) const
 {
     std::printf("** symbol table dump **, start=%d \n", start_node);
@@ -219,7 +242,10 @@ void Ifcomp::dump_syt(hash_node_index start_node) const
     }
 }
 
-// Read lines from an input stream and build hash table
+//
+// Read all lines from an input file and populate hash table and file_line arrays.
+// Computes hash for each line and enters it into the hash table structure.
+//
 void Ifcomp::read_lines(int which_file, std::istream &input_file)
 {
     int current_line = 0;
@@ -257,7 +283,21 @@ void Ifcomp::read_lines(int which_file, std::istream &input_file)
     }
 }
 
-// Pass 1: Read both files and build hash tables
+//
+// Pass 1: Hash Table Construction
+//
+// Purpose: Read both input files and build hash-based data structures for
+// efficient line matching. Computes hash codes for each line, enters lines
+// into hash table buckets, and builds string table tracking unique lines and
+// their occurrences in each file.
+//
+// Essence: This pass establishes the foundation for all subsequent matching.
+// Each line is hashed and entered into a 256-bucket hash table. The string
+// table tracks unique text strings and maintains linked lists of line numbers
+// where each string appears in each file. All lines are initially marked as
+// SYT_TYPE (not yet matched). After this pass, the hash node table is freed
+// as it is no longer needed for matching.
+//
 void Ifcomp::pass1(std::istream &file1, std::istream &file2)
 {
     read_lines(FIRST_FILE, file1);

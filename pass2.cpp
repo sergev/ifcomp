@@ -1,5 +1,19 @@
 #include "ifcomp.h"
 
+//
+// Pass 2: Unique Pair Identification
+//
+// Purpose: Identify lines that appear exactly once in each file and match
+// them as unique pairs, creating bidirectional links between corresponding
+// lines. These unique pairs serve as anchors for subsequent passes.
+//
+// Essence: This pass scans the string table and finds strings that occur
+// exactly once in both files. When such a pair is found, both lines are
+// marked as UNIQUE_TYPE and linked via ptr0. Lines that appear multiple
+// times in either file remain SYT_TYPE and will be processed by later
+// passes. Only exact unique pairs are matched here - duplicates are left
+// for Pass 3 to handle contextually.
+//
 void Ifcomp::pass2()
 {
     for (size_t i = 1; i < string_table.size(); i++) {

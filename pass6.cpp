@@ -9,6 +9,9 @@ inline int _abs(int a)
     return (a < 0) ? -a : a;
 }
 
+//
+// Find node in tree containing the specified line number.
+//
 tree_index Ifcomp::find_node(const TreeBounds &T, tree_index linen) const
 {
     int abs_linen = (linen < 0) ? -linen : linen;
@@ -36,6 +39,9 @@ tree_index Ifcomp::find_node(const TreeBounds &T, tree_index linen) const
     return 0;
 }
 
+//
+// Remove a node from its linked list by updating prev/next pointers.
+//
 void Ifcomp::detach_node(tree_index noden)
 {
     // Remove noden from the linked list.
@@ -45,6 +51,9 @@ void Ifcomp::detach_node(tree_index noden)
     node[next].prev = prev;
 }
 
+//
+// Combine two adjacent nodes into a branch structure, creating a parent node.
+//
 void Ifcomp::combine_nodes(tree_index node1, tree_index node2)
 {
     tree_index branch_link1, branch_link2;
@@ -107,22 +116,34 @@ void ph(const char *s, char dash, bool space)
     std::printf(" ***\n");
 }
 
+//
+// Print formatted header with equals separator.
+//
 void Ifcomp::print_header(const char *s) const
 {
     ph(s, '=', true);
 }
 
+//
+// Print formatted header with dash separator.
+//
 void Ifcomp::print_header1(const char *s) const
 {
     ph(s, '-', true);
 }
 
+//
+// Print formatted trailer separator.
+//
 void Ifcomp::print_trailer() const
 {
     ph("", '=', false);
     std::printf("\n");
 }
 
+//
+// Find first unique line in a node by scanning backward through its lines.
+//
 tree_index Ifcomp::unique_find(tree_index noden) const
 {
     line_count end_line = node[noden].linen;
@@ -139,6 +160,9 @@ tree_index Ifcomp::unique_find(tree_index noden) const
     return NULL_NODE;
 }
 
+//
+// Print context lines before a change operation, starting from last unique line.
+//
 void Ifcomp::after_lines(tree_index noden) const
 {
     print_header("AFTER LINE(s)");
@@ -188,11 +212,17 @@ void Ifcomp::after_lines(tree_index noden) const
     }
 }
 
+//
+// Print header for insertion at top of file.
+//
 void Ifcomp::top_msg() const
 {
     print_header("AFTER TOP");
 }
 
+//
+// Print context header (either "AFTER TOP" or "AFTER LINE(s)").
+//
 void Ifcomp::after_header(tree_index noden) const
 {
     if (noden == trees[FIRST_FILE].start)
@@ -201,6 +231,9 @@ void Ifcomp::after_header(tree_index noden) const
         after_lines(noden);
 }
 
+//
+// Process and output a deletion operation for an unmatched segment.
+//
 void Ifcomp::delete_lines(tree_index noden)
 {
     nchange_blocks++;
@@ -214,6 +247,9 @@ void Ifcomp::delete_lines(tree_index noden)
     dump_trees(99); // no_pass
 }
 
+//
+// Check if an unmatched node in file1 can be replaced (has corresponding unmatched node in file2).
+//
 tree_index Ifcomp::pass6_replaceable(tree_index noden) const
 {
     // Replaceable if:
@@ -242,6 +278,9 @@ tree_index Ifcomp::pass6_replaceable(tree_index noden) const
     return noden_other_file;
 }
 
+//
+// Process and output a replacement operation, combining matched replacement segments.
+//
 void Ifcomp::pass6_replace_lines(tree_index node1, tree_index node2)
 {
     nchange_blocks++;
@@ -270,6 +309,9 @@ void Ifcomp::pass6_replace_lines(tree_index node1, tree_index node2)
     dump_trees(99); // no_pass
 }
 
+//
+// Process and output an insertion operation for an unmatched segment in file2.
+//
 void Ifcomp::pass6_insert_lines(tree_index noden)
 {
     nchange_blocks++;
@@ -295,6 +337,9 @@ void Ifcomp::pass6_insert_lines(tree_index noden)
     dump_trees(99); // no_pass
 }
 
+//
+// Phase 1: Scan file1 for unmatched segments and process as deletions or replacements.
+//
 void Ifcomp::pass6_do_replace_delete()
 {
     // Scan through FIRST_FILE and identify any nodes that
@@ -314,6 +359,9 @@ void Ifcomp::pass6_do_replace_delete()
     }
 }
 
+//
+// Phase 2: Scan file2 for unmatched segments and process as insertions.
+//
 void Ifcomp::pass6_do_insert()
 {
     // Scan through SECOND_FILE and identify any nodes that have no
@@ -331,6 +379,21 @@ void Ifcomp::pass6_do_insert()
     }
 }
 
+//
+// Pass 6: Replace/Delete/Insert Operations
+//
+// Purpose: Identify and process deletions, insertions, and replacements between
+// the files. Converts unmatched segments (negative cost) into explicit change
+// operations with formatted output.
+//
+// Essence: This pass operates in two phases. Phase 1 scans file1 for unmatched
+// segments (negative cost) and checks if they can be replaced by corresponding
+// unmatched segments in file2. If replaceable, it creates a REPLACE operation.
+// Otherwise, it creates a DELETE operation. Phase 2 scans file2 for remaining
+// unmatched segments and creates INSERT operations. Each operation generates
+// formatted output with context lines and updates statistics. Nodes are combined
+// or detached as needed to maintain tree structure integrity.
+//
 void Ifcomp::pass6()
 {
     // Reed switched the order of insert vs. replace and delete.
