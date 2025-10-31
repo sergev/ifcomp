@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 #include "ifcomp.h"
 
 static void help(const char *prog_name)

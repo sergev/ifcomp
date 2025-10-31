@@ -44,22 +44,8 @@ link_directories(
     /opt/homebrew/lib
 )
 
-# Find cmocka for unit tests
-# Try to find cmocka in common locations
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH})
-find_package(cmocka QUIET)
-
-# If not found, try pkg-config as fallback
-if(NOT CMOCKA_FOUND)
-    find_package(PkgConfig QUIET)
-    if(PKG_CONFIG_FOUND)
-        pkg_check_modules(CMOCKA QUIET cmocka)
-        if(CMOCKA_FOUND)
-            set(CMOCKA_LIBRARIES ${CMOCKA_LIBRARIES} ${CMOCKA_LDFLAGS_OTHER})
-            set(CMOCKA_INCLUDE_DIRS ${CMOCKA_INCLUDE_DIRS} ${CMOCKA_CFLAGS_OTHER})
-        endif()
-    endif()
-endif()
+# Enable testing
+enable_testing()
 
 # Main ifcomp executable
 add_executable(ifcomp
@@ -72,24 +58,8 @@ install(TARGETS ifcomp
     RUNTIME DESTINATION bin
 )
 
-# Unit tests executable (optional, only if cmocka is found)
-if(CMOCKA_FOUND)
-    add_executable(unit_tests
-        unit_tests.c
-        ifcomp.c
-    )
-
-    target_link_libraries(unit_tests
-        PUBLIC cmocka
-    )
-
-    # Add test to CTest
-    enable_testing()
-    add_test(NAME unit_tests COMMAND unit_tests)
-    set_tests_properties(unit_tests PROPERTIES TIMEOUT 60)
-else()
-    message(STATUS "cmocka not found - unit tests will not be built")
-endif()
+# Add tests subdirectory for GoogleTest tests
+add_subdirectory(tests)
 
 # Display build configuration
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
@@ -97,8 +67,4 @@ message(STATUS "C Compiler: ${CMAKE_C_COMPILER_ID} ${CMAKE_C_COMPILER_VERSION}")
 message(STATUS "C++ Compiler: ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
 message(STATUS "C Standard: C${CMAKE_C_STANDARD}")
 message(STATUS "C++ Standard: C++${CMAKE_CXX_STANDARD}")
-if(CMOCKA_FOUND)
-    message(STATUS "Unit tests: enabled")
-else()
-    message(STATUS "Unit tests: disabled (cmocka not found)")
-endif()
+message(STATUS "GoogleTest tests: enabled (via FetchContent)")

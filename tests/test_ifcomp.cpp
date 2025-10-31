@@ -1,148 +1,122 @@
-#include <cmocka.h>
 #include <fcntl.h>
-#include <inttypes.h>
-#include <setjmp.h>
-#include <stdarg.h>
-#include <stddef.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <gtest/gtest.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
-#include "ifcomp.h"
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <fstream>
+#include <sstream>
+extern "C" {
+#include "../ifcomp.h"
+}
 
-static const char fname_a[] = "a.input";
-static const char fname_b[] = "b.input";
-static const char fname_out[] = "result.output";
+class IfcompTest : public ::testing::Test {
+protected:
+    void SetUp() override
+    {
+        // Create unique temporary file names
+        char template_a[] = "ifcomp_test_a_XXXXXX";
+        char template_b[] = "ifcomp_test_b_XXXXXX";
+        char template_out[] = "ifcomp_test_out_XXXXXX";
 
-//
-// Create file with given name and contents.
-//
-static void create_file(const char *fname_a, const char *input_a)
-{
-    int fd = open(fname_a, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-    if (fd < 0) {
-        perror(fname_a);
-        exit(1);
+        fd_a = mkstemp(template_a);
+        fd_b = mkstemp(template_b);
+        fd_out = mkstemp(template_out);
+
+        ASSERT_GE(fd_a, 0);
+        ASSERT_GE(fd_b, 0);
+        ASSERT_GE(fd_out, 0);
+
+        strcpy(fname_a, template_a);
+        strcpy(fname_b, template_b);
+        strcpy(fname_out, template_out);
+
+        // Redirect stdout to output file
+        original_stdout = dup(STDOUT_FILENO);
+        dup2(fd_out, STDOUT_FILENO);
     }
-    write(fd, input_a, strlen(input_a));
-    close(fd);
-}
 
-//
-// Redirect the standard output to the given file.
-//
-static void setup_output(const char *fname_out)
-{
-    int fd = open(fname_out, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-    if (fd < 0) {
-        perror(fname_out);
-        exit(1);
+    void TearDown() override
+    {
+        // Restore stdout
+        if (original_stdout >= 0) {
+            dup2(original_stdout, STDOUT_FILENO);
+            close(original_stdout);
+        }
+
+        // Close file descriptors
+        if (fd_a >= 0)
+            close(fd_a);
+        if (fd_b >= 0)
+            close(fd_b);
+        if (fd_out >= 0)
+            close(fd_out);
+
+        // Remove temporary files
+        unlink(fname_a);
+        unlink(fname_b);
+        unlink(fname_out);
     }
-    // Redirect stdout to this file.
-    dup2(fd, 1);
-    close(fd);
-}
 
-//
-// Read file contents.
-// The caller is responsible for deallocation of the result.
-//
-static const char *get_output(const char *fname_out)
-{
-    // Redirect stdout to stderr.
-    close(1);
-    dup2(2, 1);
-
-    int fd = open(fname_out, O_RDONLY);
-    if (fd < 0) {
-        perror(fname_out);
-        exit(1);
+    void create_file(const char *fname, const char *content)
+    {
+        FILE *f = fopen(fname, "w");
+        ASSERT_NE(f, nullptr);
+        fputs(content, f);
+        fclose(f);
     }
-    off_t nbytes = lseek(fd, 0, SEEK_END);
-    char *contents = malloc(1 + nbytes);
-    if (!contents) {
-        printf("Failed to allocate %ju bytes\n", (uintmax_t)nbytes + 1);
-        exit(1);
+
+    std::string get_output()
+    {
+        fflush(stdout);
+
+        // Close the redirected stdout and restore original
+        close(fd_out);
+        dup2(original_stdout, STDOUT_FILENO);
+
+        // Read the output file
+        std::ifstream file(fname_out);
+        std::ostringstream buffer;
+        buffer << file.rdbuf();
+        return buffer.str();
     }
-    lseek(fd, 0, SEEK_SET);
-    read(fd, contents, nbytes);
-    contents[nbytes] = 0;
-    close(fd);
-    return contents;
-}
 
-//
-// Run IFCOMP with given inputs.
-// Return result as a string.
-// The caller must deallocate the result.
-//
-static const char *run_ifcomp(const char *input_a, const char *input_b)
-{
-    create_file(fname_a, input_a);
-    create_file(fname_b, input_b);
-    setup_output(fname_out);
-    ifcomp(fname_a, fname_b);
-    fflush(stdout);
-    return get_output(fname_out);
-}
+    char fname_a[256];
+    char fname_b[256];
+    char fname_out[256];
+    int fd_a = -1;
+    int fd_b = -1;
+    int fd_out = -1;
+    int original_stdout = -1;
+};
 
-//
-// Fail in case of premature exit.
-//
-void exit(int status)
+// Test case with identical input files
+TEST_F(IfcompTest, IdenticalFiles)
 {
-    const char *result = get_output("result.output");
-    printf("%s", result);
-    free((void *)result);
-    for (;;)
-        fail();
-}
-
-//
-// A test case with identical input files.
-//
-static void ab_ab(void **unused)
-{
-    const char *a =
-        "A\n"
-        "B\n";
-    const char *b =
-        "A\n"
-        "B\n";
+    const char *a = "A\nB\n";
+    const char *b = "A\nB\n";
     const char *expect =
         "       0 lines deleted from old.\n"
         "       0 lines inserted in new.\n"
         "       0 lines deleted from old and replaced with 0 lines of new.\n"
         "       0 lines moved in old.\n"
         "       0 change blocks.\n";
-    const char *result = run_ifcomp(a, b);
-    assert_string_equal(result, expect);
-    free((void *)result);
+
+    create_file(fname_a, a);
+    create_file(fname_b, b);
+    ifcomp(fname_a, fname_b);
+
+    std::string result = get_output();
+    EXPECT_EQ(result, std::string(expect));
 }
 
-//
-// A test case with deletes, moves and replacements.
-//
-static void axcydweabe_abcde(void **unused)
+// Test case with deletes, moves and replacements
+TEST_F(IfcompTest, ComplexChanges)
 {
-    const char *a =
-        "A\n"
-        "X\n"
-        "C\n"
-        "Y\n"
-        "D\n"
-        "W\n"
-        "E\n"
-        "A\n"
-        "B\n"
-        "E\n";
-    const char *b =
-        "A\n"
-        "B\n"
-        "C\n"
-        "D\n"
-        "E\n";
+    const char *a = "A\nX\nC\nY\nD\nW\nE\nA\nB\nE\n";
+    const char *b = "A\nB\nC\nD\nE\n";
     const char *expect =
         "*** AFTER TOP =========================================== ***\n"
         "*** DELETE LINE(s) -------------------------------------- ***\n"
@@ -182,30 +156,20 @@ static void axcydweabe_abcde(void **unused)
         "       2 lines deleted from old and replaced with 1 lines of new.\n"
         "       2 lines moved in old.\n"
         "       5 change blocks.\n";
-    const char *result = run_ifcomp(a, b);
-    assert_string_equal(result, expect);
-    free((void *)result);
+
+    create_file(fname_a, a);
+    create_file(fname_b, b);
+    ifcomp(fname_a, fname_b);
+
+    std::string result = get_output();
+    EXPECT_EQ(result, std::string(expect));
 }
 
-//
-// A test case with deletes, moves and replacements.
-//
-static void abcdeg_defgac(void **unused)
+// Test case with deletes, moves and replacements
+TEST_F(IfcompTest, PermutationChanges)
 {
-    const char *a =
-        "A\n"
-        "B\n"
-        "C\n"
-        "D\n"
-        "E\n"
-        "G\n";
-    const char *b =
-        "D\n"
-        "E\n"
-        "F\n"
-        "G\n"
-        "A\n"
-        "C\n";
+    const char *a = "A\nB\nC\nD\nE\nG\n";
+    const char *b = "D\nE\nF\nG\nA\nC\n";
     const char *expect =
         "*** AFTER LINE(s) ======================================= ***\n"
         "      1|A\n"
@@ -231,60 +195,29 @@ static void abcdeg_defgac(void **unused)
         "       0 lines deleted from old and replaced with 0 lines of new.\n"
         "       2 lines moved in old.\n"
         "       3 change blocks.\n";
-    const char *result = run_ifcomp(a, b);
-    assert_string_equal(result, expect);
-    free((void *)result);
+
+    create_file(fname_a, a);
+    create_file(fname_b, b);
+    ifcomp(fname_a, fname_b);
+
+    std::string result = get_output();
+    EXPECT_EQ(result, std::string(expect));
 }
 
-//
-// A test case from the article.
-//
-static void much_writing(void **unused)
+// Test case from the article
+TEST_F(IfcompTest, MuchWritingExample)
 {
     const char *a =
-        "a\n"
-        "mass\n"
-        "of\n"
-        "latin\n"
-        "words\n"
-        "falls\n"
-        "upon\n"
-        "the\n"
-        "relevant\n"
-        "facts\n"
-        "like\n"
-        "soft\n"
-        "snow\n"
-        ",\n"
-        "covering\n"
-        "up\n"
-        "the\n"
-        "details\n"
-        ".\n";
+        "a\nmass\nof\nlatin\nwords\n"
+        "falls\nupon\nthe\nrelevant\nfacts\n"
+        "like\nsoft\nsnow\n,\ncovering\n"
+        "up\nthe\ndetails\n.\n";
     const char *b =
-        "much\n"
-        "writing\n"
-        "is\n"
-        "like\n"
-        "snow\n"
-        ",\n"
-        "a\n"
-        "mass\n"
-        "of\n"
-        "long\n"
-        "words\n"
-        "and\n"
-        "phrases\n"
-        "falls\n"
-        "upon\n"
-        "the\n"
-        "relevant\n"
-        "facts\n"
-        "covering\n"
-        "up\n"
-        "the\n"
-        "details\n"
-        ".\n";
+        "much\nwriting\nis\nlike\nsnow\n"
+        ",\na\nmass\nof\nlong\n"
+        "words\nand\nphrases\nfalls\nupon\n"
+        "the\nrelevant\nfacts\ncovering\nup\n"
+        "the\ndetails\n.\n";
     const char *expect =
         "*** AFTER LINE(s) ======================================= ***\n"
         "      3|of\n"
@@ -326,21 +259,17 @@ static void much_writing(void **unused)
         "       1 lines deleted from old and replaced with 1 lines of new.\n"
         "       3 lines moved in old.\n"
         "       5 change blocks.\n";
-    const char *result = run_ifcomp(a, b);
-    assert_string_equal(result, expect);
-    free((void *)result);
+
+    create_file(fname_a, a);
+    create_file(fname_b, b);
+    ifcomp(fname_a, fname_b);
+
+    std::string result = get_output();
+    EXPECT_EQ(result, std::string(expect));
 }
 
-//
-// Run all tests.
-//
-int main()
+int main(int argc, char **argv)
 {
-    const struct CMUnitTest tests[] = {
-        cmocka_unit_test(ab_ab),
-        cmocka_unit_test(axcydweabe_abcde),
-        cmocka_unit_test(abcdeg_defgac),
-        cmocka_unit_test(much_writing),
-    };
-    return cmocka_run_group_tests(tests, NULL, NULL);
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
 }

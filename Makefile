@@ -1,4 +1,4 @@
-PROG            = ifcomp unit_tests
+PROG            = ifcomp
 CFLAGS		= -g -O3 -Wall -Werror
 LDFLAGS         = -g
 LIBCMOCKA       = -lcmocka
@@ -16,16 +16,22 @@ ifneq ($(wildcard /opt/homebrew/lib),)
 LIBCMOCKA       += -L/opt/homebrew/lib
 endif
 
-all:		$(PROG)
+all:            build
+		$(MAKE) -C build
 
-test:           unit_tests
-		./unit_tests
+build:
+		cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug $(CMAKE_ARGS)
+
+install:        all
+		cmake --install build
+
+test:           all
+		ctest --test-dir build/tests
 
 clean:
-		rm -f $(PROG) *.o *.input *.output
+		rm -rf build
 
-ifcomp:         main.o ifcomp.o
-		$(CC) $(LDFLAGS) main.o ifcomp.o -o $@
-
-unit_tests:     unit_tests.o ifcomp.o
-		$(CC) $(LDFLAGS) unit_tests.o ifcomp.o $(LIBCMOCKA) -o $@
+reindent:
+		@echo "Running clang-format on C++ sources..."
+		@command -v clang-format >/dev/null 2>&1 || { echo "Error: clang-format not found in PATH"; exit 1; }
+		@clang-format -i *.h *.c tests/*.cpp

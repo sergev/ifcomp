@@ -28,12 +28,13 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 //
+#include "ifcomp.h"
+
+#include <errno.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <errno.h>
-#include "ifcomp.h"
 
 #define first_file 0
 #define second_file 1
@@ -68,11 +69,11 @@ static line_kinds delete, insert, move, replace1, replace2;
 
 //? string cosmetic = "";
 
-#define array_of(name) \
+#define array_of(name)        \
     static name##_decl *name; \
     static int last_##name, hbound_##name;
-#define array_of1(name, w) \
-    static name##_decl *name w;   \
+#define array_of1(name, w)      \
+    static name##_decl *name w; \
     static int last_##name w, hbound_##name w;
 
 // Cells for linked list of line numbers.
@@ -191,7 +192,7 @@ static int hashcode_compare(hash_info ha, hash_info hb)
 // hash_line.
 static hash_info hash_line(char *line)
 {
-    char xor ;
+    char xor;
     int i;
     hash_info h = { 0, 0 };
     xor = 0;
@@ -200,8 +201,8 @@ static hash_info hash_line(char *line)
         // If the string is odd in length, we'll be including 0 in the
         // hash.
         char bite1 = line[i], bite2 = line[i + 1];
-        xor = (xor | bite1) & ~(xor&bite1);
-        xor = (xor | bite2) & ~(xor&bite2);
+        xor = (xor | bite1) & ~(xor & bite1);
+        xor = (xor | bite2) & ~(xor & bite2);
         short j = (bite1 << 8) | bite2;
         h.h2 |= 1 << (j % 31);
     }
@@ -406,7 +407,8 @@ static string_index setup_distinct_text(char *text, line_count linen, int input_
     return make_string(&S);
 }
 
-static hash_node_index setup_hash_node(string_index * tip, char *text, line_count linen, int input_file, hash_info h)
+static hash_node_index setup_hash_node(string_index *tip, char *text, line_count linen,
+                                       int input_file, hash_info h)
 {
     hash_node_decl S;
     S.next_in_bucket = null_hash_list;
@@ -450,7 +452,8 @@ static void enter_line(char *text, hash_info h, line_count linen, int input_file
                     goto finish;
                 }
             }
-            string[last_SI].next_text_with_same_hash = SI = setup_distinct_text(text, linen, input_file);
+            string[last_SI].next_text_with_same_hash = SI =
+                setup_distinct_text(text, linen, input_file);
             goto finish;
         }
         if (test == lt) {
@@ -667,7 +670,8 @@ static inline int _abs(int a)
 // Call a function for each line.
 
 static void each_line_in_node(int noden, bool always, int starting_line,
-                              void (*func)(int which_file, char *text, int lineno, void *arg), void *arg)
+                              void (*func)(int which_file, char *text, int lineno, void *arg),
+                              void *arg)
 {
     get_start_finish(noden);
     for (; start != finish; start = node[start].next) {
@@ -1230,7 +1234,7 @@ static tree_index pass8_min_cost_node(tree_index start_node, tree_index end_node
 
 static void pass8()
 { // 7678
-    // Now do the moves.
+  // Now do the moves.
 RETRY:;
     tree_index i = tree1_start, j = tree2_start;
     while (i != tree1_end) {
