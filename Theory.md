@@ -145,8 +145,8 @@ file_line[which_file][linen].ptr0 = -1;                      // No match yet
 
 The implementation uses **1-based indexing** for all table access, matching the original legacy code:
 
-- **Index 0 is reserved**: Used as NULL sentinel values (`NULL_LINE_LIST`, `NULL_STRING_LIST`, `NULL_HASH_LIST`)
-- **Dummy entries**: Tables (`line_table`, `string_table`, `hash_node`) are initialized with dummy entries at index 0
+- **Index 0 is reserved**: Used as NULL sentinel values (`NULL_LINE_LIST`, `NULL_STRING_LIST`, `NULL_HASH_LIST`, `NULL_NODE`)
+- **Dummy entries**: Tables (`line_table`, `string_table`, `hash_node`, `node`) are initialized with dummy entries at index 0
 - **Valid indices start at 1**: The first real entry is at index 1, not index 0
 - **Why**: This allows 0 to serve as a sentinel value, simplifying null checks throughout the algorithm
 
@@ -156,6 +156,7 @@ Initialization:
 line_table.emplace_back();   // Dummy entry at index 0
 string_table.emplace_back(); // Dummy entry at index 0
 hash_node.emplace_back();    // Dummy entry at index 0
+node.emplace_back();         // Dummy entry at index 0 (added in pass5)
 // First real entry will be at index 1
 ```
 
@@ -201,7 +202,7 @@ Unique pairs serve as "anchors" for matching because:
 
 ### Important: Only Exact Unique Pairs
 
-**Critical behavior**: Pass 2 only marks lines as `unique_type` if they appear **exactly once in both files**. 
+**Critical behavior**: Pass 2 only marks lines as `unique_type` if they appear **exactly once in both files**.
 
 - Lines that appear **multiple times** in either file remain `syt_type` after Pass 2
 - This is essential for Pass 3, which can only extend from `syt_type` lines
@@ -363,36 +364,55 @@ Lines A and B are matched because they precede unique anchors and match.
 
 ### Algorithm Overview
 
-1. **Create header nodes** for both files
-2. **Group consecutive lines** into segments
-3. **Create nodes** for each segment
-4. **Link nodes** in doubly-linked lists
-5. **Create trailer nodes**
+1. **Initialize node table**: Add dummy entry at index 0 for 1-based indexing
+2. **Create header nodes** for both files
+3. **Group consecutive lines** into segments based on `ptr_type` and `ptr0` continuity
+4. **Create nodes** for each segment with appropriate cost (positive for matched, negative for unmatched)
+5. **Link nodes** in doubly-linked lists
+6. **Create trailer nodes** for both files
 
 ### Segment Grouping
 
 Lines are grouped into contiguous segments based on their `ptr_type`:
 
 1. **syt_type segments**: Unmatched lines (marked as deletions with negative cost)
-2. **Other segments**: Matched or unique lines (positive cost)
+   - Consecutive `syt_type` lines are grouped together
+   - Cost is negative (e.g., -3 for 3 consecutive unmatched lines)
+
+2. **Matched/unique segments**: Matched or unique lines (positive cost)
+   - Consecutive matched lines with consecutive `ptr0` values are grouped
+   - Cost is positive (e.g., +3 for 3 consecutive matched lines)
+   - Requires both `ptr_type != syt_type` AND consecutive `ptr0` values
 
 ### Node Creation Process
 
-For each file:
+For each file, `pass5_doit()` groups lines into segments:
 
 ```cpp
 while i <= total_lines:
     if file_line[i].ptr_type == syt_type:
         // Unmatched block (will be deletion)
-        while next line is also syt_type:
-            extend block
+        while (i+1 <= total_lines AND
+               file_line[i+1].ptr_type == syt_type):
+            extend block (i++)
+        i++
         cost = -(block_size)  // Negative for deletion
     else:
-        // Matched block
-        while next line matches consecutively:
-            extend block
+        // Matched block - requires consecutive ptr0
+        ptr0 = file_line[i].ptr0
+        exp_ptr0 = ptr0 + 1
+        while (i+1 <= total_lines AND
+               file_line[i+1].ptr_type != syt_type AND
+               file_line[i+1].ptr0 == exp_ptr0):
+            extend block (i++, exp_ptr0++)
+        i++
         cost = block_size  // Positive for match
 ```
+
+**Key Points:**
+- Segment grouping stops when `ptr_type` changes OR `ptr0` is not consecutive
+- File2 nodes use **negative line numbers** to distinguish from file1
+- Segments are created as leaf nodes initially (no branch structure)
 
 ### Node Properties
 
@@ -405,8 +425,19 @@ Each node stores:
 ### Header and Trailer Nodes
 
 - **Header nodes**: Line 0, cost 0, serve as list heads
+  - Created first in each file's tree
+  - Stored at indices >= 1 (after dummy entry at index 0)
+  - `prev = NULL_NODE`, `next` points to first segment
+
 - **Trailer nodes**: Line (total_lines + 1), cost 0, serve as list tails
-- Headers and trailers are linked: `file1_line[0].ptr0 = 0`, `file2_line[0].ptr0 = 0`
+  - File1 trailer: line = `total_lines[FIRST_FILE] + 1` (positive)
+  - File2 trailer: line = `-(total_lines[SECOND_FILE] + 1)` (negative)
+  - `next = NULL_NODE`, `prev` points to last segment
+
+- **Header/Trailer Links**:
+  - `file_line[FIRST_FILE][0].ptr0 = 0` (header references itself)
+  - `file_line[SECOND_FILE][0].ptr0 = 0` (header references itself)
+  - Trailers reference each other for pass8 lookups
 
 ### Tree Structure
 
@@ -415,7 +446,11 @@ After Pass 5, each file has a linear tree (doubly-linked list):
 [header] → [segment1] → [segment2] → ... → [trailer]
 ```
 
-Nodes with negative cost represent unmatched regions (potential deletions/insertions).
+**Important properties:**
+- All nodes are initially **leaf nodes** (`branch_start == NULL_NODE`)
+- Nodes with negative cost represent unmatched regions (potential deletions/insertions)
+- Nodes with positive cost represent matched/unique regions
+- Each segment contains consecutive lines with the same matching status
 
 ### Example
 
@@ -423,9 +458,59 @@ Nodes with negative cost represent unmatched regions (potential deletions/insert
 File1: A(match) B(match) C(syt) D(syt) E(match) F(match)
 File2: A(match) B(match) X(syt) Y(syt) E(match) F(match)
 
+After Pass 5:
 Tree1: [header] → [AB: +2] → [CD: -2] → [EF: +2] → [trailer]
 Tree2: [header] → [AB: +2] → [XY: -2] → [EF: +2] → [trailer]
 ```
+
+**Segment details:**
+- AB segment: cost=+2, contains lines 1-2 (matched)
+- CD segment: cost=-2, contains lines 3-4 (unmatched, negative cost)
+- EF segment: cost=+2, contains lines 5-6 (matched)
+
+### Helper Functions
+
+**make_node(NodeDecl)**: Creates a new node in the node table and returns its index
+- First node created after dummy entry will be at index 1
+- Returns `node.size() - 1`
+
+**leaf(tree_index)**: Checks if a node is a leaf (has no branch structure)
+- Returns `true` if `branch_start == NULL_NODE`
+- All nodes created by pass5 are initially leaves
+
+**true_line_of(tree_index)**: Gets absolute line number from a node
+- Handles negative line numbers (file2 uses negative values)
+- Returns `abs(node[N].linen)`
+
+**free_node(tree_index)**: Adds a node to the free list for reuse
+- Only works if `debug_dont_free == false`
+- Links node into `free_nodes_start` chain
+
+**each_line_in_node(tree_index, bool always, int starting_line, function)**: Iterates through all lines in a node
+- If `always=false`: Only iterates if cost > 0 (skips negative cost segments)
+- If `always=true`: Uses absolute value of cost (iterates all segments)
+- `starting_line`: Skip lines before this line number
+- For leaf nodes: iterates from `noden` to `noden.next`
+- For branch nodes: iterates from `branch_start` to `noden`
+
+**count_node(tree_index, LineKinds&)**: Counts cosmetic and non-cosmetic lines in a node
+- Uses `each_line_in_node` with `always=false`
+- Therefore, **negative cost segments are not counted** (they're counted in pass6)
+- `cosmetic_line()` currently always returns `false`, so all lines are non-cosmetic
+
+### Important: Negative Cost Segments
+
+**Critical behavior**: Segments with negative cost (unmatched lines) are handled differently:
+
+- `each_line_in_node()` with `always=false` **skips** negative cost segments
+  - Loop condition: `for (sline = max_start; sline < last; sline++)`
+  - If cost < 0, then `last = sline + cost < sline`, so loop never executes
+
+- `count_node()` uses `always=false`, so unmatched segments are **not counted**
+  - Unmatched segments are counted separately in pass6 (delete/insert operations)
+
+- To iterate unmatched segments, use `always=true`:
+  - `each_line_in_node(node, true, 0, callback)` will iterate all lines regardless of cost sign
 
 ---
 
@@ -771,6 +856,8 @@ The algorithm guarantees:
 6. **Minimum cost moves**: Reduces move complexity
 7. **1-based indexing**: Uses index 0 as NULL sentinel, simplifying null checks
 8. **SYT_TYPE requirement for extension**: Pass 3 only extends from `syt_type` lines, ensuring unique pairs remain unique while allowing duplicate matches to be extended contextually
+9. **Node table dummy entry**: Pass5 initializes node table with dummy entry at index 0, maintaining 1-based indexing consistency
+10. **Negative cost semantics**: Negative cost segments (unmatched) are handled differently - `each_line_in_node(always=false)` skips them, requiring `always=true` to iterate
 
 ---
 

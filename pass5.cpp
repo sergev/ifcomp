@@ -267,6 +267,11 @@ void Ifcomp::pass5()
         file_line[SECOND_FILE].resize(1);
     }
 
+    // Add dummy entry at index 0 for 1-based indexing (0 reserved as NULL_NODE)
+    if (node.empty()) {
+        node.emplace_back(); // Dummy entry at index 0
+    }
+
     NodeDecl N;
     N.cost = 0;
     N.linen = 0;
