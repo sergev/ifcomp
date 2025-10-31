@@ -29,6 +29,7 @@ add_executable(test_ifcomp
     test_advanced_patterns.cpp
     test_algorithm_behavior.cpp
     test_output_validation.cpp
+    test_pass1.cpp
     ${CMAKE_SOURCE_DIR}/ifcomp.cpp
     ${CMAKE_SOURCE_DIR}/ifcomp_types.cpp
     ${CMAKE_SOURCE_DIR}/pass1.cpp
