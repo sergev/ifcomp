@@ -13,7 +13,7 @@ test:           all
 		ctest --test-dir build/tests
 
 clean:
-		rm -rf build
+		rm -rf build ifcomp_test_[ab]_* ifcomp_test_out_*
 
 reindent:
 		@echo "Running clang-format on C++ sources..."

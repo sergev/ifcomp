@@ -21,7 +21,7 @@ endif()
 
 # Compiler flags
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Werror -Wshadow")
 
 # Debug flags
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g")
@@ -49,8 +49,17 @@ enable_testing()
 
 # Main ifcomp executable
 add_executable(ifcomp
-    ifcomp.c
-    main.c
+    ifcomp.cpp
+    ifcomp_types.cpp
+    main.cpp
+    pass1.cpp
+    pass2.cpp
+    pass3.cpp
+    pass4.cpp
+    pass5.cpp
+    pass6.cpp
+    pass7.cpp
+    pass8.cpp
 )
 
 # Installation

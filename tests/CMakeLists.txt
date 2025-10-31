@@ -29,7 +29,16 @@ add_executable(test_ifcomp
     test_advanced_patterns.cpp
     test_algorithm_behavior.cpp
     test_output_validation.cpp
-    ${CMAKE_SOURCE_DIR}/ifcomp.c
+    ${CMAKE_SOURCE_DIR}/ifcomp.cpp
+    ${CMAKE_SOURCE_DIR}/ifcomp_types.cpp
+    ${CMAKE_SOURCE_DIR}/pass1.cpp
+    ${CMAKE_SOURCE_DIR}/pass2.cpp
+    ${CMAKE_SOURCE_DIR}/pass3.cpp
+    ${CMAKE_SOURCE_DIR}/pass4.cpp
+    ${CMAKE_SOURCE_DIR}/pass5.cpp
+    ${CMAKE_SOURCE_DIR}/pass6.cpp
+    ${CMAKE_SOURCE_DIR}/pass7.cpp
+    ${CMAKE_SOURCE_DIR}/pass8.cpp
 )
 
 # Link with GoogleTest and its main function
@@ -41,7 +50,7 @@ target_link_libraries(test_ifcomp
 add_test(NAME test_ifcomp COMMAND test_ifcomp)
 set_tests_properties(test_ifcomp PROPERTIES TIMEOUT 60)
 
-# Include parent directory for ifcomp.h
+# Include parent directory for ifcomp.hpp
 target_include_directories(test_ifcomp PRIVATE ${CMAKE_SOURCE_DIR})
 
 # Use C17 standard for C++ compilation
