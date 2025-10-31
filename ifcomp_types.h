@@ -9,7 +9,10 @@ constexpr int first_file = 0;
 constexpr int second_file = 1;
 constexpr int two_files = 2;
 
-inline int other_file(int f) { return 1 - f; }
+inline int other_file(int f)
+{
+    return 1 - f;
+}
 
 // Hash information
 struct HashInfo {
@@ -38,9 +41,10 @@ constexpr line_count null_line_list = 0;
 // String declaration - records a unique line
 struct StringDecl {
     std::string text;
-    string_index next_text_with_same_hash = null_string_list;  // next line with same hash code
-    uint8_t file_nlines[two_files] = {0, 0};
-    line_count file_list[two_files] = {null_line_list, null_line_list};  // list of lines of text in the files
+    string_index next_text_with_same_hash = null_string_list; // next line with same hash code
+    uint8_t file_nlines[two_files] = { 0, 0 };
+    line_count file_list[two_files] = { null_line_list,
+                                        null_line_list }; // list of lines of text in the files
 };
 
 // Hash node declaration
@@ -53,11 +57,7 @@ struct HashNodeDecl {
 constexpr int nbuckets = 256;
 
 // Line type enumeration
-enum class LineType : int {
-    syt_type = 1,
-    unique_type = 2,
-    match_type = 3
-};
+enum class LineType : int { syt_type = 1, unique_type = 2, match_type = 3 };
 
 // File line declaration
 struct FileLineDecl {
@@ -130,4 +130,3 @@ enum CompareResult { lt = 1, eq = 2, gt = 3 };
 #define tree2_start tree2.start
 #define tree1_end tree1.end
 #define tree2_end tree2.end
-

@@ -1,12 +1,14 @@
 #include "pass8.h"
-#include "pass6.h"
-#include "pass5.h"
-#include "pass7.h"
-#include "ifcomp_types.h"
 
 #include <cstdio>
 
-void insert_node_after(tree_index after_this, tree_index insert_this) {
+#include "ifcomp_types.h"
+#include "pass5.h"
+#include "pass6.h"
+#include "pass7.h"
+
+void insert_node_after(tree_index after_this, tree_index insert_this)
+{
     node[insert_this].prev = after_this;
     tree_index after_after = node[after_this].next;
     node[insert_this].next = after_after;
@@ -14,7 +16,8 @@ void insert_node_after(tree_index after_this, tree_index insert_this) {
     node[after_this].next = insert_this;
 }
 
-tree_index pass8_min_cost_node(tree_index start_node, tree_index end_node) {
+tree_index pass8_min_cost_node(tree_index start_node, tree_index end_node)
+{
     tree_index min_cost = node[start_node].cost;
     tree_index min_node = start_node;
     tree_index N = start_node;
@@ -30,7 +33,8 @@ tree_index pass8_min_cost_node(tree_index start_node, tree_index end_node) {
     return min_node;
 }
 
-void pass8_move_lines(tree_index node1, tree_index node2) {
+void pass8_move_lines(tree_index node1, tree_index node2)
+{
     nchange_blocks++;
     count_node(node2, move_stats);
     if (node1 == tree1_start) {
@@ -50,11 +54,12 @@ void pass8_move_lines(tree_index node1, tree_index node2) {
         insert_node_after(node1, node2);
         // The file retains the 1:1 assumption. Combine adjacent
         // nodes to appropriately redistribute weight for min_cost.
-        pass7();  // See if any nodes can now be made adjacent.
+        pass7(); // See if any nodes can now be made adjacent.
     }
 }
 
-void pass8() {
+void pass8()
+{
     // Now do the moves.
     while (true) {
         tree_index i = tree1_start;
@@ -67,8 +72,8 @@ void pass8() {
             // line in file2.
             if (debug_dump_trees_full)
                 std::printf("node %d lno %d -> %d, node %d lno %d\n", i, true_line_of(i),
-                           file_line[first_file][true_line_of(i)].ptr0, j, true_line_of(j));
-            while (i != tree1_end && 
+                            file_line[first_file][true_line_of(i)].ptr0, j, true_line_of(j));
+            while (i != tree1_end &&
                    file_line[first_file][true_line_of(i)].ptr0 == true_line_of(j)) {
                 i = node[i].next;
                 j = node[j].next;
@@ -87,8 +92,7 @@ void pass8() {
             // segments within the other file, or else we will prevent
             // future scanning in parallel.
             dump_trees(no_pass);
-            break;  // Restart from beginning
+            break; // Restart from beginning
         }
     }
 }
-

@@ -4,7 +4,7 @@
 #include <string>
 
 // Main comparison function
-void ifcomp(const char* first_fname, const char* second_fname);
+void ifcomp(const char *first_fname, const char *second_fname);
 
 // Print statistics
 void print_statistics();

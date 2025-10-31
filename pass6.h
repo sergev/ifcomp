@@ -7,11 +7,11 @@
 void pass6();
 
 // Helper functions
-tree_index find_node(const TreeBounds& T, tree_index linen);
+tree_index find_node(const TreeBounds &T, tree_index linen);
 void detach_node(tree_index noden);
 void combine_nodes(tree_index node1, tree_index node2);
-void print_header(const char* s);
-void print_header1(const char* s);
+void print_header(const char *s);
+void print_header1(const char *s);
 void print_trailer();
 tree_index unique_find(tree_index noden);
 void after_lines(tree_index noden);
@@ -23,4 +23,3 @@ void pass6_insert_lines(tree_index noden);
 
 // Helper for top message
 void top_msg();
-
