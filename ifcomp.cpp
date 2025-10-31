@@ -6,15 +6,6 @@
 #include <fstream>
 #include <iostream>
 
-// Global debug flags (for backward compatibility during transition)
-bool debug_dont_free = false;
-bool debug_syt_full = false;
-bool debug_syt = false;
-bool debug_dump_trees = false;
-bool debug_dump_trees_full = false;
-bool debug_alloc = false;
-bool debug_read_current_line = false;
-
 // Ifcomp class implementation
 Ifcomp::Ifcomp()
 {
@@ -30,15 +21,6 @@ Ifcomp::Ifcomp()
     free_nodes_start = null_node;
     trees[first_file] = TreeBounds{};
     trees[second_file] = TreeBounds{};
-
-    // Initialize debug flags from globals
-    debug_dont_free = ::debug_dont_free;
-    debug_syt_full = ::debug_syt_full;
-    debug_syt = ::debug_syt;
-    debug_dump_trees = ::debug_dump_trees;
-    debug_dump_trees_full = ::debug_dump_trees_full;
-    debug_alloc = ::debug_alloc;
-    debug_read_current_line = ::debug_read_current_line;
 
     initialize_tables();
     for (int i = 0; i < nbuckets; i++)

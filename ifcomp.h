@@ -102,16 +102,6 @@ struct TreeBounds {
 // Comparison result enum
 enum CompareResult { lt = 1, eq = 2, gt = 3 };
 
-// Helper macros for file access
-#define file1_line file_line[first_file]
-#define file2_line file_line[second_file]
-#define tree1 trees[first_file]
-#define tree2 trees[second_file]
-#define tree1_start tree1.start
-#define tree2_start tree2.start
-#define tree1_end tree1.end
-#define tree2_end tree2.end
-
 // Helper inline functions
 inline int get_which_file(line_count linen)
 {
@@ -127,15 +117,6 @@ inline line_count get_abs_line(line_count linen)
 
 // Forward declarations
 class Ifcomp;
-
-// Debug flags (global for backward compatibility during transition)
-extern bool debug_dont_free;
-extern bool debug_syt_full;
-extern bool debug_syt;
-extern bool debug_dump_trees;
-extern bool debug_dump_trees_full;
-extern bool debug_alloc;
-extern bool debug_read_current_line;
 
 // Ifcomp class - encapsulates all state and functionality
 class Ifcomp {
