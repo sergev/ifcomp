@@ -7,13 +7,18 @@ FetchContent_Declare(
   GIT_REPOSITORY https://github.com/google/googletest.git
   GIT_TAG        v1.14.0
 )
+set(BUILD_GMOCK OFF CACHE BOOL "Disable building GoogleMock" FORCE)
+set(INSTALL_GTEST OFF CACHE BOOL "Do not install GoogleTest" FORCE)
 
 # Make GoogleTest available
 FetchContent_MakeAvailable(googletest)
 
 # GoogleTest unit tests executable
 add_executable(test_ifcomp
-    test_ifcomp.cpp
+    test_identical_files.cpp
+    test_complex_changes.cpp
+    test_permutation_changes.cpp
+    test_much_writing.cpp
     ${CMAKE_SOURCE_DIR}/ifcomp.c
 )
 
