@@ -110,43 +110,43 @@ TEST_F(Pass1TestFixture, HashcodeCompare_Equal)
 {
     HashInfo h1{ 0x1234, 0x5678 };
     HashInfo h2{ 0x1234, 0x5678 };
-    EXPECT_EQ(Ifcomp::hashcode_compare(h1, h2), eq);
+    EXPECT_EQ(Ifcomp::hashcode_compare(h1, h2), CompareResult::EQ);
 }
 
 TEST_F(Pass1TestFixture, HashcodeCompare_LessThan_H1)
 {
     HashInfo h1{ 0x1000, 0x5678 };
     HashInfo h2{ 0x2000, 0x5678 };
-    EXPECT_EQ(Ifcomp::hashcode_compare(h1, h2), lt);
+    EXPECT_EQ(Ifcomp::hashcode_compare(h1, h2), CompareResult::LT);
 }
 
 TEST_F(Pass1TestFixture, HashcodeCompare_GreaterThan_H1)
 {
     HashInfo h1{ 0x2000, 0x5678 };
     HashInfo h2{ 0x1000, 0x5678 };
-    EXPECT_EQ(Ifcomp::hashcode_compare(h1, h2), gt);
+    EXPECT_EQ(Ifcomp::hashcode_compare(h1, h2), CompareResult::GT);
 }
 
 TEST_F(Pass1TestFixture, HashcodeCompare_LessThan_H2)
 {
     HashInfo h1{ 0x1234, 0x1000 };
     HashInfo h2{ 0x1234, 0x2000 };
-    EXPECT_EQ(Ifcomp::hashcode_compare(h1, h2), lt);
+    EXPECT_EQ(Ifcomp::hashcode_compare(h1, h2), CompareResult::LT);
 }
 
 TEST_F(Pass1TestFixture, HashcodeCompare_GreaterThan_H2)
 {
     HashInfo h1{ 0x1234, 0x2000 };
     HashInfo h2{ 0x1234, 0x1000 };
-    EXPECT_EQ(Ifcomp::hashcode_compare(h1, h2), gt);
+    EXPECT_EQ(Ifcomp::hashcode_compare(h1, h2), CompareResult::GT);
 }
 
 TEST_F(Pass1TestFixture, HashcodeCompare_EqualH1DifferentH2)
 {
     HashInfo h1{ 0x1234, 0x1000 };
     HashInfo h2{ 0x1234, 0x2000 };
-    EXPECT_EQ(Ifcomp::hashcode_compare(h1, h2), lt);
-    EXPECT_EQ(Ifcomp::hashcode_compare(h2, h1), gt);
+    EXPECT_EQ(Ifcomp::hashcode_compare(h1, h2), CompareResult::LT);
+    EXPECT_EQ(Ifcomp::hashcode_compare(h2, h1), CompareResult::GT);
 }
 
 // ============================================================================
@@ -403,7 +403,7 @@ TEST_F(Pass1TestFixture, ReadLines_SingleLine)
     EXPECT_NE(ifc.file_line[FIRST_FILE][1].file_line_text, NULL_STRING_LIST);
     EXPECT_EQ(ifc.string_table[ifc.file_line[FIRST_FILE][1].file_line_text].text, "LINE1");
     EXPECT_EQ(ifc.file_line[FIRST_FILE][1].linen, 1);
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][1].ptr_type, LineType::syt_type);
+    EXPECT_EQ(ifc.file_line[FIRST_FILE][1].ptr_type, LineType::SYT_TYPE);
 }
 
 TEST_F(Pass1TestFixture, ReadLines_MultipleLines)

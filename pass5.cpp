@@ -175,10 +175,10 @@ void Ifcomp::pass5_doit(int fileno, NodeDecl &Np)
         Np.linen = i;
         LineType ptr_type = file_line[fileno][i].ptr_type;
 
-        if (ptr_type == LineType::syt_type) {
+        if (ptr_type == LineType::SYT_TYPE) {
             // Determine a block of syt_type lines.
             while (i + 1 <= total_file_nlines[fileno] &&
-                   file_line[fileno][i + 1].ptr_type == LineType::syt_type)
+                   file_line[fileno][i + 1].ptr_type == LineType::SYT_TYPE)
                 i++;
             i++;
             Np.cost = i - Np.linen;
@@ -188,7 +188,7 @@ void Ifcomp::pass5_doit(int fileno, NodeDecl &Np)
             line_count ptr0 = file_line[fileno][i].ptr0;
             line_count exp_ptr0 = ptr0 + 1;
             while (i + 1 <= total_file_nlines[fileno] &&
-                   file_line[fileno][i + 1].ptr_type != LineType::syt_type &&
+                   file_line[fileno][i + 1].ptr_type != LineType::SYT_TYPE &&
                    file_line[fileno][i + 1].ptr0 == exp_ptr0)
                 i++, exp_ptr0++;
             i++;

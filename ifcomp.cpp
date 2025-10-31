@@ -55,13 +55,13 @@ void Ifcomp::format_file_line(const FileLineDecl &p) const
 {
     std::printf("|%3d|", p.linen);
     switch (p.ptr_type) {
-    case LineType::syt_type:
+    case LineType::SYT_TYPE:
         std::printf("S     ");
         break;
-    case LineType::unique_type:
+    case LineType::UNIQUE_TYPE:
         std::printf("U%5d", p.ptr0);
         break;
-    case LineType::match_type:
+    case LineType::MATCH_TYPE:
         std::printf("M%5d", p.ptr0);
         break;
     default:

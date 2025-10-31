@@ -13,7 +13,7 @@ constexpr int TWO_FILES = 2;
 
 inline int other_file(int f)
 {
-    return 1 - f;
+    return SECOND_FILE - f;
 }
 
 // Hash information
@@ -59,14 +59,14 @@ struct HashNodeDecl {
 constexpr int NBUCKETS = 256;
 
 // Line type enumeration
-enum class LineType : int { syt_type = 1, unique_type = 2, match_type = 3 };
+enum class LineType : int { SYT_TYPE = 1, UNIQUE_TYPE = 2, MATCH_TYPE = 3 };
 
 // File line declaration
 struct FileLineDecl {
     line_count ptr0 = 0;
     string_index file_line_text = NULL_STRING_LIST;
     line_count linen = 0;
-    LineType ptr_type = LineType::syt_type;
+    LineType ptr_type = LineType::SYT_TYPE;
 };
 
 // Line kinds for statistics
@@ -96,7 +96,7 @@ struct TreeBounds {
 };
 
 // Comparison result enum
-enum CompareResult { lt = 1, eq = 2, gt = 3 };
+enum class CompareResult { LT = 1, EQ = 2, GT = 3 };
 
 // Helper inline functions
 inline int get_which_file(line_count linen)

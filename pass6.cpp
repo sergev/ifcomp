@@ -133,7 +133,7 @@ tree_index Ifcomp::unique_find(tree_index noden) const
     // -- i.e., it must not occur more than once in the file.
     line_count cost = node[noden].cost;
     for (line_count start_line = end_line + cost - 1; start_line >= end_line; start_line--) {
-        if (file_line[filen][start_line].ptr_type == LineType::unique_type)
+        if (file_line[filen][start_line].ptr_type == LineType::UNIQUE_TYPE)
             return start_line;
     }
     return NULL_NODE;

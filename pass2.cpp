@@ -11,9 +11,9 @@ void Ifcomp::pass2()
             line_count file_linen1 = line_table[string_table[i].file_list[FIRST_FILE]].linen;
             line_count file_linen2 = line_table[string_table[i].file_list[SECOND_FILE]].linen;
             // Make each line reference the occurrence in the other file.
-            file_line[FIRST_FILE][file_linen1].ptr_type = LineType::unique_type;
+            file_line[FIRST_FILE][file_linen1].ptr_type = LineType::UNIQUE_TYPE;
             file_line[FIRST_FILE][file_linen1].ptr0 = file_linen2;
-            file_line[SECOND_FILE][file_linen2].ptr_type = LineType::unique_type;
+            file_line[SECOND_FILE][file_linen2].ptr_type = LineType::UNIQUE_TYPE;
             file_line[SECOND_FILE][file_linen2].ptr0 = file_linen1;
         }
     }

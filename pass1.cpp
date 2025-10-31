@@ -29,14 +29,14 @@ HashInfo Ifcomp::hash_line(const std::string &line)
 CompareResult Ifcomp::hashcode_compare(const HashInfo &ha, const HashInfo &hb)
 {
     if (ha.h1 < hb.h1)
-        return lt;
+        return CompareResult::LT;
     if (ha.h1 > hb.h1)
-        return gt;
+        return CompareResult::GT;
     if (ha.h2 < hb.h2)
-        return lt;
+        return CompareResult::LT;
     if (ha.h2 > hb.h2)
-        return gt;
-    return eq;
+        return CompareResult::GT;
+    return CompareResult::EQ;
 }
 
 // Create a line entry in the line table
@@ -110,7 +110,7 @@ void Ifcomp::enter_line(const std::string &text, const HashInfo &h, line_count l
 
     while (current_node != NULL_HASH_LIST) {
         CompareResult test = Ifcomp::hashcode_compare(h, hash_node[current_node].h);
-        if (test == eq) {
+        if (test == CompareResult::EQ) {
             // Search through this syt node to see if the identical line exists already.
             SI = hash_node[current_node].text_list;
             last_SI = SI;
@@ -130,7 +130,7 @@ void Ifcomp::enter_line(const std::string &text, const HashInfo &h, line_count l
             result_string_index = SI;
             return;
         }
-        if (test == lt) {
+        if (test == CompareResult::LT) {
             hash_node_index new_node = setup_hash_node(SI, text, linen, input_file, h);
             if (current_node == hash_start_node) {
                 hash_node[new_node].next_in_bucket = hash_start_node;
@@ -143,7 +143,7 @@ void Ifcomp::enter_line(const std::string &text, const HashInfo &h, line_count l
             result_string_index = SI;
             return;
         }
-        // test is gt.
+        // test is CompareResult::GT.
         last_node = current_node;
         current_node = hash_node[current_node].next_in_bucket;
     }
@@ -238,7 +238,7 @@ void Ifcomp::read_lines(int which_file, std::istream &input_file)
         // As long as the type is syt_type it holds nothing of interest.
         file_line[which_file][current_line].ptr0 = -1; // No line.
         file_line[which_file][current_line].linen = current_line;
-        file_line[which_file][current_line].ptr_type = LineType::syt_type;
+        file_line[which_file][current_line].ptr_type = LineType::SYT_TYPE;
 
         if (debug_syt_full)
             dump_syt(H);
