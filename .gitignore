@@ -6,3 +6,5 @@ unit_tests
 ?
 build
 Testing
+ifcomp_test_[ab]_*
+ifcomp_test_out_*

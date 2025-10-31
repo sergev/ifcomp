@@ -1158,7 +1158,12 @@ static bool pass7_combine_adjacent_nodes(tree_index node1)
     // Look at adjacent nodes node1 and node2.
     // If they are also adjacent in file 2, combine the nodes
     // in both files.
+    // Skip nodes that are not leaves (i.e., already combined branch nodes).
+    if (!leaf(node1))
+        return false;
     tree_index node2 = node[node1].next;
+    if (node2 == tree1_end || !leaf(node2))
+        return false;
     if (debug_dump_trees_full)
         printf("combine node1=%d ln=%d to node2=%d ln=%d\n", node1, node[node1].linen, node2,
                node[node2].linen);
@@ -1175,7 +1180,7 @@ static bool pass7_combine_adjacent_nodes(tree_index node1)
 static void pass7()
 { // 75ee
     tree_index i = node[tree1_start].next;
-    while (node[i].next != tree1_end) {
+    while (i != tree1_end && node[i].next != tree1_end) {
         tree_index j = node[i].prev;
         i = node[pass7_combine_adjacent_nodes(i) ? j : i].next;
     }
