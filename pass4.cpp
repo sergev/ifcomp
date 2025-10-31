@@ -1,7 +1,4 @@
-#include "pass4.h"
-
 #include "ifcomp.h"
-#include "ifcomp_types.h"
 
 void Ifcomp::pass4()
 {

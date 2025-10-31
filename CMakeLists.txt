@@ -50,7 +50,6 @@ enable_testing()
 # Main ifcomp executable
 add_executable(ifcomp
     ifcomp.cpp
-    ifcomp_types.cpp
     main.cpp
     pass1.cpp
     pass2.cpp

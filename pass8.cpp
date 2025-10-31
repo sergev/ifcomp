@@ -1,12 +1,6 @@
-#include "pass8.h"
-
 #include <cstdio>
 
 #include "ifcomp.h"
-#include "ifcomp_types.h"
-#include "pass5.h"
-#include "pass6.h"
-#include "pass7.h"
 
 void Ifcomp::insert_node_after(tree_index after_this, tree_index insert_this)
 {

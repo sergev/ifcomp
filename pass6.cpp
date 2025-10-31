@@ -1,11 +1,8 @@
-#include "pass6.h"
-
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 
 #include "ifcomp.h"
-#include "ifcomp_types.h"
 
 inline int _abs(int a)
 {

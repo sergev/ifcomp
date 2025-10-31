@@ -1,7 +1,4 @@
-#include "pass3.h"
-
 #include "ifcomp.h"
-#include "ifcomp_types.h"
 
 void Ifcomp::pass3()
 {

@@ -1,5 +1,3 @@
-#include "pass1.h"
-
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -7,8 +5,8 @@
 
 #include "ifcomp.h"
 
-// Hash a line string
-HashInfo hash_line(const std::string &line)
+// Hash a line string (static method - pure function, no state)
+HashInfo Ifcomp::hash_line(const std::string &line)
 {
     char xor_val = 0;
     HashInfo h{ 0, 0 };
@@ -27,8 +25,8 @@ HashInfo hash_line(const std::string &line)
     return h;
 }
 
-// Comparison function for hash codes
-CompareResult hashcode_compare(const HashInfo &ha, const HashInfo &hb)
+// Comparison function for hash codes (static method - pure function, no state)
+CompareResult Ifcomp::hashcode_compare(const HashInfo &ha, const HashInfo &hb)
 {
     if (ha.h1 < hb.h1)
         return lt;
@@ -111,7 +109,7 @@ void Ifcomp::enter_line(const std::string &text, const HashInfo &h, line_count l
     string_index last_SI;
 
     while (current_node != null_hash_list) {
-        CompareResult test = hashcode_compare(h, hash_node[current_node].h);
+        CompareResult test = Ifcomp::hashcode_compare(h, hash_node[current_node].h);
         if (test == eq) {
             // Search through this syt node to see if the identical line exists already.
             SI = hash_node[current_node].text_list;
@@ -232,7 +230,7 @@ void Ifcomp::read_lines(int which_file, std::istream &input_file)
             file_line[which_file].resize(current_line + 1);
         }
         hash_node_index H;
-        HashInfo h = hash_line(line);
+        HashInfo h = Ifcomp::hash_line(line);
         enter_line(line, h, current_line, which_file, H,
                    file_line[which_file][current_line].file_line_text);
 

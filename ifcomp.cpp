@@ -6,15 +6,14 @@
 #include <fstream>
 #include <iostream>
 
-#include "ifcomp_types.h"
-#include "pass1.h"
-#include "pass2.h"
-#include "pass3.h"
-#include "pass4.h"
-#include "pass5.h"
-#include "pass6.h"
-#include "pass7.h"
-#include "pass8.h"
+// Global debug flags (for backward compatibility during transition)
+bool debug_dont_free = false;
+bool debug_syt_full = false;
+bool debug_syt = false;
+bool debug_dump_trees = false;
+bool debug_dump_trees_full = false;
+bool debug_alloc = false;
+bool debug_read_current_line = false;
 
 // Ifcomp class implementation
 Ifcomp::Ifcomp()

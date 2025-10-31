@@ -1,11 +1,6 @@
-#include "pass7.h"
-
 #include <cstdio>
 
 #include "ifcomp.h"
-#include "ifcomp_types.h"
-#include "pass5.h"
-#include "pass6.h"
 
 bool Ifcomp::pass7_combine_adjacent_nodes(tree_index node1)
 {

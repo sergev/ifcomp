@@ -1,12 +1,9 @@
-#include "pass5.h"
-
 #include <algorithm>
 #include <cstdio>
 #include <cstdlib>
 #include <functional>
 
 #include "ifcomp.h"
-#include "ifcomp_types.h"
 
 inline int _abs(int a)
 {
