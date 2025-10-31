@@ -141,6 +141,24 @@ file_line[which_file][linen].linen = linen;                 // Line number
 file_line[which_file][linen].ptr0 = -1;                      // No match yet
 ```
 
+### Important: 1-Based Indexing
+
+The implementation uses **1-based indexing** for all table access, matching the original legacy code:
+
+- **Index 0 is reserved**: Used as NULL sentinel values (`NULL_LINE_LIST`, `NULL_STRING_LIST`, `NULL_HASH_LIST`)
+- **Dummy entries**: Tables (`line_table`, `string_table`, `hash_node`) are initialized with dummy entries at index 0
+- **Valid indices start at 1**: The first real entry is at index 1, not index 0
+- **Why**: This allows 0 to serve as a sentinel value, simplifying null checks throughout the algorithm
+
+Initialization:
+```cpp
+// Dummy entries at index 0
+line_table.emplace_back();   // Dummy entry at index 0
+string_table.emplace_back(); // Dummy entry at index 0
+hash_node.emplace_back();    // Dummy entry at index 0
+// First real entry will be at index 1
+```
+
 ### Cleanup
 
 After Pass 1, the hash node table is cleared (no longer needed after initial indexing).
@@ -181,6 +199,19 @@ Unique pairs serve as "anchors" for matching because:
 - They provide starting points for extending matches
 - They help identify regions that are definitely aligned
 
+### Important: Only Exact Unique Pairs
+
+**Critical behavior**: Pass 2 only marks lines as `unique_type` if they appear **exactly once in both files**. 
+
+- Lines that appear **multiple times** in either file remain `syt_type` after Pass 2
+- This is essential for Pass 3, which can only extend from `syt_type` lines
+- Duplicate lines (appearing 2+ times) remain `syt_type` even if they match between files
+
+This design ensures:
+- Unique pairs are reliable anchors (cannot match elsewhere)
+- Duplicate lines can be matched by Pass 3 based on context
+- Pass 3 has a clear set of lines to work with (those still `syt_type`)
+
 ### Example
 
 If line "function foo()" appears:
@@ -192,6 +223,10 @@ Then:
 - `file1_line[10].ptr0 = 5`
 - `file2_line[5].ptr_type = unique_type`
 - `file2_line[5].ptr0 = 10`
+
+If a line appears multiple times in either file, it remains `syt_type`:
+- "COMMON" appears 3 times in file1, 3 times in file2 → remains `syt_type` after Pass 2
+- "UNIQUE_A" appears once in each file → becomes `unique_type` after Pass 2
 
 ---
 
@@ -218,10 +253,30 @@ for each line m in file1:
 1. **Scan file1 sequentially**: Starting from line 1
 2. **Find unique lines**: When encountering a `unique_type` line
 3. **Extend forward**: Check if the next lines match
-   - Both must be `syt_type` (not yet matched)
-   - Text must be identical
+   - **Both lines must be `syt_type`** (not yet matched, not unique)
+   - Text must be identical (`file_line[FIRST_FILE][m].file_line_text == file_line[SECOND_FILE][n].file_line_text`)
    - Lines must be consecutive
-4. **Mark matches**: Set `ptr_type = match_type` and create links
+4. **Mark matches**: Set `ptr_type = match_type` and create bidirectional links
+
+### Critical: Extension Only from SYT_TYPE Lines
+
+**Important implementation detail**: Pass 3 can only extend from lines that are `syt_type` after Pass 2.
+
+- If a line is already `unique_type` (marked by Pass 2), Pass 3 will **not** extend from it
+- Only `syt_type` lines (duplicates or non-unique matches) can be extended
+- This is why duplicate lines that match are perfect candidates for Pass 3 extension
+
+Example:
+```
+File1: UNIQUE_A (unique) → COMMON (syt, duplicate) → COMMON (syt, duplicate)
+File2: UNIQUE_A (unique) → COMMON (syt, duplicate) → COMMON (syt, duplicate)
+
+After Pass 3:
+File1: UNIQUE_A (unique) → COMMON (match) → COMMON (match)
+File2: UNIQUE_A (unique) → COMMON (match) → COMMON (match)
+```
+
+The `COMMON` lines remain `syt_type` after Pass 2 because they're duplicates, making them eligible for Pass 3 extension.
 
 ### Conditions for Extension
 
@@ -242,7 +297,13 @@ File1:  A (unique) → B (match) → C (match) → D (syt)
 File2:  X (unique) → B (match) → C (match) → E (syt)
 ```
 
-Lines B and C are matched because they follow unique anchors and match.
+Lines B and C are matched because:
+1. They follow unique anchors (A and X)
+2. Both are `syt_type` (not yet matched)
+3. Their text matches between files
+4. Extension stops at D/E because text doesn't match
+
+**Important**: If B or C were unique pairs themselves (appearing once in each file), they would have been marked `unique_type` by Pass 2, and Pass 3 would skip them (cannot extend from `unique_type` lines).
 
 ---
 
@@ -708,6 +769,8 @@ The algorithm guarantees:
 4. **Unique anchors**: Provides reliable matching points
 5. **Bidirectional extension**: Maximizes match coverage
 6. **Minimum cost moves**: Reduces move complexity
+7. **1-based indexing**: Uses index 0 as NULL sentinel, simplifying null checks
+8. **SYT_TYPE requirement for extension**: Pass 3 only extends from `syt_type` lines, ensuring unique pairs remain unique while allowing duplicate matches to be extended contextually
 
 ---
 
@@ -718,6 +781,9 @@ The algorithm guarantees:
 3. **Many moves**: Pass 8 may be slow with many small moves
 4. **Identical lines**: Multiple occurrences require unique anchors
 5. **Complete rewrites**: No anchors means few matches detected
+6. **Duplicate-only files**: If all lines are duplicates (appear multiple times), Pass 2 won't mark any as unique, so Pass 3 has no anchors to extend from
+7. **File length mismatches**: Pass 3 stops when one file runs out of lines, even if the other continues
+8. **Index bounds**: Must ensure table accesses stay within bounds when files have different lengths
 
 ---
 
