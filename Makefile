@@ -18,4 +18,4 @@ clean:
 reindent:
 		@echo "Running clang-format on C++ sources..."
 		@command -v clang-format >/dev/null 2>&1 || { echo "Error: clang-format not found in PATH"; exit 1; }
-		@clang-format -i *.h *.c *.cpp tests/*.h tests/*.cpp
+		@clang-format -i *.h *.cpp tests/*.h tests/*.cpp

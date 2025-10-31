@@ -124,8 +124,14 @@ void Ifcomp::enter_line(const std::string &text, const HashInfo &h, line_count l
                 last_SI = SI;
                 SI = string_table[SI].next_text_with_same_hash;
             }
-            string_table[last_SI].next_text_with_same_hash = SI =
-                setup_distinct_text(text, linen, input_file);
+            // If text_list was empty (shouldn't happen, but handle it)
+            if (hash_node[current_node].text_list == NULL_STRING_LIST) {
+                hash_node[current_node].text_list = SI =
+                    setup_distinct_text(text, linen, input_file);
+            } else {
+                string_table[last_SI].next_text_with_same_hash = SI =
+                    setup_distinct_text(text, linen, input_file);
+            }
             result_hash_node = current_node;
             result_string_index = SI;
             return;

@@ -39,6 +39,12 @@ void Ifcomp::initialize_tables()
     // Initialize file_line arrays with index 0 entry
     file_line[FIRST_FILE].resize(1);
     file_line[SECOND_FILE].resize(1);
+
+    // Add dummy entries at index 0 to match legacy 1-based indexing
+    // where 0 is reserved as NULL_LINE_LIST, NULL_STRING_LIST, NULL_HASH_LIST
+    line_table.emplace_back();   // Dummy entry at index 0
+    string_table.emplace_back(); // Dummy entry at index 0
+    hash_node.emplace_back();    // Dummy entry at index 0
 }
 
 std::ifstream Ifcomp::open_file(const char *fn)
@@ -111,6 +117,11 @@ void Ifcomp::compare(const char *first_fname, const char *second_fname)
     // Reinitialize with proper size (at least index 0)
     file_line[FIRST_FILE].resize(1);
     file_line[SECOND_FILE].resize(1);
+
+    // Reinitialize dummy entries at index 0 for 1-based indexing
+    line_table.emplace_back();   // Dummy entry at index 0
+    string_table.emplace_back(); // Dummy entry at index 0
+    hash_node.emplace_back();    // Dummy entry at index 0
 
     // Open input files.
     std::ifstream file1 = open_file(first_fname);
