@@ -1,4 +1,4 @@
-#include <cstdio>
+#include <iostream>
 
 #include "ifcomp.h"
 
@@ -30,7 +30,7 @@ tree_index Ifcomp::pass8_min_cost_node(tree_index start_node, tree_index end_nod
         N = node[N].next;
     }
     if (debug_dump_trees_full)
-        std::printf("min_cost_node(%d,%d)=%d\n", start_node, end_node, min_node);
+        out << "min_cost_node(" << start_node << "," << end_node << ")=" << min_node << "\n";
     return min_node;
 }
 
@@ -92,8 +92,9 @@ void Ifcomp::pass8()
         // Scan through the two files while file1 references the same
         // line in file2.
         if (debug_dump_trees_full)
-            std::printf("node %d lno %d -> %d, node %d lno %d\n", i, true_line_of(i),
-                        file_line[FIRST_FILE][true_line_of(i)].ptr0, j, true_line_of(j));
+            out << "node " << i << " lno " << true_line_of(i) << " -> "
+                << file_line[FIRST_FILE][true_line_of(i)].ptr0 << ", node " << j << " lno "
+                << true_line_of(j) << "\n";
 
         while (i != trees[FIRST_FILE].end &&
                file_line[FIRST_FILE][true_line_of(i)].ptr0 == true_line_of(j)) {
@@ -106,11 +107,23 @@ void Ifcomp::pass8()
 
         tree_index k = pass8_min_cost_node(i, trees[FIRST_FILE].end);
         tree_index l = find_node(trees[SECOND_FILE], file_line[FIRST_FILE][true_line_of(k)].ptr0);
+
+        // If find_node failed (returned NULL_NODE), can't continue with this move
+        if (l == NULL_NODE) {
+            return;
+        }
+
         tree_index m = node[l].prev;
         // m might be the header node with line 0; this requires
         // find_node to be able to find the header node.
         // The original ifcomp program had a bug in this line.
         tree_index n = find_node(trees[FIRST_FILE], file_line[SECOND_FILE][true_line_of(m)].ptr0);
+
+        // If find_node failed (returned NULL_NODE), can't continue with this move
+        if (n == NULL_NODE) {
+            return;
+        }
+
         pass8_move_lines(n, k);
         // We can't detach node l yet. We require keeping all moved
         // segments within the other file, or else we will prevent

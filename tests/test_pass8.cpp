@@ -44,7 +44,8 @@ TEST_F(Pass8, InsertNodeAfter_Basic)
     tree_index trailer = ifc.trees[FIRST_FILE].end;
     (void)trailer; // Suppress unused warning - used for verification
 
-    // Verify initial structure: header -> node1 (matched) -> node2 (unmatched) -> node3 (matched) -> trailer
+    // Verify initial structure: header -> node1 (matched) -> node2 (unmatched) -> node3 (matched)
+    // -> trailer
     EXPECT_EQ(ifc.node[node1].prev, header);
     EXPECT_EQ(ifc.node[node1].next, node2);
     EXPECT_EQ(ifc.node[node2].prev, node1);
@@ -79,10 +80,10 @@ TEST_F(Pass8, InsertNodeAfter_Middle)
 
     tree_index header = ifc.trees[FIRST_FILE].start;
     tree_index node1 = ifc.node[header].next; // matched UNIQUE_A
-    tree_index node2 = ifc.node[node1].next; // unmatched DIFF1
-    tree_index node3 = ifc.node[node2].next; // matched UNIQUE_B
-    tree_index node4 = ifc.node[node3].next; // unmatched DIFF2
-    tree_index node5 = ifc.node[node4].next; // matched UNIQUE_C
+    tree_index node2 = ifc.node[node1].next;  // unmatched DIFF1
+    tree_index node3 = ifc.node[node2].next;  // matched UNIQUE_B
+    tree_index node4 = ifc.node[node3].next;  // unmatched DIFF2
+    tree_index node5 = ifc.node[node4].next;  // matched UNIQUE_C
     tree_index trailer = ifc.trees[FIRST_FILE].end;
     (void)trailer; // Suppress unused warning - used for verification
 
@@ -130,7 +131,7 @@ TEST_F(Pass8, Pass8MinCostNode_MultipleNodes)
     tree_index node1 = ifc.node[header].next;
     tree_index node2 = ifc.node[node1].next;
     tree_index trailer = ifc.trees[FIRST_FILE].end;
-    (void)node2; // Suppress unused warning - used for verification
+    (void)node2;   // Suppress unused warning - used for verification
     (void)trailer; // Suppress unused warning - used in test
 
     // All nodes should have cost 1 (single line each)
@@ -172,8 +173,7 @@ TEST_F(Pass8, Pass8MinCostNode_DifferentCosts)
     current = first_node;
     int min_cost = ifc.node[min_node].cost;
     while (current != trailer) {
-        EXPECT_GE(ifc.node[current].cost, min_cost)
-            << "All nodes should have cost >= minimum";
+        EXPECT_GE(ifc.node[current].cost, min_cost) << "All nodes should have cost >= minimum";
         current = ifc.node[current].next;
     }
 }
@@ -336,8 +336,7 @@ TEST_F(Pass8, SingleMove_Backward)
     i = ifc.node[i].next;
     j = ifc.node[j].next;
 
-    while (i != ifc.trees[FIRST_FILE].end &&
-           j != ifc.trees[SECOND_FILE].end) {
+    while (i != ifc.trees[FIRST_FILE].end && j != ifc.trees[SECOND_FILE].end) {
         line_count ptr0 = ifc.file_line[FIRST_FILE][ifc.true_line_of(i)].ptr0;
         line_count file2_line = ifc.true_line_of(j);
         EXPECT_EQ(ptr0, file2_line) << "Files should be aligned after pass8";
@@ -907,4 +906,3 @@ TEST_F(Pass8, StressTest_ManyMoves)
         j = ifc.node[j].next;
     }
 }
-

@@ -1,13 +1,13 @@
 #include "ifcomp.h"
 
-#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 
 // Ifcomp class implementation
-Ifcomp::Ifcomp()
+Ifcomp::Ifcomp(std::ostream &out) : out(out)
 {
     // Initialize member variables
     total_file_nlines[FIRST_FILE] = 0;
@@ -57,7 +57,7 @@ std::ifstream Ifcomp::open_file(const char *fn)
 {
     std::ifstream file(fn);
     if (!file.is_open()) {
-        std::perror(std::string("Can't open file " + std::string(fn)).c_str());
+        std::cerr << "Can't open file " << fn << std::endl;
         std::exit(1);
     }
     return file;
@@ -68,22 +68,22 @@ std::ifstream Ifcomp::open_file(const char *fn)
 //
 void Ifcomp::format_file_line(const FileLineDecl &p) const
 {
-    std::printf("|%3d|", p.linen);
+    out << "|" << std::setw(3) << p.linen << "|";
     switch (p.ptr_type) {
     case LineType::SYT_TYPE:
-        std::printf("S     ");
+        out << "S     ";
         break;
     case LineType::UNIQUE_TYPE:
-        std::printf("U%5d", p.ptr0);
+        out << "U" << std::setw(5) << p.ptr0;
         break;
     case LineType::MATCH_TYPE:
-        std::printf("M%5d", p.ptr0);
+        out << "M" << std::setw(5) << p.ptr0;
         break;
     default:
-        std::printf("??????");
+        out << "??????";
         break;
     }
-    std::printf("|%s|\n", string_table[p.file_line_text].text.c_str());
+    out << "|" << string_table[p.file_line_text].text << "|\n";
 }
 
 //
@@ -94,16 +94,16 @@ void Ifcomp::test_list(int pass) const
     int i = (total_file_nlines[FIRST_FILE] > total_file_nlines[SECOND_FILE])
                 ? total_file_nlines[FIRST_FILE]
                 : total_file_nlines[SECOND_FILE];
-    std::printf("test list after pass%d\n", pass);
+    out << "test list after pass" << pass << "\n";
     for (line_count j = 1; j <= i; j++) {
         if (j > total_file_nlines[FIRST_FILE])
-            std::printf("=============\n");
+            out << "=============\n";
         else
             format_file_line(file_line[FIRST_FILE][j]);
         if (j <= total_file_nlines[SECOND_FILE])
             format_file_line(file_line[SECOND_FILE][j]);
     }
-    std::printf("\n");
+    out << "\n";
 }
 
 //
@@ -111,12 +111,13 @@ void Ifcomp::test_list(int pass) const
 //
 void Ifcomp::summary() const
 {
-    std::printf("%8d lines deleted from old.\n", delete_stats.non_cosmetic);
-    std::printf("%8d lines inserted in new.\n", insert_stats.non_cosmetic);
-    std::printf("%8d lines deleted from old and replaced with %d lines of new.\n",
-                replace1_stats.non_cosmetic, replace2_stats.non_cosmetic);
-    std::printf("%8d lines moved in old.\n", move_stats.non_cosmetic);
-    std::printf("%8d change blocks.\n", nchange_blocks);
+    out << std::setw(8) << delete_stats.non_cosmetic << " lines deleted from old.\n";
+    out << std::setw(8) << insert_stats.non_cosmetic << " lines inserted in new.\n";
+    out << std::setw(8) << replace1_stats.non_cosmetic
+        << " lines deleted from old and replaced with " << replace2_stats.non_cosmetic
+        << " lines of new.\n";
+    out << std::setw(8) << move_stats.non_cosmetic << " lines moved in old.\n";
+    out << std::setw(8) << nchange_blocks << " change blocks.\n";
 }
 
 //
@@ -205,34 +206,35 @@ void Ifcomp::print_statistics() const
 
     // string_table
     msize = static_cast<unsigned>(string_table.size() * sizeof(StringDecl));
-    std::printf("%8zu (%zu max, %u bytes) %s entries used.\n", string_table.size(),
-                string_table.capacity(), msize, "string");
+    out << std::setw(8) << string_table.size() << " (" << string_table.capacity() << " max, "
+        << msize << " bytes) string entries used.\n";
     mem_used += msize;
 
     // line_table
     msize = static_cast<unsigned>(line_table.size() * sizeof(LineTableDecl));
-    std::printf("%8zu (%zu max, %u bytes) %s entries used.\n", line_table.size(),
-                line_table.capacity(), msize, "line_table");
+    out << std::setw(8) << line_table.size() << " (" << line_table.capacity() << " max, " << msize
+        << " bytes) line_table entries used.\n";
     mem_used += msize;
 
     // file_line[FIRST_FILE]
     msize = static_cast<unsigned>(file_line[FIRST_FILE].size() * sizeof(FileLineDecl));
-    std::printf("%8zu (%zu max, %u bytes) %s entries used.\n", file_line[FIRST_FILE].size(),
-                file_line[FIRST_FILE].capacity(), msize, "file_line[FIRST_FILE]");
+    out << std::setw(8) << file_line[FIRST_FILE].size() << " (" << file_line[FIRST_FILE].capacity()
+        << " max, " << msize << " bytes) file_line[FIRST_FILE] entries used.\n";
     mem_used += msize;
 
     // file_line[SECOND_FILE]
     msize = static_cast<unsigned>(file_line[SECOND_FILE].size() * sizeof(FileLineDecl));
-    std::printf("%8zu (%zu max, %u bytes) %s entries used.\n", file_line[SECOND_FILE].size(),
-                file_line[SECOND_FILE].capacity(), msize, "file_line[SECOND_FILE]");
+    out << std::setw(8) << file_line[SECOND_FILE].size() << " ("
+        << file_line[SECOND_FILE].capacity() << " max, " << msize
+        << " bytes) file_line[SECOND_FILE] entries used.\n";
     mem_used += msize;
 
-    std::printf("\t\thash_node space was freed before allocating nodes:\n");
+    out << "\t\thash_node space was freed before allocating nodes:\n";
 
     // node
     msize = static_cast<unsigned>(node.size() * sizeof(NodeDecl));
-    std::printf("%8zu (%zu max, %u bytes) %s entries used.\n", node.size(), node.capacity(), msize,
-                "node");
+    out << std::setw(8) << node.size() << " (" << node.capacity() << " max, " << msize
+        << " bytes) node entries used.\n";
     mem_used += msize;
 
     // Calculate string bytes
@@ -240,9 +242,9 @@ void Ifcomp::print_statistics() const
     for (const auto &str : string_table) {
         string_bytes += static_cast<long>(str.text.length());
     }
-    std::printf("%8ld bytes of line texts.\n", string_bytes);
+    out << std::setw(8) << string_bytes << " bytes of line texts.\n";
     mem_used += string_bytes;
-    std::printf("%8ld total bytes of memory used.\n", mem_used);
+    out << std::setw(8) << mem_used << " total bytes of memory used.\n";
 }
 
 // Pass function implementations are in pass*.cpp files
@@ -250,7 +252,7 @@ void Ifcomp::print_statistics() const
 // Legacy functions for backward compatibility
 void ifcomp(const char *first_fname, const char *second_fname)
 {
-    Ifcomp ifc;
+    Ifcomp ifc(std::cout);
     ifc.compare(first_fname, second_fname);
 }
 

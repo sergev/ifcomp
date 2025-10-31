@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <fstream>
 #include <functional>
+#include <iostream>
 #include <string>
 #include <vector>
 
@@ -122,7 +123,7 @@ public:
     static CompareResult hashcode_compare(const HashInfo &ha, const HashInfo &hb);
 
     // Constructor
-    Ifcomp();
+    Ifcomp(std::ostream &out = std::cout);
 
     // Destructor
     ~Ifcomp() = default;
@@ -154,6 +155,9 @@ public:
     LineKinds delete_stats, insert_stats, move_stats, replace1_stats, replace2_stats;
     tree_index free_nodes_start;
     TreeBounds trees[TWO_FILES];
+
+    // Output stream reference
+    std::ostream &out;
 
     // Initialization
     void initialize_tables();

@@ -1,4 +1,4 @@
-#include <cstdio>
+#include <iostream>
 
 #include "ifcomp.h"
 
@@ -30,10 +30,16 @@ bool Ifcomp::pass7_combine_adjacent_nodes(tree_index node1)
     }
 
     if (debug_dump_trees_full)
-        std::printf("combine node1=%d ln=%d to node2=%d ln=%d\n", node1, node[node1].linen, node2,
-                    node[node2].linen);
+        out << "combine node1=" << node1 << " ln=" << node[node1].linen << " to node2=" << node2
+            << " ln=" << node[node2].linen << "\n";
     tree_index i = find_node(trees[SECOND_FILE], file_line[FIRST_FILE][true_line_of(node1)].ptr0);
     tree_index j = find_node(trees[SECOND_FILE], file_line[FIRST_FILE][true_line_of(node2)].ptr0);
+
+    // If find_node failed (returned NULL_NODE), can't combine these nodes
+    if (i == NULL_NODE || j == NULL_NODE) {
+        return false;
+    }
+
     if (j == node[i].next) {
         combine_nodes(node1, node2);
         combine_nodes(i, j);
@@ -70,8 +76,8 @@ void Ifcomp::pass7()
         // Safety check: prevent infinite loops
         iteration_count++;
         if (iteration_count > MAX_ITERATIONS) {
-            std::fprintf(stderr, "*** Internal error in pass7: infinite loop detected at node %d\n",
-                         i);
+            std::cerr << "*** Internal error in pass7: infinite loop detected at node " << i
+                      << " after " << iteration_count << " iterations\n";
             std::exit(1);
         }
 

@@ -1,6 +1,6 @@
-#include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <iomanip>
 #include <iostream>
 
 #include "ifcomp.h"
@@ -108,7 +108,7 @@ void Ifcomp::enter_line(const std::string &text, const HashInfo &h, line_count l
                         string_index &result_string_index)
 {
     if (debug_syt_full)
-        std::printf("\nEnter line %s, #%d\n", text.c_str(), linen);
+        out << "\nEnter line " << text << ", #" << linen << "\n";
 
     hash_node_index &hash_start_node = sec_hash_start_node[h.h1 % NBUCKETS];
     string_index SI;
@@ -173,7 +173,7 @@ void Ifcomp::enter_line(const std::string &text, const HashInfo &h, line_count l
 
     // Add to chain.
     if (last_node == NULL_HASH_LIST) {
-        std::printf("?OOPS empty list!\n");
+        out << "?OOPS empty list!\n";
     }
     hash_node[last_node].next_in_bucket = current_node =
         setup_hash_node(SI, text, linen, input_file, h);
@@ -181,50 +181,40 @@ void Ifcomp::enter_line(const std::string &text, const HashInfo &h, line_count l
     result_string_index = SI;
 }
 
-// Debug functions
-static void print_hash_node(const HashNodeDecl &p)
-{
-    std::printf("h2=%lx  h1=%x  text_list=%d  nextb=%d\n", static_cast<unsigned long>(p.h.h2),
-                p.h.h1, p.text_list, p.next_in_bucket);
-}
-
-static void print_string(const StringDecl &p)
-{
-    std::printf("| %s | nexth=%d f1l=%d f2l=%d f1lst=%d f2lst=%d\n", p.text.c_str(),
-                p.next_text_with_same_hash, p.file_nlines[FIRST_FILE], p.file_nlines[SECOND_FILE],
-                p.file_list[FIRST_FILE], p.file_list[SECOND_FILE]);
-}
-
 //
 // Dump hash node information for debugging (symbol table debug function).
 //
 void Ifcomp::dump_hash_node(hash_node_index node_idx) const
 {
-    std::printf("hash_node  %d: ", node_idx);
-    print_hash_node(hash_node[node_idx]);
-    std::printf("\n");
+    const HashNodeDecl &p = hash_node[node_idx];
+    out << "hash_node  " << node_idx << ": " << std::hex << "h2=" << p.h.h2 << "  h1=" << p.h.h1
+        << std::dec << "  text_list=" << p.text_list << "  nextb=" << p.next_in_bucket << "\n\n";
     string_index T = hash_node[node_idx].text_list;
     while (T != NULL_STRING_LIST) {
-        std::printf("string %d: ", T);
-        print_string(string_table[T]);
+        out << "string " << T << ": | " << string_table[T].text
+            << " | nexth=" << string_table[T].next_text_with_same_hash
+            << " f1l=" << static_cast<int>(string_table[T].file_nlines[FIRST_FILE])
+            << " f2l=" << static_cast<int>(string_table[T].file_nlines[SECOND_FILE])
+            << " f1lst=" << string_table[T].file_list[FIRST_FILE]
+            << " f2lst=" << string_table[T].file_list[SECOND_FILE] << "\n";
 
         // Print file_list1
-        std::printf("file_list1 for text %d: ", T);
+        out << "file_list1 for text " << T << ":";
         int list = string_table[T].file_list[FIRST_FILE];
         while (list != NULL_LINE_LIST) {
-            std::printf(" %5d@%d", line_table[list].linen, list);
+            out << " " << std::setw(5) << line_table[list].linen << "@" << list;
             list = line_table[list].next;
         }
-        std::printf("\n");
+        out << "\n";
 
         // Print file_list2
-        std::printf("file_list2 for text %d: ", T);
+        out << "file_list2 for text " << T << ":";
         list = string_table[T].file_list[SECOND_FILE];
         while (list != NULL_LINE_LIST) {
-            std::printf(" %5d@%d", line_table[list].linen, list);
+            out << " " << std::setw(5) << line_table[list].linen << "@" << list;
             list = line_table[list].next;
         }
-        std::printf("\n");
+        out << "\n";
 
         T = string_table[T].next_text_with_same_hash;
     }
@@ -235,7 +225,7 @@ void Ifcomp::dump_hash_node(hash_node_index node_idx) const
 //
 void Ifcomp::dump_syt(hash_node_index start_node) const
 {
-    std::printf("** symbol table dump **, start=%d \n", start_node);
+    out << "** symbol table dump **, start=" << start_node << " \n";
     while (start_node != NULL_HASH_LIST) {
         dump_hash_node(start_node);
         start_node = hash_node[start_node].next_in_bucket;
@@ -253,7 +243,7 @@ void Ifcomp::read_lines(int which_file, std::istream &input_file)
 
     while (std::getline(input_file, line)) {
         if (debug_read_current_line)
-            std::printf("read %s\n", line.c_str());
+            out << "read " << line << "\n";
 
         current_line++;
 
@@ -278,7 +268,7 @@ void Ifcomp::read_lines(int which_file, std::istream &input_file)
 
     total_file_nlines[which_file] = current_line;
     if (current_line == 0) {
-        std::printf("File %d has no lines.\n", which_file);
+        out << "File " << which_file << " has no lines.\n";
         std::exit(which_file);
     }
 }

@@ -1,7 +1,8 @@
 #include <algorithm>
-#include <cstdio>
 #include <cstdlib>
 #include <functional>
+#include <iomanip>
+#include <iostream>
 
 #include "ifcomp.h"
 
@@ -50,7 +51,7 @@ tree_index Ifcomp::make_node(const NodeDecl &p)
     node.push_back(p);
     tree_index i = static_cast<tree_index>(node.size() - 1);
     if (debug_dump_trees_full) {
-        std::printf("just made ");
+        out << "just made ";
         format_node(i, 0);
     }
     return i;
@@ -119,19 +120,19 @@ void Ifcomp::count_node(tree_index noden, LineKinds &p)
 void Ifcomp::format_node(tree_index noden, int pad) const
 {
     for (int i = 0; i < pad; i++)
-        std::printf(" ");
+        out << " ";
 
     const NodeDecl &n = node[noden];
-    std::printf("[%d<-N%d->%d, cost=%2d linen=%2d", n.prev, noden, n.next, n.cost, n.linen);
+    out << "[" << n.prev << "<-N" << noden << "->" << n.next << ", cost=" << std::setw(2) << n.cost
+        << " linen=" << std::setw(2) << n.linen;
 
     line_count L = n.linen;
-    int fileno = get_which_file(L);
     L = get_abs_line(L);
-    std::printf("(%d)", file_line[fileno][L].ptr0);
+    out << "(" << L << ")";
 
     if (n.branch_start != NULL_NODE || n.branch_end != NULL_NODE)
-        std::printf(" bs=%2d be=%2d", n.branch_start, n.branch_end);
-    std::printf("]\n");
+        out << " bs=" << std::setw(2) << n.branch_start << " be=" << std::setw(2) << n.branch_end;
+    out << "]\n";
 }
 
 //
@@ -139,11 +140,12 @@ void Ifcomp::format_node(tree_index noden, int pad) const
 //
 void Ifcomp::print_node1(tree_index noden, bool always, int starting_line) const
 {
-    static auto print_node1_callback = [](int which_file, const std::string &text, int lineno) {
-        std::printf("%c%6d|%s\n", which_file == FIRST_FILE ? ' ' : '+', lineno, text.c_str());
-    };
-
-    each_line_in_node(noden, always, starting_line, print_node1_callback);
+    // Use a lambda that captures 'this' to access the 'out' member
+    each_line_in_node(noden, always, starting_line,
+                      [this](int which_file, const std::string &text, int lineno) {
+                          out << (which_file == FIRST_FILE ? ' ' : '+') << std::setw(6) << lineno
+                              << "|" << text << "\n";
+                      });
 }
 
 //
@@ -159,7 +161,7 @@ void Ifcomp::print_node(tree_index noden) const
 //
 void Ifcomp::dump_tree(tree_index tree_start) const
 {
-    std::printf("Tree %d:\n", tree_start);
+    out << "Tree " << tree_start << ":\n";
     bool branch = false;
     tree_index T = tree_start;
     while (T != NULL_NODE) {
@@ -190,7 +192,10 @@ void Ifcomp::dump_trees(int pass) const
     if (!debug_dump_trees)
         return;
     constexpr int no_pass_value = 99;
-    std::printf(pass == no_pass_value ? "dump trees\n" : "dump_trees after pass%d\n", pass);
+    if (pass == no_pass_value)
+        out << "dump trees\n";
+    else
+        out << "dump_trees after pass" << pass << "\n";
     dump_tree(trees[FIRST_FILE].start);
     dump_tree(trees[SECOND_FILE].start);
 }
@@ -201,7 +206,7 @@ void Ifcomp::dump_trees(int pass) const
 void Ifcomp::pass5_doit(int fileno, NodeDecl &Np)
 {
     if (debug_dump_trees)
-        std::printf("Make tree for file %d\n", fileno + 1);
+        out << "Make tree for file " << (fileno + 1) << "\n";
 
     // This tree is initially just a doubly-linked list of the separate
     // segments of the file that were identified in previous passes.

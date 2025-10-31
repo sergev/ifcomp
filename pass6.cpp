@@ -1,6 +1,7 @@
-#include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <iomanip>
+#include <iostream>
 
 #include "ifcomp.h"
 
@@ -19,24 +20,26 @@ tree_index Ifcomp::find_node(const TreeBounds &T, tree_index linen) const
     while (N != T.end) {
         if (true_line_of(N) == abs_linen) {
             if (debug_dump_trees_full)
-                std::printf("In tree %d:%d, find line %d at %d\n", T.start, T.end, linen, N);
+                out << "In tree " << T.start << ":" << T.end << ", find line " << linen << " at "
+                    << N << "\n";
             return N;
         }
         N = node[N].next;
     }
-    // OK, tell how the problem happened:
-    N = T.start;
-    std::printf("[");
-    while (N != T.end) {
-        std::printf("%d ", N);
-        N = node[N].next;
+    // Node not found - return NULL_NODE instead of crashing
+    if (debug_dump_trees_full) {
+        // Debug info if requested
+        N = T.start;
+        out << "[";
+        while (N != T.end) {
+            out << N << " ";
+            N = node[N].next;
+        }
+        out << "] ln=" << linen << "\n";
+        out << "*** Warning: find_node could not find line " << linen << " in tree " << T.start
+            << ":" << T.end << "\n";
     }
-    std::printf("] ln=%d\n", linen);
-    std::fprintf(stderr, "*** Internal error in procedure find_node: sn=%d en=%d l=%d\n", T.start,
-                 T.end, linen);
-    std::printf("\n");
-    std::exit(1);
-    return 0;
+    return NULL_NODE;
 }
 
 //
@@ -102,26 +105,18 @@ void Ifcomp::combine_nodes(tree_index node1, tree_index node2)
     node[branch_link2].prev = branch_link1;
 }
 
-void ph(const char *s, char dash, bool space)
-{
-    int len = static_cast<int>(std::strlen(s));
-    std::printf("*** %s", s);
-    int pad = 52;
-    if (space)
-        std::printf(" ");
-    else
-        pad++;
-    for (int i = 0; i < pad - len; i++)
-        std::printf("%c", dash);
-    std::printf(" ***\n");
-}
-
 //
 // Print formatted header with equals separator.
 //
 void Ifcomp::print_header(const char *s) const
 {
-    ph(s, '=', true);
+    int len = static_cast<int>(std::strlen(s));
+    out << "*** " << s;
+    int pad = 52;
+    out << " ";
+    for (int i = 0; i < pad - len; i++)
+        out << '=';
+    out << " ***\n";
 }
 
 //
@@ -129,7 +124,13 @@ void Ifcomp::print_header(const char *s) const
 //
 void Ifcomp::print_header1(const char *s) const
 {
-    ph(s, '-', true);
+    int len = static_cast<int>(std::strlen(s));
+    out << "*** " << s;
+    int pad = 52;
+    out << " ";
+    for (int i = 0; i < pad - len; i++)
+        out << '-';
+    out << " ***\n";
 }
 
 //
@@ -137,8 +138,10 @@ void Ifcomp::print_header1(const char *s) const
 //
 void Ifcomp::print_trailer() const
 {
-    ph("", '=', false);
-    std::printf("\n");
+    out << "*** ";
+    for (int i = 0; i < 53; i++)
+        out << '=';
+    out << " ***\n\n";
 }
 
 //
@@ -264,6 +267,12 @@ tree_index Ifcomp::pass6_replaceable(tree_index noden) const
     // Lookup that previous node in the other file.
     tree_index prev_other_file =
         find_node(trees[SECOND_FILE], file_line[FIRST_FILE][true_line_of(prev)].ptr0);
+
+    // If find_node failed (returned NULL_NODE), can't replace
+    if (prev_other_file == NULL_NODE) {
+        return NULL_NODE;
+    }
+
     // OK, now find the successor that node in the other file.
     // This corresponds to our noden.
     tree_index noden_other_file = node[prev_other_file].next;
@@ -271,8 +280,8 @@ tree_index Ifcomp::pass6_replaceable(tree_index noden) const
     // it isn't a replacement.
     if (node[noden_other_file].cost >= 0) {
         if (debug_dump_trees_full)
-            std::printf("replaceable fails: noden_other_file(%d) has neg cost.\n",
-                        noden_other_file);
+            out << "replaceable fails: noden_other_file(" << noden_other_file
+                << ") has neg cost.\n";
         return NULL_NODE;
     }
     return noden_other_file;
@@ -297,12 +306,23 @@ void Ifcomp::pass6_replace_lines(tree_index node1, tree_index node2)
     print_header1("WITH LINE(s)");
     print_node(node2);
     print_trailer();
+
+    // Save what comes after node1 before detaching
+    tree_index saved_next = node[node1].next;
+
     detach_node(node1);
     if (prev == trees[FIRST_FILE].start) {
         detach_node(node2);
+        // Attach node2 as a branch to the header
         node[trees[FIRST_FILE].start].branch_start = node[trees[FIRST_FILE].start].branch_end =
             node2;
-        node[node2].prev = node[node2].next = trees[FIRST_FILE].start;
+        // Fix: node2 should point to what was after node1, not back to header
+        node[node2].prev = trees[FIRST_FILE].start;
+        node[node2].next = saved_next;
+        // Update the next node's prev pointer to maintain chain
+        node[saved_next].prev = node2;
+        // Update header's next pointer to point to node2
+        node[trees[FIRST_FILE].start].next = node2;
     } else {
         combine_nodes(prev, node2);
     }
@@ -328,6 +348,16 @@ void Ifcomp::pass6_insert_lines(tree_index noden)
         print_node(trees[FIRST_FILE].start);
     } else {
         tree_index j = find_node(trees[FIRST_FILE], file_line[SECOND_FILE][true_line_of(i)].ptr0);
+
+        if (j == NULL_NODE) {
+            // If find_node failed, just skip this insertion to avoid crashes
+            // Detach the node and free it to clean up
+            detach_node(noden);
+            free_node(noden);
+            nchange_blocks--; // Don't count this failed insertion
+            return;
+        }
+
         after_lines(j);
         print_header1("INSERT LINE(s)");
         print_node(noden);
