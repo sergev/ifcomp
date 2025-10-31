@@ -6,7 +6,7 @@
 #include "../ifcomp.h"
 
 // Test fixture that properly initializes and cleans up state using Ifcomp class
-class Pass1TestFixture : public ::testing::Test {
+class Pass1 : public ::testing::Test {
 protected:
     void SetUp() override
     {
@@ -26,14 +26,14 @@ public:
 // Tests for hash_line()
 // ============================================================================
 
-TEST_F(Pass1TestFixture, HashLine_EmptyString)
+TEST_F(Pass1, HashLine_EmptyString)
 {
     HashInfo h = Ifcomp::hash_line("");
     EXPECT_EQ(h.h1, 0u) << "Empty string should have length 0 in upper byte";
     EXPECT_EQ(h.h2, 0) << "Empty string should have h2 = 0";
 }
 
-TEST_F(Pass1TestFixture, HashLine_SingleCharacter)
+TEST_F(Pass1, HashLine_SingleCharacter)
 {
     HashInfo h = Ifcomp::hash_line("A");
     EXPECT_NE(h.h1, 0u) << "Single character should produce non-zero hash";
@@ -42,7 +42,7 @@ TEST_F(Pass1TestFixture, HashLine_SingleCharacter)
     EXPECT_EQ((h.h1 >> 8), 1u) << "Length should be 1";
 }
 
-TEST_F(Pass1TestFixture, HashLine_TwoCharacters)
+TEST_F(Pass1, HashLine_TwoCharacters)
 {
     HashInfo h = Ifcomp::hash_line("AB");
     EXPECT_NE(h.h1, 0u);
@@ -50,14 +50,14 @@ TEST_F(Pass1TestFixture, HashLine_TwoCharacters)
     EXPECT_EQ((h.h1 >> 8), 2u) << "Length should be 2";
 }
 
-TEST_F(Pass1TestFixture, HashLine_OddLength)
+TEST_F(Pass1, HashLine_OddLength)
 {
     HashInfo h = Ifcomp::hash_line("ABC");
     EXPECT_EQ((h.h1 >> 8), 3u) << "Length should be 3";
     // Odd length should include 0 in hash calculation
 }
 
-TEST_F(Pass1TestFixture, HashLine_IdenticalStrings)
+TEST_F(Pass1, HashLine_IdenticalStrings)
 {
     HashInfo h1 = Ifcomp::hash_line("TEST");
     HashInfo h2 = Ifcomp::hash_line("TEST");
@@ -65,7 +65,7 @@ TEST_F(Pass1TestFixture, HashLine_IdenticalStrings)
     EXPECT_EQ(h1.h2, h2.h2) << "Identical strings should produce same h2";
 }
 
-TEST_F(Pass1TestFixture, HashLine_DifferentStrings)
+TEST_F(Pass1, HashLine_DifferentStrings)
 {
     HashInfo h1 = Ifcomp::hash_line("TEST1");
     HashInfo h2 = Ifcomp::hash_line("TEST2");
@@ -74,14 +74,14 @@ TEST_F(Pass1TestFixture, HashLine_DifferentStrings)
     EXPECT_TRUE(different) << "Different strings should produce different hashes";
 }
 
-TEST_F(Pass1TestFixture, HashLine_LongString)
+TEST_F(Pass1, HashLine_LongString)
 {
     std::string long_str(100, 'X');
     HashInfo h = Ifcomp::hash_line(long_str);
     EXPECT_EQ((h.h1 >> 8), 100u) << "Length should be 100";
 }
 
-TEST_F(Pass1TestFixture, HashLine_SpecialCharacters)
+TEST_F(Pass1, HashLine_SpecialCharacters)
 {
     HashInfo h1 = Ifcomp::hash_line("Hello\n");
     HashInfo h2 = Ifcomp::hash_line("Hello\t");
@@ -90,7 +90,7 @@ TEST_F(Pass1TestFixture, HashLine_SpecialCharacters)
     EXPECT_TRUE(different);
 }
 
-TEST_F(Pass1TestFixture, HashLine_UnicodeOrSpecialBytes)
+TEST_F(Pass1, HashLine_UnicodeOrSpecialBytes)
 {
     // Test with various byte values
     std::string str1 = "\x00\x01";
@@ -106,42 +106,42 @@ TEST_F(Pass1TestFixture, HashLine_UnicodeOrSpecialBytes)
 // Tests for hashcode_compare()
 // ============================================================================
 
-TEST_F(Pass1TestFixture, HashcodeCompare_Equal)
+TEST_F(Pass1, HashcodeCompare_Equal)
 {
     HashInfo h1{ 0x1234, 0x5678 };
     HashInfo h2{ 0x1234, 0x5678 };
     EXPECT_EQ(Ifcomp::hashcode_compare(h1, h2), CompareResult::EQ);
 }
 
-TEST_F(Pass1TestFixture, HashcodeCompare_LessThan_H1)
+TEST_F(Pass1, HashcodeCompare_LessThan_H1)
 {
     HashInfo h1{ 0x1000, 0x5678 };
     HashInfo h2{ 0x2000, 0x5678 };
     EXPECT_EQ(Ifcomp::hashcode_compare(h1, h2), CompareResult::LT);
 }
 
-TEST_F(Pass1TestFixture, HashcodeCompare_GreaterThan_H1)
+TEST_F(Pass1, HashcodeCompare_GreaterThan_H1)
 {
     HashInfo h1{ 0x2000, 0x5678 };
     HashInfo h2{ 0x1000, 0x5678 };
     EXPECT_EQ(Ifcomp::hashcode_compare(h1, h2), CompareResult::GT);
 }
 
-TEST_F(Pass1TestFixture, HashcodeCompare_LessThan_H2)
+TEST_F(Pass1, HashcodeCompare_LessThan_H2)
 {
     HashInfo h1{ 0x1234, 0x1000 };
     HashInfo h2{ 0x1234, 0x2000 };
     EXPECT_EQ(Ifcomp::hashcode_compare(h1, h2), CompareResult::LT);
 }
 
-TEST_F(Pass1TestFixture, HashcodeCompare_GreaterThan_H2)
+TEST_F(Pass1, HashcodeCompare_GreaterThan_H2)
 {
     HashInfo h1{ 0x1234, 0x2000 };
     HashInfo h2{ 0x1234, 0x1000 };
     EXPECT_EQ(Ifcomp::hashcode_compare(h1, h2), CompareResult::GT);
 }
 
-TEST_F(Pass1TestFixture, HashcodeCompare_EqualH1DifferentH2)
+TEST_F(Pass1, HashcodeCompare_EqualH1DifferentH2)
 {
     HashInfo h1{ 0x1234, 0x1000 };
     HashInfo h2{ 0x1234, 0x2000 };
@@ -153,7 +153,7 @@ TEST_F(Pass1TestFixture, HashcodeCompare_EqualH1DifferentH2)
 // Tests for make_line_entry()
 // ============================================================================
 
-TEST_F(Pass1TestFixture, MakeLineEntry_Basic)
+TEST_F(Pass1, MakeLineEntry_Basic)
 {
     line_count entry = ifc.make_line_entry(10, NULL_LINE_LIST);
     EXPECT_GE(entry, 0) << "Should return valid entry index";
@@ -161,7 +161,7 @@ TEST_F(Pass1TestFixture, MakeLineEntry_Basic)
     EXPECT_EQ(ifc.line_table[entry].next, NULL_LINE_LIST);
 }
 
-TEST_F(Pass1TestFixture, MakeLineEntry_WithNext)
+TEST_F(Pass1, MakeLineEntry_WithNext)
 {
     line_count first = ifc.make_line_entry(1, NULL_LINE_LIST);
     line_count second = ifc.make_line_entry(2, first);
@@ -169,7 +169,7 @@ TEST_F(Pass1TestFixture, MakeLineEntry_WithNext)
     EXPECT_EQ(ifc.line_table[second].next, first);
 }
 
-TEST_F(Pass1TestFixture, MakeLineEntry_Chain)
+TEST_F(Pass1, MakeLineEntry_Chain)
 {
     line_count entry1 = ifc.make_line_entry(1, NULL_LINE_LIST);
     line_count entry2 = ifc.make_line_entry(2, entry1);
@@ -187,7 +187,7 @@ TEST_F(Pass1TestFixture, MakeLineEntry_Chain)
 // Tests for setup_distinct_text()
 // ============================================================================
 
-TEST_F(Pass1TestFixture, SetupDistinctText_Basic)
+TEST_F(Pass1, SetupDistinctText_Basic)
 {
     string_index si = ifc.setup_distinct_text("TEST", 5, FIRST_FILE);
     EXPECT_GE(si, 0);
@@ -203,7 +203,7 @@ TEST_F(Pass1TestFixture, SetupDistinctText_Basic)
     EXPECT_EQ(ifc.string_table[si].next_text_with_same_hash, NULL_STRING_LIST);
 }
 
-TEST_F(Pass1TestFixture, SetupDistinctText_SecondFile)
+TEST_F(Pass1, SetupDistinctText_SecondFile)
 {
     string_index si = ifc.setup_distinct_text("TEST", 10, SECOND_FILE);
     EXPECT_EQ(ifc.string_table[si].file_nlines[FIRST_FILE], 0);
@@ -215,7 +215,7 @@ TEST_F(Pass1TestFixture, SetupDistinctText_SecondFile)
     EXPECT_EQ(ifc.line_table[line_entry].linen, 10);
 }
 
-TEST_F(Pass1TestFixture, SetupDistinctText_LineNumberStored)
+TEST_F(Pass1, SetupDistinctText_LineNumberStored)
 {
     string_index si = ifc.setup_distinct_text("LINE", 42, FIRST_FILE);
     line_count line_entry = ifc.string_table[si].file_list[FIRST_FILE];
@@ -226,7 +226,7 @@ TEST_F(Pass1TestFixture, SetupDistinctText_LineNumberStored)
 // Tests for setup_hash_node()
 // ============================================================================
 
-TEST_F(Pass1TestFixture, SetupHashNode_Basic)
+TEST_F(Pass1, SetupHashNode_Basic)
 {
     string_index tip;
     HashInfo h{ 0x1234, 0x5678 };
@@ -245,7 +245,7 @@ TEST_F(Pass1TestFixture, SetupHashNode_Basic)
 // Tests for add_linen_to_text_list()
 // ============================================================================
 
-TEST_F(Pass1TestFixture, AddLinenToTextList_FirstFile)
+TEST_F(Pass1, AddLinenToTextList_FirstFile)
 {
     string_index si = ifc.setup_distinct_text("TEST", 1, FIRST_FILE);
 
@@ -261,7 +261,7 @@ TEST_F(Pass1TestFixture, AddLinenToTextList_FirstFile)
     EXPECT_EQ(ifc.line_table[next_entry].linen, 1);
 }
 
-TEST_F(Pass1TestFixture, AddLinenToTextList_SecondFile)
+TEST_F(Pass1, AddLinenToTextList_SecondFile)
 {
     string_index si = ifc.setup_distinct_text("TEST", 1, SECOND_FILE);
 
@@ -271,7 +271,7 @@ TEST_F(Pass1TestFixture, AddLinenToTextList_SecondFile)
     EXPECT_EQ(ifc.string_table[si].file_nlines[FIRST_FILE], 0);
 }
 
-TEST_F(Pass1TestFixture, AddLinenToTextList_MultipleAdditions)
+TEST_F(Pass1, AddLinenToTextList_MultipleAdditions)
 {
     string_index si = ifc.setup_distinct_text("TEST", 1, FIRST_FILE);
 
@@ -297,7 +297,7 @@ TEST_F(Pass1TestFixture, AddLinenToTextList_MultipleAdditions)
 // Tests for enter_line()
 // ============================================================================
 
-TEST_F(Pass1TestFixture, EnterLine_FirstEntryInBucket)
+TEST_F(Pass1, EnterLine_FirstEntryInBucket)
 {
     HashInfo h = Ifcomp::hash_line("TEST");
     hash_node_index result_hash_node;
@@ -314,7 +314,7 @@ TEST_F(Pass1TestFixture, EnterLine_FirstEntryInBucket)
     EXPECT_EQ(ifc.string_table[result_string_index].text, "TEST");
 }
 
-TEST_F(Pass1TestFixture, EnterLine_DuplicateLineSameFile)
+TEST_F(Pass1, EnterLine_DuplicateLineSameFile)
 {
     HashInfo h = Ifcomp::hash_line("TEST");
     hash_node_index result_hash_node1, result_hash_node2;
@@ -330,7 +330,7 @@ TEST_F(Pass1TestFixture, EnterLine_DuplicateLineSameFile)
     EXPECT_EQ(ifc.string_table[result_string_index1].file_nlines[FIRST_FILE], 2);
 }
 
-TEST_F(Pass1TestFixture, EnterLine_DifferentLinesSameHash)
+TEST_F(Pass1, EnterLine_DifferentLinesSameHash)
 {
     // Try to find two different lines that hash to same bucket
     // This is probabilistic, so we'll try common cases
@@ -352,7 +352,7 @@ TEST_F(Pass1TestFixture, EnterLine_DifferentLinesSameHash)
     }
 }
 
-TEST_F(Pass1TestFixture, EnterLine_ExactMatchReusesString)
+TEST_F(Pass1, EnterLine_ExactMatchReusesString)
 {
     HashInfo h = Ifcomp::hash_line("SAME");
     hash_node_index node1, node2;
@@ -365,7 +365,7 @@ TEST_F(Pass1TestFixture, EnterLine_ExactMatchReusesString)
     EXPECT_EQ(node1, node2) << "Exact text match should use same hash node";
 }
 
-TEST_F(Pass1TestFixture, EnterLine_SameHashDifferentText)
+TEST_F(Pass1, EnterLine_SameHashDifferentText)
 {
     // This tests the collision handling within same hash bucket
     // We test the hash collision path by using the same hash info manually
@@ -393,7 +393,7 @@ TEST_F(Pass1TestFixture, EnterLine_SameHashDifferentText)
 // Tests for read_lines()
 // ============================================================================
 
-TEST_F(Pass1TestFixture, ReadLines_SingleLine)
+TEST_F(Pass1, ReadLines_SingleLine)
 {
     std::istringstream input("LINE1\n");
     ifc.read_lines(FIRST_FILE, input);
@@ -406,7 +406,7 @@ TEST_F(Pass1TestFixture, ReadLines_SingleLine)
     EXPECT_EQ(ifc.file_line[FIRST_FILE][1].ptr_type, LineType::SYT_TYPE);
 }
 
-TEST_F(Pass1TestFixture, ReadLines_MultipleLines)
+TEST_F(Pass1, ReadLines_MultipleLines)
 {
     std::istringstream input("LINE1\nLINE2\nLINE3\n");
     ifc.read_lines(FIRST_FILE, input);
@@ -417,7 +417,7 @@ TEST_F(Pass1TestFixture, ReadLines_MultipleLines)
     EXPECT_EQ(ifc.string_table[ifc.file_line[FIRST_FILE][3].file_line_text].text, "LINE3");
 }
 
-TEST_F(Pass1TestFixture, ReadLines_DuplicateLines)
+TEST_F(Pass1, ReadLines_DuplicateLines)
 {
     std::istringstream input("SAME\nSAME\nSAME\n");
     ifc.read_lines(FIRST_FILE, input);
@@ -443,7 +443,7 @@ TEST_F(Pass1TestFixture, ReadLines_DuplicateLines)
     }
 }
 
-TEST_F(Pass1TestFixture, ReadLines_EmptyLines)
+TEST_F(Pass1, ReadLines_EmptyLines)
 {
     std::istringstream input("\n\nLINE\n");
     ifc.read_lines(FIRST_FILE, input);
@@ -454,7 +454,7 @@ TEST_F(Pass1TestFixture, ReadLines_EmptyLines)
     EXPECT_EQ(ifc.string_table[ifc.file_line[FIRST_FILE][3].file_line_text].text, "LINE");
 }
 
-TEST_F(Pass1TestFixture, ReadLines_NoTrailingNewline)
+TEST_F(Pass1, ReadLines_NoTrailingNewline)
 {
     std::istringstream input("LINE1\nLINE2");
     ifc.read_lines(FIRST_FILE, input);
@@ -464,7 +464,7 @@ TEST_F(Pass1TestFixture, ReadLines_NoTrailingNewline)
     EXPECT_EQ(ifc.string_table[ifc.file_line[FIRST_FILE][2].file_line_text].text, "LINE2");
 }
 
-TEST_F(Pass1TestFixture, ReadLines_LongLine)
+TEST_F(Pass1, ReadLines_LongLine)
 {
     std::string long_line(1000, 'X');
     std::istringstream input(long_line + "\n");
@@ -474,7 +474,7 @@ TEST_F(Pass1TestFixture, ReadLines_LongLine)
     EXPECT_EQ(ifc.string_table[ifc.file_line[FIRST_FILE][1].file_line_text].text, long_line);
 }
 
-TEST_F(Pass1TestFixture, ReadLines_SpecialCharacters)
+TEST_F(Pass1, ReadLines_SpecialCharacters)
 {
     std::istringstream input("LINE\tWITH\tTABS\nLINE WITH SPACES\n");
     ifc.read_lines(FIRST_FILE, input);
@@ -490,7 +490,7 @@ TEST_F(Pass1TestFixture, ReadLines_SpecialCharacters)
 // Tests for pass1()
 // ============================================================================
 
-TEST_F(Pass1TestFixture, Pass1_TwoIdenticalFiles)
+TEST_F(Pass1, TwoIdenticalFiles)
 {
     std::istringstream file1("A\nB\nC\n");
     std::istringstream file2("A\nB\nC\n");
@@ -513,7 +513,7 @@ TEST_F(Pass1TestFixture, Pass1_TwoIdenticalFiles)
     EXPECT_GE(si2_a, 0);
 }
 
-TEST_F(Pass1TestFixture, Pass1_TwoDifferentFiles)
+TEST_F(Pass1, TwoDifferentFiles)
 {
     std::istringstream file1("A\nB\n");
     std::istringstream file2("C\nD\n");
@@ -529,7 +529,7 @@ TEST_F(Pass1TestFixture, Pass1_TwoDifferentFiles)
     EXPECT_NE(si_a, si_c) << "Different lines should map to different string entries";
 }
 
-TEST_F(Pass1TestFixture, Pass1_PartialOverlap)
+TEST_F(Pass1, PartialOverlap)
 {
     std::istringstream file1("A\nB\nC\n");
     std::istringstream file2("A\nX\nC\n");
@@ -554,7 +554,7 @@ TEST_F(Pass1TestFixture, Pass1_PartialOverlap)
     EXPECT_EQ(ifc.string_table[si_c2].text, "C");
 }
 
-TEST_F(Pass1TestFixture, Pass1_DuplicateLinesInBothFiles)
+TEST_F(Pass1, DuplicateLinesInBothFiles)
 {
     std::istringstream file1("SAME\nSAME\n");
     std::istringstream file2("SAME\nSAME\nSAME\n");
@@ -588,7 +588,7 @@ TEST_F(Pass1TestFixture, Pass1_DuplicateLinesInBothFiles)
     }
 }
 
-TEST_F(Pass1TestFixture, Pass1_ClearsHashNodesAfterCompletion)
+TEST_F(Pass1, ClearsHashNodesAfterCompletion)
 {
     std::istringstream file1("A\nB\n");
     std::istringstream file2("C\nD\n");
@@ -599,7 +599,7 @@ TEST_F(Pass1TestFixture, Pass1_ClearsHashNodesAfterCompletion)
     EXPECT_TRUE(ifc.hash_node.empty()) << "pass1 should clear hash_node after completion";
 }
 
-TEST_F(Pass1TestFixture, Pass1_FileWithManyLines)
+TEST_F(Pass1, FileWithManyLines)
 {
     std::ostringstream file1_content, file2_content;
     for (int i = 0; i < 100; i++) {
@@ -620,7 +620,7 @@ TEST_F(Pass1TestFixture, Pass1_FileWithManyLines)
 // Edge cases and stress tests
 // ============================================================================
 
-TEST_F(Pass1TestFixture, EnterLine_ManyCollisionsInSameBucket)
+TEST_F(Pass1, EnterLine_ManyCollisionsInSameBucket)
 {
     // Try to create many entries in the same bucket
     // by using lines that hash to same bucket
@@ -634,7 +634,7 @@ TEST_F(Pass1TestFixture, EnterLine_ManyCollisionsInSameBucket)
     }
 }
 
-TEST_F(Pass1TestFixture, HashLine_AllASCIICharacters)
+TEST_F(Pass1, HashLine_AllASCIICharacters)
 {
     std::string all_chars;
     for (int i = 1; i < 128; i++) {
@@ -644,7 +644,7 @@ TEST_F(Pass1TestFixture, HashLine_AllASCIICharacters)
     EXPECT_EQ((h.h1 >> 8), 127u) << "Length should be 127";
 }
 
-TEST_F(Pass1TestFixture, MakeLineEntry_ManyEntries)
+TEST_F(Pass1, MakeLineEntry_ManyEntries)
 {
     line_count prev = NULL_LINE_LIST;
     for (int i = 1; i <= 100; i++) {
