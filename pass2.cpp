@@ -1,5 +1,5 @@
-#include "pass2.hpp"
-#include "ifcomp_types.hpp"
+#include "pass2.h"
+#include "ifcomp_types.h"
 
 void pass2() {
     for (size_t i = 1; i < string_table.size(); i++) {

@@ -1,5 +1,5 @@
-#include "pass4.hpp"
-#include "ifcomp_types.hpp"
+#include "pass4.h"
+#include "ifcomp_types.h"
 
 void pass4() {
     line_count m = total_file_nlines[first_file];

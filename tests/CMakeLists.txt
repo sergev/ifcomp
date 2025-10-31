@@ -50,7 +50,7 @@ target_link_libraries(test_ifcomp
 add_test(NAME test_ifcomp COMMAND test_ifcomp)
 set_tests_properties(test_ifcomp PROPERTIES TIMEOUT 60)
 
-# Include parent directory for ifcomp.hpp
+# Include parent directory for ifcomp.h
 target_include_directories(test_ifcomp PRIVATE ${CMAKE_SOURCE_DIR})
 
 # Use C17 standard for C++ compilation

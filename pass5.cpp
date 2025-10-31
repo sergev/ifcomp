@@ -1,5 +1,5 @@
-#include "pass5.hpp"
-#include "ifcomp_types.hpp"
+#include "pass5.h"
+#include "ifcomp_types.h"
 
 #include <algorithm>
 #include <cstdio>

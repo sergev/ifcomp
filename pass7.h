@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ifcomp_types.hpp"
+#include "ifcomp_types.h"
 
 // Pass 7: Combine adjacent nodes
 void pass7();

@@ -1,5 +1,5 @@
-#include "pass6.hpp"
-#include "ifcomp_types.hpp"
+#include "pass6.h"
+#include "ifcomp_types.h"
 
 #include <cstdio>
 #include <cstdlib>

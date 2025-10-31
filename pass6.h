@@ -1,7 +1,7 @@
 #pragma once
 
-#include "ifcomp_types.hpp"
-#include "pass5.hpp"
+#include "ifcomp_types.h"
+#include "pass5.h"
 
 // Pass 6: Replace/Delete/Insert operations
 void pass6();

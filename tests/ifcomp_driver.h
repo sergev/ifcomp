@@ -11,7 +11,7 @@
 #include <sstream>
 #include <string>
 
-#include "../ifcomp.hpp"
+#include "../ifcomp.h"
 
 // Driver for running ifcomp tests
 class IfcompDriver {

@@ -1,4 +1,4 @@
-#include "ifcomp_types.hpp"
+#include "ifcomp_types.h"
 
 // Global data structure definitions
 std::vector<LineTableDecl> line_table;

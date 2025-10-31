@@ -1,13 +1,13 @@
-#include "ifcomp.hpp"
-#include "ifcomp_types.hpp"
-#include "pass1.hpp"
-#include "pass2.hpp"
-#include "pass3.hpp"
-#include "pass4.hpp"
-#include "pass5.hpp"
-#include "pass6.hpp"
-#include "pass7.hpp"
-#include "pass8.hpp"
+#include "ifcomp.h"
+#include "ifcomp_types.h"
+#include "pass1.h"
+#include "pass2.h"
+#include "pass3.h"
+#include "pass4.h"
+#include "pass5.h"
+#include "pass6.h"
+#include "pass7.h"
+#include "pass8.h"
 
 #include <cstdio>
 #include <cstdlib>

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ifcomp_types.hpp"
+#include "ifcomp_types.h"
 #include <fstream>
 #include <string>
 

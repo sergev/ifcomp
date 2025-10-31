@@ -1,4 +1,4 @@
-#include "ifcomp.hpp"
+#include "ifcomp.h"
 
 #include <cstdio>
 #include <cstdlib>

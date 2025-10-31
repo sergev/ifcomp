@@ -1,7 +1,7 @@
-#include "pass7.hpp"
-#include "pass6.hpp"
-#include "pass5.hpp"
-#include "ifcomp_types.hpp"
+#include "pass7.h"
+#include "pass6.h"
+#include "pass5.h"
+#include "ifcomp_types.h"
 
 #include <cstdio>
 

@@ -1,5 +1,5 @@
-#include "pass3.hpp"
-#include "ifcomp_types.hpp"
+#include "pass3.h"
+#include "ifcomp_types.h"
 
 void pass3() {
     line_count m = 1;

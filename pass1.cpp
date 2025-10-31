@@ -1,4 +1,4 @@
-#include "pass1.hpp"
+#include "pass1.h"
 
 #include <cstdio>
 #include <cstdlib>

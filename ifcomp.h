@@ -1,9 +1,15 @@
+#pragma once
 
-void ifcomp(const char *first_fname, const char *second_fname);
+#include <fstream>
+#include <string>
+
+// Main comparison function
+void ifcomp(const char* first_fname, const char* second_fname);
+
+// Print statistics
 void print_statistics();
 
-#include <stdbool.h>
-
+// Debug flags
 extern bool debug_dont_free;
 extern bool debug_syt_full;
 extern bool debug_syt;
