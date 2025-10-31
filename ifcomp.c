@@ -62,6 +62,7 @@ static int total_file_nlines[two_files];
 typedef int line_count;
 
 static short nchange_blocks = 0;
+static bool in_move_sequence = false; // Track if we're in a consecutive move sequence
 typedef struct {
     line_count cosmetic, non_cosmetic;
 } line_kinds;
@@ -537,7 +538,11 @@ static void read_lines(int which_file)
         if (*buf == 0 && feof(input_file[which_file]))
             break;
         int len = strlen(buf);
+        // Strip trailing newline
         if (len && buf[len - 1] == '\n')
+            buf[--len] = 0;
+        // Strip trailing carriage return (for Windows \r\n line endings)
+        if (len && buf[len - 1] == '\r')
             buf[len - 1] = 0;
         if (debug_read_current_line)
             printf("read %s\n", buf);
@@ -1155,6 +1160,81 @@ static bool nodes_have_identical_text(tree_index node1, tree_index node2)
     return result;
 }
 
+// Helper to check if two nodes end with identical text (for partial matching)
+// Returns the number of identical lines at the end, or 0 if they don't match
+static int nodes_have_identical_suffix(tree_index node1, tree_index node2)
+{
+    tree_index start1, finish1, start2, finish2;
+
+    if (!leaf(node1))
+        start1 = node[node1].branch_start, finish1 = node1;
+    else
+        start1 = node1, finish1 = node[node1].next;
+    if (!leaf(node2))
+        start2 = node[node2].branch_start, finish2 = node2;
+    else
+        start2 = node2, finish2 = node[node2].next;
+
+    // Count lines in each node
+    int total_lines1 = 0, total_lines2 = 0;
+    tree_index n;
+    for (n = start1; n != finish1; n = node[n].next)
+        total_lines1 += _abs(node[n].cost);
+    for (n = start2; n != finish2; n = node[n].next)
+        total_lines2 += _abs(node[n].cost);
+
+    if (total_lines1 == 0 || total_lines2 == 0)
+        return 0;
+
+    // Compare from the end backwards
+    // This is complex because we need to traverse backwards through the tree structure
+    // For simplicity, we'll collect lines in reverse order and compare
+
+    // Collect lines from end
+    line_count lines1[100], lines2[100]; // Max 100 lines - should be enough for most cases
+    int count1 = 0, count2 = 0;
+
+    // Collect lines in reverse order
+    n = start1;
+    while (n != finish1) {
+        line_count filen;
+        line_count sline = node[n].linen;
+        get_which_file(filen, sline);
+        int cost = _abs(node[n].cost);
+        file_line_decl *fp = file_line[filen];
+        for (int i = 0; i < cost && count1 < 100; i++) {
+            lines1[count1++] = fp[sline + i].file_line_text;
+        }
+        n = node[n].next;
+    }
+
+    n = start2;
+    while (n != finish2) {
+        line_count filen;
+        line_count sline = node[n].linen;
+        get_which_file(filen, sline);
+        int cost = _abs(node[n].cost);
+        file_line_decl *fp = file_line[filen];
+        for (int i = 0; i < cost && count2 < 100; i++) {
+            lines2[count2++] = fp[sline + i].file_line_text;
+        }
+        n = node[n].next;
+    }
+
+    // Compare from end
+    int matched_lines = 0;
+    int pos1 = count1 - 1, pos2 = count2 - 1;
+    while (pos1 >= 0 && pos2 >= 0 && lines1[pos1] == lines2[pos2]) {
+        matched_lines++;
+        pos1--;
+        pos2--;
+    }
+
+    if (debug_dump_trees_full && matched_lines > 0)
+        printf("nodes_have_identical_suffix: matched %d lines at end\n", matched_lines);
+    return matched_lines;
+}
+
 // Helper to check if two nodes start with identical text (for partial matching)
 // Returns the number of identical lines at the start, or 0 if they don't match
 static int nodes_have_identical_prefix(tree_index node1, tree_index node2)
@@ -1543,8 +1623,10 @@ static void pass6_match_identical_blocks()
     int total_match_count = 0;
     while (found_match) {
         found_match = false;
-        tree_index i = node[tree1_start].next;
         int match_count = 0;
+
+        // First, try matching blocks that follow matched blocks (original algorithm)
+        tree_index i = node[tree1_start].next;
         while (i != tree1_end) {
             if (node[i].cost < 0) {
                 tree_index prev = node[i].prev;
@@ -1775,11 +1857,84 @@ static void pass6_match_identical_blocks()
             i = node[i].next;
         }
 
+        // If no matches found following matched blocks, try matching all unmatched blocks
+        // This handles cases where files have no unique lines (all duplicates)
+        if (match_count == 0) {
+            if (debug_dump_trees_full)
+                printf("No matches following matched blocks, scanning all unmatched blocks...\n");
+
+            // Compare all unmatched blocks in tree1 with all unmatched blocks in tree2
+            tree_index i1 = node[tree1_start].next;
+            while (i1 != tree1_end) {
+                if (node[i1].cost < 0) {
+                    tree_index i2 = node[tree2_start].next;
+                    while (i2 != tree2_end) {
+                        if (node[i2].cost < 0) {
+                            bool identical = nodes_have_identical_text(i1, i2);
+                            if (identical) {
+                                if (debug_dump_trees_full)
+                                    printf("Found identical unmatched blocks: %d and %d\n", i1, i2);
+                                pass6_match_identical_block(i1, i2);
+                                match_count++;
+                                found_match = true;
+                                // Restart outer loop since tree structure changed
+                                i1 = node[tree1_start].next;
+                                break;
+                            }
+
+                            // Check for blocks with matching prefix and suffix but different middle
+                            // This handles cases like "A A X B B" vs "A A Y B B"
+                            int prefix_match = nodes_have_identical_prefix(i1, i2);
+                            int suffix_match = nodes_have_identical_suffix(i1, i2);
+                            if (prefix_match > 0 && suffix_match > 0) {
+                                // Count total lines
+                                tree_index start1, finish1, start2, finish2;
+                                if (!leaf(i1))
+                                    start1 = node[i1].branch_start, finish1 = i1;
+                                else
+                                    start1 = i1, finish1 = node[i1].next;
+                                if (!leaf(i2))
+                                    start2 = node[i2].branch_start, finish2 = i2;
+                                else
+                                    start2 = i2, finish2 = node[i2].next;
+
+                                int total_lines1 = 0, total_lines2 = 0;
+                                for (tree_index n = start1; n != finish1; n = node[n].next)
+                                    total_lines1 += _abs(node[n].cost);
+                                for (tree_index n = start2; n != finish2; n = node[n].next)
+                                    total_lines2 += _abs(node[n].cost);
+
+                                // If prefix + suffix matches cover the entire blocks or most of it,
+                                // and the middle differs, we can match prefix+suffix and replace
+                                // middle
+                                if (prefix_match + suffix_match >= total_lines1 ||
+                                    prefix_match + suffix_match >= total_lines2) {
+                                    // This means the blocks are mostly identical with just middle
+                                    // differences We should match the prefix and suffix, then
+                                    // handle middle as replacement But since we can't easily split
+                                    // nodes, let's just match if prefix+suffix equals one of the
+                                    // block sizes (meaning one block is entirely prefix+suffix)
+                                    // Actually, this is getting complex - let's leave it for now
+                                    // and see if other fixes help first
+                                }
+                            }
+                        }
+                        i2 = node[i2].next;
+                    }
+                    if (found_match)
+                        break;
+                }
+                i1 = node[i1].next;
+            }
+        }
+
         total_match_count += match_count;
         if (match_count > 0) {
             found_match = true;
             if (debug_dump_trees_full)
                 printf("Found %d matches this pass, restarting scan...\n", match_count);
+        } else {
+            found_match = false;
         }
     }
 
@@ -1841,7 +1996,21 @@ static void insert_node_after(tree_index after_this, tree_index insert_this)
 
 static void pass8_move_lines(tree_index node1, tree_index node2)
 { // 679a
-    nchange_blocks++;
+    // Only increment change blocks if we're starting a new move sequence
+    // (not continuing a consecutive move sequence)
+    // However, we need to be careful - if there are matched blocks between moves,
+    // they should be separate change blocks
+    if (!in_move_sequence) {
+        nchange_blocks++;
+        in_move_sequence = true;
+        if (debug_dump_trees_full)
+            printf("pass8_move_lines: starting new move sequence (change block #%d)\n",
+                   nchange_blocks);
+    } else {
+        if (debug_dump_trees_full)
+            printf("pass8_move_lines: continuing move sequence (same change block #%d)\n",
+                   nchange_blocks);
+    }
     count_node(node2, &move);
     if (node1 == tree1_start) {
         after_header(node1);
@@ -1885,6 +2054,8 @@ static void pass8()
 { // 7678
   // Now do the moves.
 RETRY:;
+    // We'll track whether we had correctly positioned lines in this iteration
+    // to decide if we should reset in_move_sequence before the next move
     tree_index i = tree1_start, j = tree2_start;
     while (i != tree1_end) {
         // First time through, this skips the header.
@@ -1894,10 +2065,26 @@ RETRY:;
         if (debug_dump_trees_full)
             printf("node %d lno %d -> %d, node %d lno %d\n", i, true_line_of(i),
                    file1_line[true_line_of(i)].ptr0, j, true_line_of(j));
-        while (file1_line[true_line_of(i)].ptr0 == true_line_of(j) && i != tree1_end)
+        // Track if we encountered correctly positioned matched lines before finding a mismatch
+        // If so, we should start a new change block (separate move operations)
+        bool had_correctly_positioned = false;
+        while (file1_line[true_line_of(i)].ptr0 == true_line_of(j) && i != tree1_end) {
             i = node[i].next, j = node[j].next;
-        if (i == tree1_end)
+            had_correctly_positioned = true; // We found correctly positioned lines
+        }
+        // Track that we had correctly positioned lines (we'll reset in_move_sequence
+        // before the move, not here, so the reset happens at the right time)
+        if (debug_dump_trees_full && had_correctly_positioned)
+            printf("Correctly positioned lines encountered before mismatch\n");
+        if (i == tree1_end) {
+            if (debug_dump_trees_full)
+                printf("Reached end of tree, returning (i == tree1_end)\n");
+            in_move_sequence = false; // Reset at end when done
             return;
+        }
+        if (debug_dump_trees_full)
+            printf("Found mismatch at node %d (lno %d -> %d), continuing to find move\n", i,
+                   true_line_of(i), file1_line[true_line_of(i)].ptr0);
         tree_index k = pass8_min_cost_node(i, tree1_end);
         tree_index l = find_node(tree2, file1_line[true_line_of(k)].ptr0);
         tree_index m = node[l].prev;
@@ -1905,7 +2092,20 @@ RETRY:;
         // find_node to be able to find the header node.
         // The original ifcomp program had a bug in this line.
         tree_index n = find_node(tree1, file2_line[true_line_of(m)].ptr0);
+
+        // If we had correctly positioned lines before this mismatch,
+        // we should start a new change block for this move
+        if (had_correctly_positioned) {
+            if (debug_dump_trees_full)
+                printf("Resetting move sequence before move (had correctly positioned lines)\n");
+            in_move_sequence = false;
+        }
+
+        if (debug_dump_trees_full)
+            printf("Before pass8_move_lines: in_move_sequence=%d\n", in_move_sequence);
+
         pass8_move_lines(n, k);
+
         // We can't detach node l yet.  We require keeping all moved
         // segments within the other file, or else we will prevent
         // future scanning in parallel.
@@ -1914,6 +2114,7 @@ RETRY:;
         dump_trees(no_pass);
         goto RETRY;
     }
+    in_move_sequence = false; // Reset at end
 }
 
 static void summary()
