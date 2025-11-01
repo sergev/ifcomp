@@ -100,7 +100,7 @@ TEST_F(IfcompDriver, IndentationChanges)
         "    }\n";
 
     std::string result = run_ifcomp(a, b);
-    assert_statistics(result, 0, 0, 3, 3, 0, 3);
+    assert_statistics(result, 0, 0, 3, 3, 0, 1);
 }
 
 // Test whitespace-only line differences

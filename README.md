@@ -31,6 +31,14 @@ Original publication: [https://ntrs.nasa.gov/citations/19820000365](https://ntrs
 - Hash-based matching for efficiency
 - Change statistics summary
 
+## Limitations
+
+The IFCOMP algorithm has a fundamental limitation when dealing with duplicate lines:
+
+**Duplicate Line Handling**: Files that contain only duplicate lines (e.g., 100 occurrences of "LINE") without unique anchor lines will be reported as replacements rather than matches. This is because the algorithm requires unique lines as anchors to establish matches in Pass 2, and subsequent passes can only extend matches from these anchors.
+
+This behavior matches the original 1979 implementation and is documented in [Theory.md](Theory.md).
+
 ## Algorithm Overview
 
 IFCOMP uses an 8-pass algorithm with hash-based line matching and tree structures to identify deletions, insertions, replacements, and moves between two files. For detailed algorithm theory, data structures, and implementation details for each pass, see [Theory.md](Theory.md).

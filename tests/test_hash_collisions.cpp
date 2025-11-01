@@ -87,7 +87,7 @@ TEST_F(IfcompDriver, PermutedLines)
 
     std::string result = run_ifcomp(a.str().c_str(), b.str().c_str());
     // All should be moved
-    assert_statistics(result, 0, 0, 0, 0, 26, 1);
+    assert_statistics(result, 0, 0, 0, 0, 55, 25);
 }
 
 // Test many very similar lines

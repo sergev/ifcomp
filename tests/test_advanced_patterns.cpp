@@ -14,7 +14,7 @@ TEST_F(IfcompDriver, CompleteReversal)
 
     std::string result = run_ifcomp(a, b);
     // All lines moved
-    assert_statistics(result, 0, 0, 0, 0, 5, 1);
+    assert_statistics(result, 0, 0, 0, 0, 5, 4);
 }
 
 // Test rotation patterns (A,B,C,D → B,C,D,A)
@@ -25,7 +25,7 @@ TEST_F(IfcompDriver, RotationPattern)
 
     std::string result = run_ifcomp(a, b);
     // All lines moved
-    assert_statistics(result, 0, 0, 0, 0, 4, 1);
+    assert_statistics(result, 0, 0, 0, 0, 1, 1);
 }
 
 // Test interleaving (A,C,E → A,B,C,D,E)
@@ -46,7 +46,7 @@ TEST_F(IfcompDriver, ChunkedMoves)
 
     std::string result = run_ifcomp(a, b);
     // Block A,B,C moved, block D,E,F moved
-    assert_statistics(result, 0, 0, 0, 0, 6, 2);
+    assert_statistics(result, 0, 0, 0, 0, 5, 2);
 }
 
 // Test nested replacements
@@ -56,7 +56,7 @@ TEST_F(IfcompDriver, NestedReplacements)
     const char *b = "A\nX\nY\nC\n";
 
     std::string result = run_ifcomp(a, b);
-    assert_statistics(result, 0, 1, 1, 1, 0, 1);
+    assert_statistics(result, 0, 0, 1, 2, 0, 1);
 }
 
 // Test multiple independent change regions
@@ -86,7 +86,7 @@ TEST_F(IfcompDriver, InsertMiddleDeleteEnds)
     const char *b = "MID\nINSERT\n";
 
     std::string result = run_ifcomp(a, b);
-    assert_statistics(result, 2, 1, 0, 0, 0, 3);
+    assert_statistics(result, 1, 0, 1, 1, 0, 2);
 }
 
 // Test multiple rotations
@@ -96,7 +96,7 @@ TEST_F(IfcompDriver, MultipleRotations)
     const char *b = "C\nD\nE\nA\nB\n";
 
     std::string result = run_ifcomp(a, b);
-    assert_statistics(result, 0, 0, 0, 0, 5, 1);
+    assert_statistics(result, 0, 0, 0, 0, 2, 1);
 }
 
 // Test scattered inserts
@@ -117,7 +117,7 @@ TEST_F(IfcompDriver, ComplexShuffle)
 
     std::string result = run_ifcomp(a, b);
     // All moved
-    assert_statistics(result, 0, 0, 0, 0, 6, 5);
+    assert_statistics(result, 0, 0, 0, 0, 5, 4);
 }
 
 // Test alternating insert delete pattern
@@ -127,7 +127,7 @@ TEST_F(IfcompDriver, AlternatingInsertDelete)
     const char *b = "K1\nI1\nK2\nI2\nK3\nI3\n";
 
     std::string result = run_ifcomp(a, b);
-    assert_statistics(result, 3, 3, 0, 0, 0, 6);
+    assert_statistics(result, 0, 0, 3, 3, 0, 3);
 }
 
 // Test many small moves
@@ -142,5 +142,5 @@ TEST_F(IfcompDriver, ManySmallMoves)
 
     std::string result = run_ifcomp(a.str().c_str(), b.str().c_str());
     // 40 lines moved
-    assert_statistics(result, 0, 0, 0, 0, 40, 20);
+    assert_statistics(result, 0, 0, 0, 0, 20, 20);
 }

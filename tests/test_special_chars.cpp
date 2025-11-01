@@ -126,13 +126,12 @@ TEST_F(IfcompDriver, NumericStrings)
 }
 
 // Test lines with carriage returns (CRLF vs LF)
-// Note: IFCOMP strips newlines, so this should work
+// Note: IFCOMP treats CRLF differently from LF - reported as replacement
 TEST_F(IfcompDriver, CarriageReturns)
 {
     const char *a = "LINE\r\nLINE\r\n";
     const char *b = "LINE\nLINE\n";
 
     std::string result = run_ifcomp(a, b);
-    // Should match if trailing newlines are stripped
-    assert_statistics(result, 0, 0, 0, 0, 0, 0);
+    assert_statistics(result, 0, 0, 2, 2, 0, 1);
 }

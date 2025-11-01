@@ -127,8 +127,9 @@ void Ifcomp::format_node(tree_index noden, int pad) const
         << " linen=" << std::setw(2) << n.linen;
 
     line_count L = n.linen;
+    int fileno = get_which_file(L);
     L = get_abs_line(L);
-    out << "(" << L << ")";
+    out << "(" << file_line[fileno][L].ptr0 << ")";
 
     if (n.branch_start != NULL_NODE || n.branch_end != NULL_NODE)
         out << " bs=" << std::setw(2) << n.branch_start << " be=" << std::setw(2) << n.branch_end;

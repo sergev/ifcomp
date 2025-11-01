@@ -10,25 +10,12 @@ bool Ifcomp::pass7_combine_adjacent_nodes(tree_index node1)
     // Look at adjacent nodes node1 and node2.
     // If they are also adjacent in file 2, combine the nodes
     // in both files.
-
-    // BUG FIX: Skip branch nodes - they're already combined structures from pass6
-    // Branch nodes represent replaced/inserted segments that shouldn't be combined again.
-    // Attempting to combine branch nodes causes infinite loops because:
-    // 1. Branch nodes' ptr0 values may not correctly map to file2 branch structures
-    // 2. find_node() may fail or return wrong node when looking up branch node mappings
-    // 3. This causes incorrect adjacency checks and infinite loops in pass7()
-    if (!leaf(node1)) {
-        // node1 is a branch - skip it
-        return false;
-    }
-
     tree_index node2 = node[node1].next;
 
-    // Also skip if node2 is a branch or if we've reached the trailer
-    if (node2 == trees[FIRST_FILE].end || !leaf(node2)) {
+    // Also skip if we've reached the trailer
+    if (node2 == trees[FIRST_FILE].end) {
         return false;
     }
-
     if (debug_dump_trees_full)
         out << "combine node1=" << node1 << " ln=" << node[node1].linen << " to node2=" << node2
             << " ln=" << node[node2].linen << "\n";
@@ -82,9 +69,6 @@ void Ifcomp::pass7()
         }
 
         tree_index j = node[i].prev;
-        if (pass7_combine_adjacent_nodes(i))
-            i = j;
-        else
-            i = node[i].next;
+        i = node[pass7_combine_adjacent_nodes(i) ? j : i].next;
     }
 }

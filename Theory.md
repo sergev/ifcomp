@@ -695,13 +695,13 @@ Pass6 updates separate statistics for each operation type:
 - **delete_stats**: Counts lines deleted from file1
   - Updated by `count_node(noden, delete_stats)` in `delete_lines()`
   - Uses `always=false`, so only counts non-cosmetic lines
-  
+
 - **insert_stats**: Counts lines inserted from file2
   - Updated by `count_node(noden, insert_stats)` in `pass6_insert_lines()`
-  
+
 - **replace1_stats**: Counts lines replaced in file1
   - Updated by `count_node(node1, replace1_stats)` in `pass6_replace_lines()`
-  
+
 - **replace2_stats**: Counts lines replaced in file2
   - Updated by `count_node(node2, replace2_stats)` in `pass6_replace_lines()`
 
@@ -775,29 +775,23 @@ Line numbers are prefixed with `+` for file2 lines (insertions/replacements) to 
 
 ```cpp
 for each node in file1:
-    if node is a leaf AND next_node is a leaf:
-        if node and next_node are also adjacent in file2:
-            combine_nodes(node, next_node)  // In both files
+    if node and next_node are also adjacent in file2:
+        combine_nodes(node, next_node)  // In both files
 ```
 
 ### Adjacency Check
 
 Two nodes are adjacent if:
 - They are consecutive in file1's tree (`node1.next == node2`)
-- They are both **leaf nodes** (not branch structures)
 - Their corresponding nodes in file2 are also consecutive
 
 ### Process
 
 1. **Scan file1 tree**: For each node, check if it can combine with next
-2. **Skip branch nodes**: Branch nodes (created by pass6 replacements/insertions) are skipped
-   - Branch nodes represent replaced/inserted segments
-   - They're already "combined" structures and shouldn't be combined again
-   - Attempting to combine branch nodes causes infinite loops (bug fixed)
-3. **Verify adjacency in file2**:
+2. **Verify adjacency in file2**:
    - Find file2 nodes corresponding to file1 nodes using `ptr0` values
    - Check if they're consecutive
-4. **Combine**: If adjacent in both files, merge them
+3. **Combine**: If adjacent in both files, merge them
    - Creates larger matched segments
    - Simplifies tree structure
    - Updates costs
@@ -808,18 +802,6 @@ Combining reduces tree complexity:
 - Fewer nodes to process
 - Better representation of unchanged regions
 - Cleaner output
-
-### Branch Node Handling
-
-**Important**: Pass 7 only processes **leaf nodes** (nodes without branch structures).
-
-Branch nodes are skipped because:
-- They're created by pass6's REPLACE and INSERT operations
-- They represent segments that have already been processed
-- Branch nodes' `ptr0` values may not correctly map to file2 branch structures
-- Attempting to combine branch nodes causes infinite loops in the original implementation
-
-**Bug Fix**: The implementation now explicitly checks `leaf(node1)` and `leaf(node2)` before attempting to combine nodes. This prevents infinite loops when pass7 runs after pass6.
 
 ### Safety Check
 
@@ -841,8 +823,6 @@ File2: [ABC: +3]
 ```
 
 If A, B, C are adjacent in both files, they're combined into one node.
-
-**Note**: If pass6 has created branch structures (REPLACE/INSERT operations), pass7 will skip those branches and only combine remaining leaf nodes.
 
 ---
 
@@ -1038,18 +1018,12 @@ The algorithm guarantees:
 1. **Hash-based matching**: Enables O(1) average case lookup
 2. **Multi-pass approach**: Allows progressive refinement
 3. **Tree structure**: Enables efficient move detection
-4. **Unique anchors**: Provides reliable matching points
-5. **Bidirectional extension**: Maximizes match coverage
-6. **Minimum cost moves**: Reduces move complexity
-7. **1-based indexing**: Uses index 0 as NULL sentinel, simplifying null checks
-8. **SYT_TYPE requirement for extension**: Pass 3 only extends from `syt_type` lines, ensuring unique pairs remain unique while allowing duplicate matches to be extended contextually
-9. **Node table dummy entry**: Pass5 initializes node table with dummy entry at index 0, maintaining 1-based indexing consistency
-10. **Negative cost semantics**: Negative cost segments (unmatched) are handled differently - `each_line_in_node(always=false)` skips them, requiring `always=true` to iterate
-11. **Branch structure creation**: Pass6 creates branch structures via `combine_nodes()` for replace/insert operations, transforming linear trees into trees with branches to enable move detection in pass8
-12. **Iterator safety**: Pass6 saves iterators before node detachment to prevent invalidation during tree traversal when nodes are removed from linked lists
-13. **Pass7 branch node skipping**: Pass7 only processes leaf nodes, skipping branch nodes created by pass6. Branch nodes' `ptr0` mappings don't correctly map to file2 branch structures, causing infinite loops if attempted. The fix explicitly checks `leaf()` before combining, preventing infinite loops when pass7 runs after pass6
-14. **Pass7 safety check**: Added iteration count limit (10,000) to prevent infinite loops on edge cases, providing defensive programming protection
-15. **Pass8 safety check**: Added iteration count limit (10,000) to prevent infinite loops during move detection, matching Pass7's defensive programming approach
+4. **Unique anchors**: Provides reliable matching points (Pass 2)
+5. **Bidirectional extension**: Maximizes match coverage (Passes 3-4)
+6. **Minimum cost moves**: Reduces move complexity (Pass 8)
+7. **Negative cost semantics**: Unmatched segments have negative cost, matched segments positive
+8. **Branch creation**: Pass 6 creates branches for replacements/insertions to enable move detection
+9. **Safety checks**: Iteration limits prevent infinite loops in passes 7-8
 
 ---
 
@@ -1060,10 +1034,9 @@ The algorithm guarantees:
 3. **Many moves**: Pass 8 may be slow with many small moves
 4. **Identical lines**: Multiple occurrences require unique anchors
 5. **Complete rewrites**: No anchors means few matches detected
-6. **Duplicate-only files**: If all lines are duplicates (appear multiple times), Pass 2 won't mark any as unique, so Pass 3 has no anchors to extend from. This means identical files containing only duplicate lines will incorrectly show as replacements rather than no changes. This is by design: Pass 2 marks lines as unique only if they appear once, and Pass 3 requires unique anchors to extend matches. No workaround exists for truly duplicate-only files
+6. **Duplicate-only files**: If all lines are duplicates (appear multiple times), Pass 2 won't mark any as unique, so Pass 3 has no anchors to extend from. This means identical files containing only duplicate lines will incorrectly show as replacements rather than no changes. This is by design: Pass 2 marks lines as unique only if they appear once, and Pass 3 requires unique anchors to extend matches.
 7. **File length mismatches**: Pass 3 stops when one file runs out of lines, even if the other continues
 8. **Index bounds**: Must ensure table accesses stay within bounds when files have different lengths
-9. **Pass7 branch node limitation**: Pass7 cannot combine branch nodes created by pass6 (REPLACE/INSERT operations). This is by design - branch nodes represent already-processed segments and should not be combined again. Pass7 only processes leaf nodes
 
 ---
 

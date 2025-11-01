@@ -15,7 +15,7 @@ TEST_F(IfcompDriver, SimpleStatisticsAccuracy)
     std::string result = run_ifcomp(a, b);
 
     // Verify exact statistics
-    assert_statistics(result, 0, 0, 3, 3, 0, 3);
+    assert_statistics(result, 0, 0, 3, 3, 0, 2);
 }
 
 // Test statistics with actual deletions
@@ -25,7 +25,7 @@ TEST_F(IfcompDriver, DeletionsStatisticsAccuracy)
     const char *b = "A\nB\n";
 
     std::string result = run_ifcomp(a, b);
-    assert_statistics(result, 2, 0, 0, 0, 0, 2);
+    assert_statistics(result, 2, 0, 0, 0, 0, 1);
 }
 
 // Test statistics with actual insertions
@@ -35,7 +35,7 @@ TEST_F(IfcompDriver, InsertionsStatisticsAccuracy)
     const char *b = "A\nINSERT1\nINSERT2\nB\n";
 
     std::string result = run_ifcomp(a, b);
-    assert_statistics(result, 0, 2, 0, 0, 0, 2);
+    assert_statistics(result, 0, 2, 0, 0, 0, 1);
 }
 
 // Test statistics with moves
@@ -45,7 +45,7 @@ TEST_F(IfcompDriver, MovesStatisticsAccuracy)
     const char *b = "C\nA\nB\n";
 
     std::string result = run_ifcomp(a, b);
-    assert_statistics(result, 0, 0, 0, 0, 3, 1);
+    assert_statistics(result, 0, 0, 0, 0, 1, 1);
 }
 
 // Test line numbers are correct

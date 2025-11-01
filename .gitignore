@@ -6,3 +6,6 @@ unit_tests
 ?
 build
 Testing
+*.h-
+*.c-
+*.cpp-

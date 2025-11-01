@@ -1009,3 +1009,33 @@ TEST_F(Pass6, WithPass3Pass4)
     }
     EXPECT_FALSE(found_unmatched) << "DIFF1 should be processed as insert";
 }
+
+// Test ComplexChanges bug - ptr0 values after REPLACE operation
+TEST_F(Pass6, ComplexChanges_Ptr0ValuesAfterReplace)
+{
+    // Test case that triggers the ComplexChanges bug
+    // File1: A X C Y D W E A B E
+    // File2: A B C D E
+    // After pass6, the ptr0 values should correctly reflect matches
+    std::istringstream file1("A\nX\nC\nY\nD\nW\nE\nA\nB\nE\n");
+    std::istringstream file2("A\nB\nC\nD\nE\n");
+
+    ifc.pass1(file1, file2);
+    ifc.pass2();
+    ifc.pass3();
+    ifc.pass4();
+    ifc.pass5();
+    ifc.pass6();
+
+    // After pass6, line 8 (A) in file1 should match line 1 (A) in file2
+    // Line 9 (B) in file1 should match line 2 (B) in file2
+    // Check ptr0 values in the file_line arrays
+    EXPECT_EQ(ifc.file_line[FIRST_FILE][8].ptr0, 1)
+        << "Line 8 (A) in file1 should point to line 1 in file2";
+    EXPECT_EQ(ifc.file_line[FIRST_FILE][9].ptr0, 2)
+        << "Line 9 (B) in file1 should point to line 2 in file2";
+    EXPECT_EQ(ifc.file_line[FIRST_FILE][3].ptr0, 3)
+        << "Line 3 (C) in file1 should point to line 3 in file2";
+    EXPECT_EQ(ifc.file_line[FIRST_FILE][5].ptr0, 4)
+        << "Line 5 (D) in file1 should point to line 4 in file2";
+}
