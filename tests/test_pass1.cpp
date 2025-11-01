@@ -28,66 +28,57 @@ public:
 
 TEST_F(Pass1, HashLine_EmptyString)
 {
-    HashInfo h = Ifcomp::hash_line("");
-    EXPECT_EQ(h.h1, 0u) << "Empty string should have length 0 in upper byte";
-    EXPECT_EQ(h.h2, 0) << "Empty string should have h2 = 0";
+    size_t h = Ifcomp::hash_line("");
+    // Empty string should produce a valid hash (implementation dependent)
+    // Just verify it's consistent
+    size_t h2 = Ifcomp::hash_line("");
+    EXPECT_EQ(h, h2) << "Identical empty strings should produce same hash";
 }
 
 TEST_F(Pass1, HashLine_SingleCharacter)
 {
-    HashInfo h = Ifcomp::hash_line("A");
-    EXPECT_NE(h.h1, 0u) << "Single character should produce non-zero hash";
-    EXPECT_NE(h.h2, 0) << "Single character should produce non-zero h2";
-    // Length should be in upper byte
-    EXPECT_EQ((h.h1 >> 8), 1u) << "Length should be 1";
+    size_t h = Ifcomp::hash_line("A");
+    EXPECT_NE(h, 0u) << "Single character should produce non-zero hash";
 }
 
 TEST_F(Pass1, HashLine_TwoCharacters)
 {
-    HashInfo h = Ifcomp::hash_line("AB");
-    EXPECT_NE(h.h1, 0u);
-    EXPECT_NE(h.h2, 0);
-    EXPECT_EQ((h.h1 >> 8), 2u) << "Length should be 2";
+    size_t h = Ifcomp::hash_line("AB");
+    EXPECT_NE(h, 0u) << "Two characters should produce non-zero hash";
 }
 
 TEST_F(Pass1, HashLine_OddLength)
 {
-    HashInfo h = Ifcomp::hash_line("ABC");
-    EXPECT_EQ((h.h1 >> 8), 3u) << "Length should be 3";
-    // Odd length should include 0 in hash calculation
+    size_t h = Ifcomp::hash_line("ABC");
+    EXPECT_NE(h, 0u) << "Odd length string should produce non-zero hash";
 }
 
 TEST_F(Pass1, HashLine_IdenticalStrings)
 {
-    HashInfo h1 = Ifcomp::hash_line("TEST");
-    HashInfo h2 = Ifcomp::hash_line("TEST");
-    EXPECT_EQ(h1.h1, h2.h1) << "Identical strings should produce same h1";
-    EXPECT_EQ(h1.h2, h2.h2) << "Identical strings should produce same h2";
+    size_t h1 = Ifcomp::hash_line("TEST");
+    size_t h2 = Ifcomp::hash_line("TEST");
+    EXPECT_EQ(h1, h2) << "Identical strings should produce same hash";
 }
 
 TEST_F(Pass1, HashLine_DifferentStrings)
 {
-    HashInfo h1 = Ifcomp::hash_line("TEST1");
-    HashInfo h2 = Ifcomp::hash_line("TEST2");
-    // They might have same h1 (same length) but different h2, or vice versa
-    bool different = (h1.h1 != h2.h1) || (h1.h2 != h2.h2);
-    EXPECT_TRUE(different) << "Different strings should produce different hashes";
+    size_t h1 = Ifcomp::hash_line("TEST1");
+    size_t h2 = Ifcomp::hash_line("TEST2");
+    EXPECT_NE(h1, h2) << "Different strings should produce different hashes";
 }
 
 TEST_F(Pass1, HashLine_LongString)
 {
     std::string long_str(100, 'X');
-    HashInfo h = Ifcomp::hash_line(long_str);
-    EXPECT_EQ((h.h1 >> 8), 100u) << "Length should be 100";
+    size_t h = Ifcomp::hash_line(long_str);
+    EXPECT_NE(h, 0u) << "Long string should produce non-zero hash";
 }
 
 TEST_F(Pass1, HashLine_SpecialCharacters)
 {
-    HashInfo h1 = Ifcomp::hash_line("Hello\n");
-    HashInfo h2 = Ifcomp::hash_line("Hello\t");
-    // Different special characters should produce different hashes
-    bool different = (h1.h1 != h2.h1) || (h1.h2 != h2.h2);
-    EXPECT_TRUE(different);
+    size_t h1 = Ifcomp::hash_line("Hello\n");
+    size_t h2 = Ifcomp::hash_line("Hello\t");
+    EXPECT_NE(h1, h2) << "Different special characters should produce different hashes";
 }
 
 TEST_F(Pass1, HashLine_UnicodeOrSpecialBytes)
@@ -95,11 +86,9 @@ TEST_F(Pass1, HashLine_UnicodeOrSpecialBytes)
     // Test with various byte values
     std::string str1 = "\x00\x01";
     std::string str2 = "\x01\x00";
-    HashInfo h1 = Ifcomp::hash_line(str1);
-    HashInfo h2 = Ifcomp::hash_line(str2);
-    // Different byte sequences should produce different hashes
-    bool different = (h1.h1 != h2.h1) || (h1.h2 != h2.h2);
-    EXPECT_TRUE(different);
+    size_t h1 = Ifcomp::hash_line(str1);
+    size_t h2 = Ifcomp::hash_line(str2);
+    EXPECT_NE(h1, h2) << "Different byte sequences should produce different hashes";
 }
 
 // ============================================================================
@@ -108,45 +97,23 @@ TEST_F(Pass1, HashLine_UnicodeOrSpecialBytes)
 
 TEST_F(Pass1, HashcodeCompare_Equal)
 {
-    HashInfo h1{ 0x1234, 0x5678 };
-    HashInfo h2{ 0x1234, 0x5678 };
+    size_t h1 = 0x12345678;
+    size_t h2 = 0x12345678;
     EXPECT_EQ(Ifcomp::hashcode_compare(h1, h2), CompareResult::EQ);
 }
 
-TEST_F(Pass1, HashcodeCompare_LessThan_H1)
+TEST_F(Pass1, HashcodeCompare_LessThan)
 {
-    HashInfo h1{ 0x1000, 0x5678 };
-    HashInfo h2{ 0x2000, 0x5678 };
+    size_t h1 = 0x1000;
+    size_t h2 = 0x2000;
     EXPECT_EQ(Ifcomp::hashcode_compare(h1, h2), CompareResult::LT);
 }
 
-TEST_F(Pass1, HashcodeCompare_GreaterThan_H1)
+TEST_F(Pass1, HashcodeCompare_GreaterThan)
 {
-    HashInfo h1{ 0x2000, 0x5678 };
-    HashInfo h2{ 0x1000, 0x5678 };
+    size_t h1 = 0x2000;
+    size_t h2 = 0x1000;
     EXPECT_EQ(Ifcomp::hashcode_compare(h1, h2), CompareResult::GT);
-}
-
-TEST_F(Pass1, HashcodeCompare_LessThan_H2)
-{
-    HashInfo h1{ 0x1234, 0x1000 };
-    HashInfo h2{ 0x1234, 0x2000 };
-    EXPECT_EQ(Ifcomp::hashcode_compare(h1, h2), CompareResult::LT);
-}
-
-TEST_F(Pass1, HashcodeCompare_GreaterThan_H2)
-{
-    HashInfo h1{ 0x1234, 0x2000 };
-    HashInfo h2{ 0x1234, 0x1000 };
-    EXPECT_EQ(Ifcomp::hashcode_compare(h1, h2), CompareResult::GT);
-}
-
-TEST_F(Pass1, HashcodeCompare_EqualH1DifferentH2)
-{
-    HashInfo h1{ 0x1234, 0x1000 };
-    HashInfo h2{ 0x1234, 0x2000 };
-    EXPECT_EQ(Ifcomp::hashcode_compare(h1, h2), CompareResult::LT);
-    EXPECT_EQ(Ifcomp::hashcode_compare(h2, h1), CompareResult::GT);
 }
 
 // ============================================================================
@@ -229,13 +196,12 @@ TEST_F(Pass1, SetupDistinctText_LineNumberStored)
 TEST_F(Pass1, SetupHashNode_Basic)
 {
     string_index tip;
-    HashInfo h{ 0x1234, 0x5678 };
+    size_t h = Ifcomp::hash_line("TEST");
     hash_node_index node_idx = ifc.setup_hash_node(tip, "TEST", 1, FIRST_FILE, h);
 
     EXPECT_GE(node_idx, 0);
     EXPECT_GE(tip, 0);
-    EXPECT_EQ(ifc.hash_node[node_idx].h.h1, h.h1);
-    EXPECT_EQ(ifc.hash_node[node_idx].h.h2, h.h2);
+    EXPECT_EQ(ifc.hash_node[node_idx].h, h);
     EXPECT_EQ(ifc.hash_node[node_idx].text_list, tip);
     EXPECT_EQ(ifc.hash_node[node_idx].next_in_bucket, NULL_HASH_LIST);
     EXPECT_EQ(ifc.string_table[tip].text, "TEST");
@@ -299,7 +265,7 @@ TEST_F(Pass1, AddLinenToTextList_MultipleAdditions)
 
 TEST_F(Pass1, EnterLine_FirstEntryInBucket)
 {
-    HashInfo h = Ifcomp::hash_line("TEST");
+    size_t h = Ifcomp::hash_line("TEST");
     hash_node_index result_hash_node;
     string_index result_string_index;
 
@@ -308,7 +274,7 @@ TEST_F(Pass1, EnterLine_FirstEntryInBucket)
     EXPECT_GE(result_hash_node, 0);
     EXPECT_GE(result_string_index, 0);
 
-    int bucket = h.h1 % NBUCKETS;
+    int bucket = h % NBUCKETS;
     EXPECT_EQ(ifc.sec_hash_start_node[bucket], result_hash_node);
     EXPECT_EQ(ifc.hash_node[result_hash_node].text_list, result_string_index);
     EXPECT_EQ(ifc.string_table[result_string_index].text, "TEST");
@@ -316,7 +282,7 @@ TEST_F(Pass1, EnterLine_FirstEntryInBucket)
 
 TEST_F(Pass1, EnterLine_DuplicateLineSameFile)
 {
-    HashInfo h = Ifcomp::hash_line("TEST");
+    size_t h = Ifcomp::hash_line("TEST");
     hash_node_index result_hash_node1, result_hash_node2;
     string_index result_string_index1, result_string_index2;
 
@@ -334,18 +300,18 @@ TEST_F(Pass1, EnterLine_DifferentLinesSameHash)
 {
     // Try to find two different lines that hash to same bucket
     // This is probabilistic, so we'll try common cases
-    HashInfo h1 = Ifcomp::hash_line("A");
-    HashInfo h2 = Ifcomp::hash_line("B");
+    size_t h1 = Ifcomp::hash_line("A");
+    size_t h2 = Ifcomp::hash_line("B");
 
     // If they're in same bucket, they should be ordered correctly
-    if ((h1.h1 % NBUCKETS) == (h2.h1 % NBUCKETS)) {
+    if ((h1 % NBUCKETS) == (h2 % NBUCKETS)) {
         hash_node_index node1, node2;
         string_index si1, si2;
 
         ifc.enter_line("A", h1, 1, FIRST_FILE, node1, si1);
         ifc.enter_line("B", h2, 2, FIRST_FILE, node2, si2);
 
-        int bucket = h1.h1 % NBUCKETS;
+        int bucket = h1 % NBUCKETS;
         hash_node_index start = ifc.sec_hash_start_node[bucket];
         // The bucket should contain both nodes in sorted order
         EXPECT_TRUE(start == node1 || start == node2);
@@ -354,7 +320,7 @@ TEST_F(Pass1, EnterLine_DifferentLinesSameHash)
 
 TEST_F(Pass1, EnterLine_ExactMatchReusesString)
 {
-    HashInfo h = Ifcomp::hash_line("SAME");
+    size_t h = Ifcomp::hash_line("SAME");
     hash_node_index node1, node2;
     string_index si1, si2;
 
@@ -368,10 +334,10 @@ TEST_F(Pass1, EnterLine_ExactMatchReusesString)
 TEST_F(Pass1, EnterLine_SameHashDifferentText)
 {
     // This tests the collision handling within same hash bucket
-    // We test the hash collision path by using the same hash info manually
+    // We test the hash collision path by using the same hash value manually
     // for different text strings
 
-    HashInfo h_manual{ 0x0100, 0x0001 }; // Use a fixed hash
+    size_t h_manual = 0x0100; // Use a fixed hash
     hash_node_index node1, node2;
     string_index si1, si2;
 
@@ -626,7 +592,7 @@ TEST_F(Pass1, EnterLine_ManyCollisionsInSameBucket)
     // by using lines that hash to same bucket
     for (int i = 0; i < 50; i++) {
         std::string line = "LINE" + std::to_string(i);
-        HashInfo h = Ifcomp::hash_line(line);
+        size_t h = Ifcomp::hash_line(line);
         hash_node_index hash_node_idx;
         string_index si;
         ifc.enter_line(line, h, i + 1, FIRST_FILE, hash_node_idx, si);
@@ -640,8 +606,8 @@ TEST_F(Pass1, HashLine_AllASCIICharacters)
     for (int i = 1; i < 128; i++) {
         all_chars += static_cast<char>(i);
     }
-    HashInfo h = Ifcomp::hash_line(all_chars);
-    EXPECT_EQ((h.h1 >> 8), 127u) << "Length should be 127";
+    size_t h = Ifcomp::hash_line(all_chars);
+    EXPECT_NE(h, 0u) << "All ASCII characters string should produce non-zero hash";
 }
 
 TEST_F(Pass1, MakeLineEntry_ManyEntries)

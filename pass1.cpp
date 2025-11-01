@@ -6,41 +6,23 @@
 #include "ifcomp.h"
 
 //
-// Hash a line string to compute primary and secondary hash values.
-// Returns HashInfo with h1 (length and XOR value) and h2 (bit-set of character pairs).
+// Hash a line string using std::hash.
+// Returns the hash value as size_t.
 //
-HashInfo Ifcomp::hash_line(const std::string &line)
+size_t Ifcomp::hash_line(const std::string &line)
 {
-    char xor_val = 0;
-    HashInfo h{ 0, 0 };
-    int len = static_cast<int>(line.length());
-
-    for (int i = 0; i < len; i += 2) {
-        // If the string is odd in length, we'll be including 0 in the hash.
-        char bite1 = line[i];
-        char bite2 = (i + 1 < len) ? line[i + 1] : 0;
-        xor_val = (xor_val | bite1) & ~(xor_val & bite1);
-        xor_val = (xor_val | bite2) & ~(xor_val & bite2);
-        int16_t j = (static_cast<uint8_t>(bite1) << 8) | static_cast<uint8_t>(bite2);
-        h.h2 |= static_cast<int64_t>(1) << (j % 31);
-    }
-    h.h1 = static_cast<uint16_t>((len << 8) | static_cast<uint8_t>(xor_val));
-    return h;
+    return std::hash<std::string>{}(line);
 }
 
 //
-// Compare two hash codes lexicographically (h1 first, then h2).
+// Compare two hash codes.
 // Used to maintain sorted order in hash table buckets.
 //
-CompareResult Ifcomp::hashcode_compare(const HashInfo &ha, const HashInfo &hb)
+CompareResult Ifcomp::hashcode_compare(size_t ha, size_t hb)
 {
-    if (ha.h1 < hb.h1)
+    if (ha < hb)
         return CompareResult::LT;
-    if (ha.h1 > hb.h1)
-        return CompareResult::GT;
-    if (ha.h2 < hb.h2)
-        return CompareResult::LT;
-    if (ha.h2 > hb.h2)
+    if (ha > hb)
         return CompareResult::GT;
     return CompareResult::EQ;
 }
@@ -78,7 +60,7 @@ string_index Ifcomp::setup_distinct_text(const std::string &text, line_count lin
 // Create a new hash node entry linking a hash code to its text string.
 //
 hash_node_index Ifcomp::setup_hash_node(string_index &tip, const std::string &text,
-                                        line_count linen, int input_file, const HashInfo &h)
+                                        line_count linen, int input_file, size_t h)
 {
     HashNodeDecl s;
     s.next_in_bucket = NULL_HASH_LIST;
@@ -103,14 +85,13 @@ void Ifcomp::add_linen_to_text_list(string_index T, line_count linen, int input_
 // Insert a line into the hash table, maintaining sorted order within buckets.
 // Creates new hash node and string entry if needed, or updates existing entry.
 //
-void Ifcomp::enter_line(const std::string &text, const HashInfo &h, line_count linen,
-                        int input_file, hash_node_index &result_hash_node,
-                        string_index &result_string_index)
+void Ifcomp::enter_line(const std::string &text, size_t h, line_count linen, int input_file,
+                        hash_node_index &result_hash_node, string_index &result_string_index)
 {
     if (debug_syt_full)
         out << "\nEnter line " << text << ", #" << linen << "\n";
 
-    hash_node_index &hash_start_node = sec_hash_start_node[h.h1 % NBUCKETS];
+    hash_node_index &hash_start_node = sec_hash_start_node[h % NBUCKETS];
     string_index SI;
     hash_node_index current_node;
 
@@ -187,8 +168,8 @@ void Ifcomp::enter_line(const std::string &text, const HashInfo &h, line_count l
 void Ifcomp::dump_hash_node(hash_node_index node_idx) const
 {
     const HashNodeDecl &p = hash_node[node_idx];
-    out << "hash_node  " << node_idx << ": " << std::hex << "h2=" << p.h.h2 << "  h1=" << p.h.h1
-        << std::dec << "  text_list=" << p.text_list << "  nextb=" << p.next_in_bucket << "\n\n";
+    out << "hash_node  " << node_idx << ": " << std::hex << "h=" << p.h << std::dec
+        << "  text_list=" << p.text_list << "  nextb=" << p.next_in_bucket << "\n\n";
     string_index T = hash_node[node_idx].text_list;
     while (T != NULL_STRING_LIST) {
         out << "string " << T << ": | " << string_table[T].text
@@ -252,7 +233,7 @@ void Ifcomp::read_lines(int which_file, std::istream &input_file)
             file_line[which_file].resize(current_line + 1);
         }
         hash_node_index H;
-        HashInfo h = Ifcomp::hash_line(line);
+        size_t h = Ifcomp::hash_line(line);
         enter_line(line, h, current_line, which_file, H,
                    file_line[which_file][current_line].file_line_text);
 

@@ -17,12 +17,6 @@ inline int other_file(int f)
     return SECOND_FILE - f;
 }
 
-// Hash information
-struct HashInfo {
-    uint16_t h1;
-    int64_t h2;
-};
-
 // Line count type
 using line_count = int;
 
@@ -52,7 +46,7 @@ struct StringDecl {
 
 // Hash node declaration
 struct HashNodeDecl {
-    HashInfo h;
+    size_t h;
     string_index text_list = NULL_STRING_LIST;
     hash_node_index next_in_bucket = NULL_HASH_LIST;
 };
@@ -119,8 +113,8 @@ class Ifcomp;
 class Ifcomp {
 public:
     // Static pure functions (no state needed)
-    static HashInfo hash_line(const std::string &line);
-    static CompareResult hashcode_compare(const HashInfo &ha, const HashInfo &hb);
+    static size_t hash_line(const std::string &line);
+    static CompareResult hashcode_compare(size_t ha, size_t hb);
 
     // Constructor
     Ifcomp(std::ostream &out = std::cout);
@@ -183,9 +177,9 @@ public:
     line_count make_line_entry(line_count linen, line_count next);
     string_index setup_distinct_text(const std::string &text, line_count linen, int input_file);
     hash_node_index setup_hash_node(string_index &tip, const std::string &text, line_count linen,
-                                    int input_file, const HashInfo &h);
+                                    int input_file, size_t h);
     void add_linen_to_text_list(string_index T, line_count linen, int input_file);
-    void enter_line(const std::string &text, const HashInfo &h, line_count linen, int input_file,
+    void enter_line(const std::string &text, size_t h, line_count linen, int input_file,
                     hash_node_index &result_hash_node, string_index &result_string_index);
     void read_lines(int which_file, std::istream &input_file);
 
