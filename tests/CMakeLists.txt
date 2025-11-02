@@ -29,6 +29,8 @@ add_executable(test_ifcomp
     test_advanced_patterns.cpp
     test_algorithm_behavior.cpp
     test_output_validation.cpp
+    test_file_io_errors.cpp
+    test_cli.cpp
     test_pass1.cpp
     test_pass2.cpp
     test_pass3.cpp

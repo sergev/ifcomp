@@ -30,20 +30,7 @@ coverage:       clean
 			echo "Falling back to gcov..."; \
 			gcov -o build/CMakeFiles/compare.dir build/CMakeFiles/compare.dir/*.gcda >/dev/null 2>&1 || true; \
 			echo "Calculating coverage percentage..."; \
-			python3 -c " \
-import re, os; \
-total, executed = 0, 0; \
-for f in ['ifcomp.cpp', 'pass1.cpp', 'pass2.cpp', 'pass3.cpp', 'pass4.cpp', 'pass5.cpp', 'pass6.cpp', 'pass7.cpp', 'pass8.cpp']: \
-	gcov_file = f'{f}.gcov'; \
-	if os.path.exists(gcov_file): \
-		with open(gcov_file) as g: \
-			for line in g: \
-				m = re.match(r'^\s*(\d+|#####):\s*\d+:\s*', line); \
-				if m and m.group(1).isdigit() and int(m.group(1)) > 0: \
-					executed += 1; \
-				if m: total += 1; \
-print(f'C++ Test Coverage: {(executed/total*100):.1f}%' if total > 0 else 'Coverage data not available')" || \
-			echo "Coverage files generated. Check .gcov files for details."; \
+			python3 calculate_coverage.py || echo "Coverage files generated. Check .gcov files for details."; \
 		fi
 
 clean:
