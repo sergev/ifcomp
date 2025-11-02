@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 )
 
 // Insert a node after another node
@@ -33,7 +32,7 @@ func (i *Ifcomp) pass8MinCostNode(startNode, endNode TreeIndex) TreeIndex {
 }
 
 // Process and output a move operation
-func (i *Ifcomp) pass8MoveLines(node1, node2 TreeIndex) {
+func (i *Ifcomp) pass8MoveLines(node1, node2 TreeIndex) error {
 	firstIdx := toArrayIndex(First)
 	i.Stats.NChangeBlocks++
 	i.countNode(node2, &i.Stats.MoveStats)
@@ -52,15 +51,18 @@ func (i *Ifcomp) pass8MoveLines(node1, node2 TreeIndex) {
 		i.detachNode(node2)
 		i.insertNodeAfter(node1, node2)
 		// Combine adjacent nodes to redistribute weight for min_cost
-		i.pass7()
+		if err := i.pass7(); err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
 // Pass 8: Move Detection and Processing
 //
 // Purpose: Detect and process moved code blocks by identifying misalignments
 // between files and relocating segments to their correct positions.
-func (i *Ifcomp) pass8() {
+func (i *Ifcomp) pass8() error {
 	firstIdx := toArrayIndex(First)
 	secondIdx := toArrayIndex(Second)
 
@@ -71,8 +73,7 @@ func (i *Ifcomp) pass8() {
 	for {
 		iterationCount++
 		if iterationCount > MAX_ITERATIONS {
-			fmt.Fprintf(os.Stderr, "*** Internal error in pass8: infinite loop detected after %d iterations\n", iterationCount)
-			os.Exit(1)
+			return fmt.Errorf("internal error in pass8: infinite loop detected after %d iterations", iterationCount)
 		}
 
 		nodeIdx := i.TreeState.Trees[firstIdx].Start
@@ -98,7 +99,7 @@ func (i *Ifcomp) pass8() {
 			}
 
 			if nodeIdx == i.TreeState.Trees[firstIdx].End {
-				return
+				return nil
 			}
 
 			nodeK := i.pass8MinCostNode(nodeIdx, i.TreeState.Trees[firstIdx].End)
@@ -106,7 +107,7 @@ func (i *Ifcomp) pass8() {
 			nodeL := i.findNode(i.TreeState.Trees[secondIdx], findIdx)
 
 			if nodeL == NullNode {
-				return
+				return nil
 			}
 
 			nodeM := i.TreeState.Node[nodeL].Prev
@@ -115,10 +116,12 @@ func (i *Ifcomp) pass8() {
 			nodeN := i.findNode(i.TreeState.Trees[firstIdx], findIdx2)
 
 			if nodeN == NullNode {
-				return
+				return nil
 			}
 
-			i.pass8MoveLines(nodeN, nodeK)
+			if err := i.pass8MoveLines(nodeN, nodeK); err != nil {
+				return err
+			}
 			i.dumpTrees(99)
 			// Restart from beginning
 			break

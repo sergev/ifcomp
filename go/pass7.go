@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 )
 
 // Check if two adjacent nodes are also adjacent in the other file
@@ -100,7 +99,7 @@ func (i *Ifcomp) freeNode(n TreeIndex) {
 //
 // Purpose: Merge adjacent nodes that are also adjacent in the other file,
 // reducing tree complexity and creating larger matched segments.
-func (i *Ifcomp) pass7() {
+func (i *Ifcomp) pass7() error {
 	firstIdx := toArrayIndex(First)
 	nodeIdx := i.TreeState.Node[i.TreeState.Trees[firstIdx].Start].Next
 	endIdx := i.TreeState.Trees[firstIdx].End
@@ -114,9 +113,8 @@ func (i *Ifcomp) pass7() {
 	for nodeIdx != endIdx && i.TreeState.Node[nodeIdx].Next != endIdx {
 		iterationCount++
 		if iterationCount > MAX_ITERATIONS {
-			fmt.Fprintf(os.Stderr, "*** Internal error in pass7: infinite loop detected at node %d after %d iterations\n",
+			return fmt.Errorf("internal error in pass7: infinite loop detected at node %d after %d iterations",
 				nodeIdx, iterationCount)
-			os.Exit(1)
 		}
 
 		// Safety check: if we've reached an invalid node (header or null), exit
@@ -138,4 +136,6 @@ func (i *Ifcomp) pass7() {
 			nodeIdx = nextNode
 		}
 	}
+
+	return nil
 }

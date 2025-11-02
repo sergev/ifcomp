@@ -155,14 +155,13 @@ func (i *Ifcomp) enterLine(text string, h uint64, linen LineCount, inputFile Fil
 func openFile(fn string) (*os.File, error) {
 	file, err := os.Open(fn)
 	if err != nil {
-		fmt.Printf("Can't open file %s\n", fn)
-		os.Exit(1)
+		return nil, fmt.Errorf("can't open file %s: %w", fn, err)
 	}
 	return file, nil
 }
 
 // Read all lines from an input file
-func (i *Ifcomp) readLines(whichFile FileIndex, reader io.Reader) {
+func (i *Ifcomp) readLines(whichFile FileIndex, reader io.Reader) error {
 	currentLine := 0
 	scanner := bufio.NewScanner(reader)
 	whichIdx := toArrayIndex(whichFile)
@@ -190,21 +189,26 @@ func (i *Ifcomp) readLines(whichFile FileIndex, reader io.Reader) {
 	}
 
 	if err := scanner.Err(); err != nil {
-		fmt.Printf("Error reading file: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("error reading file: %w", err)
 	}
 
 	i.FileState.TotalFileNLines[whichIdx] = currentLine
 	if currentLine == 0 {
-		fmt.Printf("File %d has no lines.\n", whichIdx)
-		os.Exit(whichIdx)
+		return fmt.Errorf("File %d has no lines", whichIdx)
 	}
+
+	return nil
 }
 
 // Pass 1: Hash Table Construction
-func (i *Ifcomp) pass1(file1, file2 io.Reader) {
-	i.readLines(First, file1)
-	i.readLines(Second, file2)
+func (i *Ifcomp) pass1(file1, file2 io.Reader) error {
+	if err := i.readLines(First, file1); err != nil {
+		return err
+	}
+	if err := i.readLines(Second, file2); err != nil {
+		return err
+	}
 	// We can free the hash stuff; not needed now
 	i.HashState.HashNode = nil
+	return nil
 }

@@ -401,17 +401,16 @@ func TestPass8_EdgeCase_SingleLine(t *testing.T) {
 }
 
 func TestPass8_EdgeCase_EmptyFiles(t *testing.T) {
-	// Edge case: empty files (causes readLines to exit with error)
+	// Edge case: empty files (causes readLines to return error)
 	ifc := setupPass8Test()
 	file1 := strings.NewReader("")
 	file2 := strings.NewReader("")
 
-	// This will call os.Exit(0) from readLines when file is empty
-	// In the C++ version, this test expects os.Exit behavior
-	// For Go, we'll just verify it handles the error appropriately
-	_ = file1
-	_ = file2
-	_ = ifc
+	// Empty files now return error instead of os.Exit
+	err := ifc.pass1(file1, file2)
+	if err == nil {
+		t.Fatal("Expected error for empty files, got nil")
+	}
 }
 
 func TestPass8_LongFiles(t *testing.T) {

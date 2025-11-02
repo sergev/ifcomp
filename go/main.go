@@ -66,7 +66,10 @@ func main() {
 
 	fmt.Printf("Comparing: %s %s\n\n", firstFname, secondFname)
 
-	ifc.Compare(firstFname, secondFname)
+	if err := ifc.Compare(firstFname, secondFname); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
 
 	if statistics {
 		fmt.Println("\nStatistics:")
@@ -119,7 +122,7 @@ func (i *Ifcomp) InitializeTables() {
 }
 
 // Compare is the main comparison function
-func (i *Ifcomp) Compare(firstFname, secondFname string) {
+func (i *Ifcomp) Compare(firstFname, secondFname string) error {
 	// Clear all state
 	i.HashState.Clear()
 	i.FileState.Clear()
@@ -135,18 +138,20 @@ func (i *Ifcomp) Compare(firstFname, secondFname string) {
 	// Open input files
 	file1, err := openFile(firstFname)
 	if err != nil {
-		os.Exit(1)
+		return err
 	}
 	defer file1.Close()
 
 	file2, err := openFile(secondFname)
 	if err != nil {
-		os.Exit(1)
+		return err
 	}
 	defer file2.Close()
 
 	// Execute passes 1-4
-	i.pass1(file1, file2)
+	if err := i.pass1(file1, file2); err != nil {
+		return err
+	}
 	if i.DebugSyt {
 		i.testList(1)
 	}
@@ -173,13 +178,18 @@ func (i *Ifcomp) Compare(firstFname, secondFname string) {
 	i.pass6()
 	i.dumpTrees(6)
 
-	i.pass7()
+	if err := i.pass7(); err != nil {
+		return err
+	}
 	i.dumpTrees(7)
 
-	i.pass8()
+	if err := i.pass8(); err != nil {
+		return err
+	}
 	i.dumpTrees(8)
 
 	i.summary()
+	return nil
 }
 
 // Summary prints summary statistics
