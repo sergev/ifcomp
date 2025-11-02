@@ -47,10 +47,9 @@ link_directories(
 # Enable testing
 enable_testing()
 
-# Main ifcomp executable
-add_executable(ifcomp
+# Library ifcomp
+add_library(compare
     ifcomp.cpp
-    main.cpp
     pass1.cpp
     pass2.cpp
     pass3.cpp
@@ -60,6 +59,10 @@ add_executable(ifcomp
     pass7.cpp
     pass8.cpp
 )
+
+# Main ifcomp executable
+add_executable(ifcomp main.cpp)
+target_link_libraries(ifcomp PRIVATE compare)
 
 # Installation
 install(TARGETS ifcomp

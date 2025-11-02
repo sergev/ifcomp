@@ -37,20 +37,12 @@ add_executable(test_ifcomp
     test_pass6.cpp
     test_pass7.cpp
     test_pass8.cpp
-    ${CMAKE_SOURCE_DIR}/ifcomp.cpp
-    ${CMAKE_SOURCE_DIR}/pass1.cpp
-    ${CMAKE_SOURCE_DIR}/pass2.cpp
-    ${CMAKE_SOURCE_DIR}/pass3.cpp
-    ${CMAKE_SOURCE_DIR}/pass4.cpp
-    ${CMAKE_SOURCE_DIR}/pass5.cpp
-    ${CMAKE_SOURCE_DIR}/pass6.cpp
-    ${CMAKE_SOURCE_DIR}/pass7.cpp
-    ${CMAKE_SOURCE_DIR}/pass8.cpp
 )
 
 # Link with GoogleTest and its main function
-target_link_libraries(test_ifcomp
-    PRIVATE GTest::gtest_main
+target_link_libraries(test_ifcomp PRIVATE
+    compare
+    GTest::gtest_main
 )
 
 # Add test to CTest
