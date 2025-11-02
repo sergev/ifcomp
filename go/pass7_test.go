@@ -270,6 +270,43 @@ func TestPass7_EdgeCase_IdenticalFiles(t *testing.T) {
 	}
 }
 
+func TestPass7_DumpTreesBeforeAfterPass6(t *testing.T) {
+	// Test to dump trees before and after pass6 for comparison with C++
+	// This helps diagnose pass7 infinite loop issues
+	ifc := setupPass7Test()
+	file1 := strings.NewReader("OLD\n")
+	file2 := strings.NewReader("NEW\n")
+
+	ifc.pass1(file1, file2)
+	ifc.pass2()
+	ifc.pass3()
+	ifc.pass4()
+	ifc.pass5()
+
+	// Enable tree dumping
+	ifc.DebugDumpTrees = true
+	ifc.DebugDumpTreesFull = true
+
+	// Dump trees before pass6
+	t.Log("=== Before pass6 ===")
+	ifc.dumpTrees(5)
+
+	// Run pass6
+	ifc.pass6()
+
+	// Dump trees after pass6
+	t.Log("=== After pass6 ===")
+	ifc.dumpTrees(99)
+
+	// Run pass7 - this is where the infinite loop occurs
+	ifc.pass7()
+
+	// Verify structure is still valid
+	if ifc.TreeState.Trees[0].Start == NullNode {
+		t.Error("Should have valid tree after pass7")
+	}
+}
+
 func TestPass7_ComplexPatterns(t *testing.T) {
 	// Test with complex patterns
 	ifc := setupPass7Test()
@@ -382,8 +419,7 @@ func TestPass7_AllDuplicatesPattern(t *testing.T) {
 	ifc.pass1(file1, file2)
 	ifc.pass2()
 	ifc.pass5()
-	// Note: All duplicates files cause pass6 to create output
-	// Skip pass6 for this test to avoid output
+	ifc.pass6()
 	ifc.pass7()
 
 	// Should handle all duplicates
@@ -464,8 +500,7 @@ func TestPass7_EmptyLinesHandled(t *testing.T) {
 	ifc.pass1(file1, file2)
 	ifc.pass2()
 	ifc.pass5()
-	// Note: Empty duplicate lines cause pass6 to create output
-	// Skip pass6 for this test to avoid output
+	ifc.pass6()
 	ifc.pass7()
 
 	// Should handle empty lines
@@ -473,4 +508,3 @@ func TestPass7_EmptyLinesHandled(t *testing.T) {
 		t.Error("Should have tree structure")
 	}
 }
-

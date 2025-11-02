@@ -103,12 +103,15 @@ func (i *Ifcomp) freeNode(n TreeIndex) {
 func (i *Ifcomp) pass7() {
 	firstIdx := toArrayIndex(First)
 	nodeIdx := i.TreeState.Node[i.TreeState.Trees[firstIdx].Start].Next
+	endIdx := i.TreeState.Trees[firstIdx].End
 
 	// Safety check: prevent infinite loops
 	iterationCount := 0
 	const MAX_ITERATIONS = 10000
 
-	for i.TreeState.Node[nodeIdx].Next != i.TreeState.Trees[firstIdx].End {
+	// Loop until we reach the end marker
+	// Check both: nodeIdx itself and node[nodeIdx].next
+	for nodeIdx != endIdx && i.TreeState.Node[nodeIdx].Next != endIdx {
 		iterationCount++
 		if iterationCount > MAX_ITERATIONS {
 			fmt.Fprintf(os.Stderr, "*** Internal error in pass7: infinite loop detected at node %d after %d iterations\n",
@@ -116,11 +119,23 @@ func (i *Ifcomp) pass7() {
 			os.Exit(1)
 		}
 
+		// Safety check: if we've reached an invalid node (header or null), exit
+		if nodeIdx == i.TreeState.Trees[firstIdx].Start || nodeIdx == NullNode || nodeIdx == 0 {
+			break
+		}
+
 		j := i.TreeState.Node[nodeIdx].Prev
 		if i.pass7CombineAdjacentNodes(nodeIdx) {
+			// After combination, nodeIdx (node1) may have been freed/reused
+			// Use j (prev) to get the new combined node
 			nodeIdx = i.TreeState.Node[j].Next
 		} else {
-			nodeIdx = i.TreeState.Node[nodeIdx].Next
+			// Advance to next node, but ensure we don't go to an invalid node
+			nextNode := i.TreeState.Node[nodeIdx].Next
+			if nextNode == NullNode || nextNode == 0 || nextNode == i.TreeState.Trees[firstIdx].Start {
+				break
+			}
+			nodeIdx = nextNode
 		}
 	}
 }

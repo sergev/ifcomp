@@ -515,8 +515,9 @@ func TestPass8_NoUniqueLines(t *testing.T) {
 	ifc.pass3()
 	ifc.pass4()
 	ifc.pass5()
-	// Skip pass6 and pass8 to avoid issues with duplicate files
-	// All duplicates cause pass6 to output, and pass8 may have issues
+	ifc.pass6()
+	ifc.pass7()
+	ifc.pass8()
 
 	// Should handle all duplicates through pass5
 	if ifc.TreeState.Trees[0].Start == NullNode {

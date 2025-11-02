@@ -149,10 +149,7 @@ func TestIfcomp_SingleIdenticalLine(t *testing.T) {
 }
 
 // Test files with single different line
-// TODO: This test reveals a bug in Go pass7 where it loops infinitely with single-line replacements
-// The C++ version handles this case correctly. This needs investigation and fixing.
 func TestIfcomp_SingleDifferentLine(t *testing.T) {
-	t.Skip("Skipping due to infinite loop bug in pass7 with single-line replacements")
 	output := runIfcomp("OLD\n", "NEW\n")
 	assertStatistics(t, output, 0, 0, 1, 1, 0, 1)
 }
@@ -164,9 +161,7 @@ func TestIfcomp_TwoLinesIdentical(t *testing.T) {
 }
 
 // Test two lines - second different
-// TODO: Debug why this fails - likely related to pass7 infinite loop issue
 func TestIfcomp_TwoLinesSecondDifferent(t *testing.T) {
-	t.Skip("Skipping due to issues with replacement handling")
 	output := runIfcomp("LINE1\nOLD\n", "LINE1\nNEW\n")
 	assertStatistics(t, output, 0, 0, 1, 1, 0, 1)
 }
@@ -193,7 +188,7 @@ func TestIfcomp_NoTrailingNewline(t *testing.T) {
 // Test case with deletes, moves and replacements
 // TODO: Enable when pass7 bug is fixed
 func TestIfcomp_ComplexChanges(t *testing.T) {
-	t.Skip("Skipping due to pass7 infinite loop bug")
+
 	output := runIfcomp("A\nX\nC\nY\nD\nW\nE\nA\nB\nE\n", "A\nB\nC\nD\nE\n")
 	assertStatistics(t, output, 4, 0, 2, 1, 2, 5)
 }
@@ -201,7 +196,7 @@ func TestIfcomp_ComplexChanges(t *testing.T) {
 // Test case with deletes, moves and replacements
 // TODO: Enable when pass7 bug is fixed
 func TestIfcomp_PermutationChanges(t *testing.T) {
-	t.Skip("Skipping due to pass7 infinite loop bug")
+
 	output := runIfcomp("A\nB\nC\nD\nE\nG\n", "D\nE\nF\nG\nA\nC\n")
 	assertStatistics(t, output, 1, 1, 0, 0, 2, 3)
 }
@@ -209,7 +204,7 @@ func TestIfcomp_PermutationChanges(t *testing.T) {
 // Test case from the NASA paper
 // TODO: Enable when pass7 bug is fixed
 func TestIfcomp_MuchWritingExample(t *testing.T) {
-	t.Skip("Skipping due to pass7 infinite loop bug")
+
 	fileA := "a\nmass\nof\nlatin\nwords\nfalls\nupon\nthe\nrelevant\nfacts\nlike\nsoft\nsnow\n,\ncovering\nup\nthe\ndetails\n.\n"
 	fileB := "much\nwriting\nis\nlike\nsnow\n,\na\nmass\nof\nlong\nwords\nand\nphrases\nfalls\nupon\nthe\nrelevant\nfacts\ncovering\nup\nthe\ndetails\n.\n"
 	output := runIfcomp(fileA, fileB)
@@ -219,7 +214,7 @@ func TestIfcomp_MuchWritingExample(t *testing.T) {
 // Test exactly 127 occurrences of same line (char limit)
 // Note: Identical duplicate files are reported as replacements due to algorithm limitation
 func TestIfcomp_Exactly127Occurrences(t *testing.T) {
-	t.Skip("Skipping due to pass7 infinite loop bug")
+
 	fileA := generateFileWithDuplicates("LINE", 127)
 	fileB := generateFileWithDuplicates("LINE", 127)
 	output := runIfcomp(fileA, fileB)
@@ -229,7 +224,7 @@ func TestIfcomp_Exactly127Occurrences(t *testing.T) {
 // Test more than 127 occurrences (potential overflow)
 // Note: Identical duplicate files are reported as replacements due to algorithm limitation
 func TestIfcomp_Over127Occurrences(t *testing.T) {
-	t.Skip("Skipping due to pass7 infinite loop bug")
+
 	fileA := generateFileWithDuplicates("LINE", 128)
 	fileB := generateFileWithDuplicates("LINE", 128)
 	output := runIfcomp(fileA, fileB)
@@ -239,7 +234,7 @@ func TestIfcomp_Over127Occurrences(t *testing.T) {
 // Test file with only one unique line repeated 200 times
 // Note: Identical duplicate files are reported as replacements due to algorithm limitation
 func TestIfcomp_OneUniqueLine200Times(t *testing.T) {
-	t.Skip("Skipping due to pass7 infinite loop bug")
+
 	fileA := generateFileWithDuplicates("SAME", 200)
 	fileB := generateFileWithDuplicates("SAME", 200)
 	output := runIfcomp(fileA, fileB)
@@ -249,7 +244,7 @@ func TestIfcomp_OneUniqueLine200Times(t *testing.T) {
 // Test multiple lines each repeated many times
 // Note: Identical duplicate files are reported as replacements due to algorithm limitation
 func TestIfcomp_MultipleLinesManyRepeats(t *testing.T) {
-	t.Skip("Skipping due to pass7 infinite loop bug")
+
 	fileA := generateFileWithDuplicates("A\n", 50) +
 		generateFileWithDuplicates("B\n", 50) +
 		generateFileWithDuplicates("C\n", 50)
@@ -263,7 +258,7 @@ func TestIfcomp_MultipleLinesManyRepeats(t *testing.T) {
 // Test interleaved duplicates (A, B, A, B pattern)
 // Note: Identical duplicate files are reported as replacements due to algorithm limitation
 func TestIfcomp_InterleavedDuplicates(t *testing.T) {
-	t.Skip("Skipping due to pass7 infinite loop bug")
+
 	var sbA, sbB strings.Builder
 	for i := 0; i < 50; i++ {
 		sbA.WriteString("A\nB\n")
@@ -276,7 +271,7 @@ func TestIfcomp_InterleavedDuplicates(t *testing.T) {
 // Test duplicated lines in different orders
 // Note: Duplicate lines without unique anchors are reported as replacements
 func TestIfcomp_DuplicatesDifferentOrder(t *testing.T) {
-	t.Skip("Skipping due to pass7 infinite loop bug")
+
 	output := runIfcomp("A\nA\nB\nB\nC\nC\n", "C\nC\nB\nB\nA\nA\n")
 	// Reported as replacement due to algorithm limitation
 	assertStatistics(t, output, 0, 0, 6, 6, 0, 1)
@@ -285,7 +280,7 @@ func TestIfcomp_DuplicatesDifferentOrder(t *testing.T) {
 // Test some duplicates, some unique
 // Note: Duplicate lines prevent proper matching even with unique lines
 func TestIfcomp_MixedDuplicatesAndUnique(t *testing.T) {
-	t.Skip("Skipping due to pass7 infinite loop bug")
+
 	output := runIfcomp("A\nA\nUNIQUE1\nB\nB\n", "A\nA\nUNIQUE2\nB\nB\n")
 	// Reported as 5 replacements due to algorithm limitation
 	assertStatistics(t, output, 0, 0, 5, 5, 0, 1)
@@ -294,7 +289,7 @@ func TestIfcomp_MixedDuplicatesAndUnique(t *testing.T) {
 // Test removing duplicates
 // Note: Duplicate lines are reported as replacement rather than deletion
 func TestIfcomp_RemovingDuplicates(t *testing.T) {
-	t.Skip("Skipping due to pass7 infinite loop bug")
+
 	output := runIfcomp("LINE\nLINE\nLINE\n", "LINE\n")
 	assertStatistics(t, output, 0, 0, 3, 1, 0, 1)
 }
@@ -302,7 +297,7 @@ func TestIfcomp_RemovingDuplicates(t *testing.T) {
 // Test adding duplicates
 // Note: Duplicate lines are reported as replacement rather than insertion
 func TestIfcomp_AddingDuplicates(t *testing.T) {
-	t.Skip("Skipping due to pass7 infinite loop bug")
+
 	output := runIfcomp("LINE\n", "LINE\nLINE\nLINE\n")
 	assertStatistics(t, output, 0, 0, 1, 3, 0, 1)
 }
@@ -321,14 +316,14 @@ func TestIfcomp_TrailingWhitespace(t *testing.T) {
 
 // Test leading whitespace differences
 func TestIfcomp_LeadingWhitespaceDifferent(t *testing.T) {
-	t.Skip("Skipping due to pass7 infinite loop bug")
+
 	output := runIfcomp("   LINE\n", "LINE\n")
 	assertStatistics(t, output, 0, 0, 1, 1, 0, 1)
 }
 
 // Test trailing whitespace differences
 func TestIfcomp_TrailingWhitespaceDifferent(t *testing.T) {
-	t.Skip("Skipping due to pass7 infinite loop bug")
+
 	output := runIfcomp("LINE   \n", "LINE\n")
 	assertStatistics(t, output, 0, 0, 1, 1, 0, 1)
 }
@@ -353,28 +348,28 @@ func TestIfcomp_EmptyLines(t *testing.T) {
 
 // Test empty lines in different positions
 func TestIfcomp_EmptyLinesDifferent(t *testing.T) {
-	t.Skip("Skipping due to pass7 infinite loop bug")
+
 	output := runIfcomp("A\nB\nC\n", "A\n\nB\n\nC\n")
 	assertStatistics(t, output, 0, 2, 0, 0, 0, 2)
 }
 
 // Test indentation changes
 func TestIfcomp_IndentationChanges(t *testing.T) {
-	t.Skip("Skipping due to pass7 infinite loop bug")
+
 	output := runIfcomp("  if (x) {\n    return;\n  }\n", "    if (x) {\n      return;\n    }\n")
 	assertStatistics(t, output, 0, 0, 3, 3, 0, 1)
 }
 
 // Test whitespace-only line differences
 func TestIfcomp_WhitespaceOnlyDifferences(t *testing.T) {
-	t.Skip("Skipping due to pass7 infinite loop bug")
+
 	output := runIfcomp("LINE\n   \nMORE\n", "LINE\n     \nMORE\n")
 	assertStatistics(t, output, 0, 0, 1, 1, 0, 1)
 }
 
 // Test tabs vs spaces
 func TestIfcomp_TabsVsSpaces(t *testing.T) {
-	t.Skip("Skipping due to pass7 infinite loop bug")
+
 	output := runIfcomp("\tLINE\n", "    LINE\n")
 	// Should be different
 	assertStatistics(t, output, 0, 0, 1, 1, 0, 1)
@@ -420,7 +415,7 @@ func TestIfcomp_UTF8MultibyteChars(t *testing.T) {
 
 // Test UTF-8 with differences
 func TestIfcomp_UTF8WithDifferences(t *testing.T) {
-	t.Skip("Skipping due to pass7 infinite loop bug")
+
 	output := runIfcomp("Hello 世界\n", "Hello 宇宙\n")
 	assertStatistics(t, output, 0, 0, 1, 1, 0, 1)
 }
@@ -446,7 +441,7 @@ func TestIfcomp_NumericStrings(t *testing.T) {
 // Test lines with carriage returns (CRLF vs LF)
 // Note: IFCOMP treats CRLF differently from LF - reported as replacement
 func TestIfcomp_CarriageReturns(t *testing.T) {
-	t.Skip("Skipping due to pass7 infinite loop bug")
+
 	output := runIfcomp("LINE\r\nLINE\r\n", "LINE\nLINE\n")
 	assertStatistics(t, output, 0, 0, 2, 2, 0, 1)
 }
@@ -482,7 +477,7 @@ func TestIfcomp_MixShortAndLongLines(t *testing.T) {
 
 // Test very long line followed by very short line
 func TestIfcomp_LongLineFollowedByShort(t *testing.T) {
-	t.Skip("Skipping due to pass7 infinite loop bug")
+
 	longLine := generateLongLine(4095, 'X')
 	output := runIfcomp(longLine+"\nX\n", longLine+"\nY\n")
 	assertStatistics(t, output, 0, 0, 1, 1, 0, 1)
@@ -522,7 +517,7 @@ func TestIfcomp_SameLengthDifferentContent(t *testing.T) {
 
 // Test lines that are almost identical (one character different)
 func TestIfcomp_AlmostIdenticalLines(t *testing.T) {
-	t.Skip("Skipping due to pass7 infinite loop bug")
+
 	output := runIfcomp("HELLO_WORLD_A\nHELLO_WORLD_B\nHELLO_WORLD_C\n", "HELLO_WORLD_A\nHELLO_WORLD_X\nHELLO_WORLD_C\n")
 	assertStatistics(t, output, 0, 0, 1, 1, 0, 1)
 }
@@ -540,7 +535,7 @@ func TestIfcomp_ManyDifferentLines(t *testing.T) {
 
 // Test permutation of lines to stress hash table
 func TestIfcomp_PermutedLines(t *testing.T) {
-	t.Skip("Skipping due to pass7 infinite loop bug")
+
 	var sbA, sbB strings.Builder
 	for c := 'A'; c <= 'Z'; c++ {
 		sbA.WriteString(fmt.Sprintf("%c\n", c))
@@ -578,7 +573,7 @@ func TestIfcomp_ThousandLines(t *testing.T) {
 // Test 100 unique lines repeated in different orders
 // Note: Duplicate lines prevent proper matching - reported as replacement
 func TestIfcomp_HundredUniqueRepeated(t *testing.T) {
-	t.Skip("Skipping due to pass7 infinite loop bug")
+
 	var sbA, sbB strings.Builder
 	for i := 1; i <= 100; i++ {
 		sbA.WriteString(fmt.Sprintf("unique%d\n", i))
@@ -594,7 +589,7 @@ func TestIfcomp_HundredUniqueRepeated(t *testing.T) {
 
 // Test large identical sections with small differences
 func TestIfcomp_LargeIdenticalSectionsWithDifferences(t *testing.T) {
-	t.Skip("Skipping due to pass7 infinite loop bug")
+
 	var sbA, sbB strings.Builder
 	for i := 1; i <= 500; i++ {
 		sbA.WriteString(fmt.Sprintf("identical%d\n", i))
@@ -612,7 +607,7 @@ func TestIfcomp_LargeIdenticalSectionsWithDifferences(t *testing.T) {
 
 // Test large deletions
 func TestIfcomp_LargeDeletions(t *testing.T) {
-	t.Skip("Skipping due to pass7 infinite loop bug")
+
 	var sbA, sbB strings.Builder
 	for i := 1; i <= 1000; i++ {
 		sbA.WriteString(fmt.Sprintf("line%d\n", i))
@@ -627,7 +622,7 @@ func TestIfcomp_LargeDeletions(t *testing.T) {
 
 // Test large insertions
 func TestIfcomp_LargeInsertions(t *testing.T) {
-	t.Skip("Skipping due to pass7 infinite loop bug")
+
 	var sbA, sbB strings.Builder
 	for i := 1; i <= 1000; i++ {
 		if i%2 == 0 {
@@ -653,21 +648,21 @@ func TestIfcomp_FiveThousandLines(t *testing.T) {
 
 // Test only insertions (file1 subset of file2)
 func TestIfcomp_OnlyInsertions(t *testing.T) {
-	t.Skip("Skipping due to pass7 infinite loop bug")
+
 	output := runIfcomp("A\nC\nE\n", "A\nB\nC\nD\nE\nF\n")
 	assertStatistics(t, output, 0, 3, 0, 0, 0, 3)
 }
 
 // Test only deletions (file2 subset of file1)
 func TestIfcomp_OnlyDeletions(t *testing.T) {
-	t.Skip("Skipping due to pass7 infinite loop bug")
+
 	output := runIfcomp("A\nB\nC\nD\nE\nF\n", "A\nC\nE\n")
 	assertStatistics(t, output, 3, 0, 0, 0, 0, 3)
 }
 
 // Test only moves (same lines, different order)
 func TestIfcomp_OnlyMoves(t *testing.T) {
-	t.Skip("Skipping due to pass7 infinite loop bug")
+
 	output := runIfcomp("A\nB\nC\nD\n", "D\nC\nB\nA\n")
 	assertStatistics(t, output, 0, 0, 0, 0, 4, 3)
 }
@@ -686,14 +681,14 @@ func TestIfcomp_BoundaryMatching(t *testing.T) {
 
 // Test changes at boundaries
 func TestIfcomp_BoundaryChanges(t *testing.T) {
-	t.Skip("Skipping due to pass7 infinite loop bug")
+
 	output := runIfcomp("OLDSTART\nMIDDLE\nOLDEND\n", "NEWSTART\nMIDDLE\nNEWEND\n")
 	assertStatistics(t, output, 0, 0, 2, 2, 0, 2)
 }
 
 // Test complete reversal (A,B,C,D → D,C,B,A)
 func TestIfcomp_CompleteReversal(t *testing.T) {
-	t.Skip("Skipping due to pass7 infinite loop bug")
+
 	output := runIfcomp("A\nB\nC\nD\nE\n", "E\nD\nC\nB\nA\n")
 	// All lines moved
 	assertStatistics(t, output, 0, 0, 0, 0, 5, 4)
@@ -701,7 +696,7 @@ func TestIfcomp_CompleteReversal(t *testing.T) {
 
 // Test rotation patterns (A,B,C,D → B,C,D,A)
 func TestIfcomp_RotationPattern(t *testing.T) {
-	t.Skip("Skipping due to pass7 infinite loop bug")
+
 	output := runIfcomp("A\nB\nC\nD\n", "B\nC\nD\nA\n")
 	// All lines moved
 	assertStatistics(t, output, 0, 0, 0, 0, 1, 1)
@@ -709,14 +704,14 @@ func TestIfcomp_RotationPattern(t *testing.T) {
 
 // Test interleaving (A,C,E → A,B,C,D,E)
 func TestIfcomp_Interleaving(t *testing.T) {
-	t.Skip("Skipping due to pass7 infinite loop bug")
+
 	output := runIfcomp("A\nC\nE\n", "A\nB\nC\nD\nE\n")
 	assertStatistics(t, output, 0, 2, 0, 0, 0, 2)
 }
 
 // Test chunked moves (blocks of lines moved)
 func TestIfcomp_ChunkedMoves(t *testing.T) {
-	t.Skip("Skipping due to pass7 infinite loop bug")
+
 	output := runIfcomp("A\nB\nC\nD\nE\nF\nG\nH\n", "D\nE\nF\nA\nB\nC\nG\nH\n")
 	// Block A,B,C moved, block D,E,F moved
 	assertStatistics(t, output, 0, 0, 0, 0, 5, 2)
@@ -724,14 +719,14 @@ func TestIfcomp_ChunkedMoves(t *testing.T) {
 
 // Test multiple independent change regions
 func TestIfcomp_MultipleIndependentRegions(t *testing.T) {
-	t.Skip("Skipping due to pass7 infinite loop bug")
+
 	output := runIfcomp("KEEP1\nOLD1\nKEEP2\nOLD2\nKEEP3\nOLD3\nKEEP4\n", "KEEP1\nNEW1\nKEEP2\nNEW2\nKEEP3\nNEW3\nKEEP4\n")
 	assertStatistics(t, output, 0, 0, 3, 3, 0, 3)
 }
 
 // Test change every other line
 func TestIfcomp_ChangeEveryOtherLine(t *testing.T) {
-	t.Skip("Skipping due to pass7 infinite loop bug")
+
 	output := runIfcomp("A1\nKEEP1\nA2\nKEEP2\nA3\nKEEP3\n", "B1\nKEEP1\nB2\nKEEP2\nB3\nKEEP3\n")
 	assertStatistics(t, output, 0, 0, 3, 3, 0, 3)
 }
