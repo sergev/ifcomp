@@ -32,114 +32,57 @@ The algorithm uses:
 
 Before diving into the passes, it's important to understand the key data structures:
 
-### FileIndex Enumeration
-```cpp
-enum class FileIndex : int { First = 0, Second = 1 };
-```
-Strong type for file identification. Use `to_array_index(FileIndex)` to convert to array index.
-
 ### Nested State Structures
 
-The `Ifcomp` class organizes related data into nested structs:
+The algorithm organizes related data into nested structures:
 
 #### HashTableState
 Hash table state (used only in pass1):
-```cpp
-struct HashTableState {
-    std::vector<HashNodeDecl> hash_node;
-    hash_node_index sec_hash_start_node[NBUCKETS];
-
-    HashTableState();  // Initialize buckets to empty
-    void clear();      // Clear hash table state
-};
-```
+- Stores hash nodes for efficient line lookup
+- Contains buckets for organizing lines by hash value
 
 #### FileState
 Per-file line data:
-```cpp
-struct FileState {
-    std::vector<FileLineDecl> file_line[TWO_FILES];
-    int total_file_nlines[TWO_FILES];
-
-    FileState();  // Initialize with dummy entries at index 0
-    void clear(); // Clear file state
-};
-```
+- Stores line information for both files
+- Tracks total line count per file
+- Uses 1-based indexing with dummy entries at index 0
 
 #### LineMatchingState
 Line matching tables:
-```cpp
-struct LineMatchingState {
-    std::vector<LineTableDecl> line_table;
-    std::vector<StringDecl> string_table;
-
-    void clear(); // Clear state, preserving dummy entries at index 0
-};
-```
+- Maintains unique text strings
+- Tracks line mappings between files
 
 #### TreeState
 Tree structure for passes 5-8:
-```cpp
-struct TreeState {
-    std::vector<NodeDecl> node;
-    TreeBounds trees[TWO_FILES];
-    tree_index free_nodes_start;
-
-    TreeState();  // Initialize with null free nodes
-    void clear(); // Clear tree state
-};
-```
+- Stores nodes representing file segments
+- Maintains tree boundaries for each file
+- Manages free nodes for reuse
 
 #### Statistics
 Change tracking:
-```cpp
-struct Statistics {
-    LineKinds delete_stats;
-    LineKinds insert_stats;
-    LineKinds move_stats;
-    LineKinds replace1_stats;
-    LineKinds replace2_stats;
-    short nchange_blocks;
-
-    Statistics(); // Initialize with zero counts
-    void clear(); // Clear statistics
-};
-```
+- Counts deletions, insertions, moves, replacements
+- Tracks number of change blocks
 
 ### StringDecl
 Represents a unique line of text:
-```cpp
-struct StringDecl {
-    std::string text;
-    string_index next_text_with_same_hash;
-    uint8_t file_nlines[TWO_FILES];   // Count of occurrences in each file
-    line_count file_list[TWO_FILES];  // Linked list of line numbers in each file
-};
-```
+- Stores the text content
+- Links to other strings with same hash
+- Tracks occurrence count per file
+- Maintains linked lists of line numbers
 
 ### FileLineDecl
 Represents a line in one of the input files:
-```cpp
-struct FileLineDecl {
-    line_count ptr0;              // Reference to corresponding line in other file
-    string_index file_line_text;  // Index into string_table
-    line_count linen;             // Line number in this file
-    LineType ptr_type;            // SYT_TYPE, UNIQUE_TYPE, or MATCH_TYPE
-};
-```
+- References corresponding line in other file
+- Links to unique text in string table
+- Stores line number
+- Records line type (SYT_TYPE, UNIQUE_TYPE, or MATCH_TYPE)
 
 ### NodeDecl
 Represents a segment in the tree structure:
-```cpp
-struct NodeDecl {
-    line_count cost;         // Number of lines (negative = unmatched)
-    line_count linen;        // Starting line number (negative for file2)
-    tree_index prev;         // Previous node in linked list
-    tree_index next;         // Next node in linked list
-    tree_index branch_start; // Start of branch (for non-leaf nodes)
-    tree_index branch_end;   // End of branch (for non-leaf nodes)
-};
-```
+- Cost: number of lines (negative = unmatched)
+- Line number: starting position (negative for file2)
+- Prev/next: doubly-linked list pointers
+- Branch pointers: structure for non-leaf nodes
 
 ### LineType Enumeration
 - `SYT_TYPE`: Line not yet matched (SYT = Symbol Table)
@@ -155,74 +98,54 @@ struct NodeDecl {
 ### Algorithm
 
 1. **Read each file line by line**
-2. **Compute hash for each line** using `hash_line()`
-3. **Enter line into hash table** using `enter_line()`
+2. **Compute hash for each line**
+3. **Enter line into hash table**
 
 ### Hash Function Details
 
-The hash function (`hash_line`) uses C++ standard library hashing:
-
-- **std::hash<std::string>**: Returns a `size_t` hash value for the input string
-- The hash function is provided by the C++ standard library and produces consistent hash values
-- Hash codes are compared using `hashcode_compare()` to maintain sorted order
+The hash function uses standard library hashing to produce consistent hash values. Hash codes are compared to maintain sorted order within buckets.
 
 ### Hash Table Structure
 
-- **256 buckets** (`NBUCKETS`): Hash table uses `hash % NBUCKETS` to index into buckets
-- **Sorted chains**: Within each bucket, nodes are sorted by hash code (using `hashcode_compare`)
-- **Collision handling**: Multiple strings with the same hash are chained via `next_text_with_same_hash` in the hash node structure
+- **256 buckets**: Hash table uses modulo operation to index into buckets
+- **Sorted chains**: Within each bucket, nodes are sorted by hash code
+- **Collision handling**: Multiple strings with the same hash are chained together
 
 ### Enter Line Process
 
-For each line, `enter_line()` performs:
-
-1. **Find bucket**: `bucket = hash_state.sec_hash_start_node[h % NBUCKETS]`
-2. **Search sorted chain**: Compare hash codes to find insertion point
-3. **Handle collisions**: If hash matches, search text chain for exact match
-4. **Create entries**:
-   - New hash node if hash code not found
-   - New string entry if text not found
-   - Update `file_nlines` and `file_list` if text already exists
+For each line:
+1. Find the appropriate bucket
+2. Search the sorted chain to find insertion point
+3. Handle collisions by searching text chain for exact match
+4. Create entries if needed or update existing entries
 
 ### String Table Organization
 
 The string table maintains:
 - Unique text strings
-- Occurrence counts per file (`file_nlines`)
-- Linked lists of line numbers per file (`file_list`)
+- Occurrence counts per file
+- Linked lists of line numbers per file
 
 ### File Line Tracking
 
 For each line read:
-```cpp
-file_state.file_line[to_array_index(which_file)][linen].ptr_type = LineType::SYT_TYPE; // Not yet matched
-file_state.file_line[to_array_index(which_file)][linen].file_line_text = string_index; // Reference to string
-file_state.file_line[to_array_index(which_file)][linen].linen = linen;                 // Line number
-file_state.file_line[to_array_index(which_file)][linen].ptr0 = -1;                     // No match yet
-```
+- Line is marked as `SYT_TYPE` (not yet matched)
+- Reference to unique text in string table is stored
+- Line number is recorded
+- No match is established yet (ptr0 = -1)
 
 ### Important: 1-Based Indexing
 
-The implementation uses **1-based indexing** for all table access, matching the original legacy code:
+The implementation uses **1-based indexing** for all table access:
 
-- **Index 0 is reserved**: Used as NULL sentinel values (`NULL_LINE_LIST`, `NULL_STRING_LIST`, `NULL_HASH_LIST`, `NULL_NODE`)
-- **Dummy entries**: Tables (`line_table`, `string_table`, `hash_node`, `node`) are initialized with dummy entries at index 0
-- **Valid indices start at 1**: The first real entry is at index 1, not index 0
-- **Why**: This allows 0 to serve as a sentinel value, simplifying null checks throughout the algorithm
-
-Initialization:
-```cpp
-// Dummy entries at index 0
-line_matching_state.line_table.emplace_back();   // Dummy entry at index 0
-line_matching_state.string_table.emplace_back(); // Dummy entry at index 0
-hash_state.hash_node.emplace_back();             // Dummy entry at index 0
-tree_state.node.emplace_back();                  // Dummy entry at index 0 (added in pass5)
-// First real entry will be at index 1
-```
+- **Index 0 is reserved**: Used as NULL sentinel values
+- **Dummy entries**: Tables are initialized with dummy entries at index 0
+- **Valid indices start at 1**: The first real entry is at index 1
+- **Why**: This allows 0 to serve as a sentinel value, simplifying null checks
 
 ### Cleanup
 
-After Pass 1, the hash node table (`hash_state.hash_node`) is cleared (no longer needed after initial indexing).
+After Pass 1, the hash node table is cleared (no longer needed after initial indexing).
 
 ---
 
@@ -232,26 +155,16 @@ After Pass 1, the hash node table (`hash_state.hash_node`) is cleared (no longer
 
 ### Algorithm
 
-```cpp
-for each string in line_matching_state.string_table:
-    if string.file_nlines[to_array_index(FileIndex::First)] == 1 AND
-       string.file_nlines[to_array_index(FileIndex::Second)] == 1:
-        // Found a unique pair
-        Mark both lines as UNIQUE_TYPE
-        Set ptr0 to reference each other
-```
+For each string in the string table:
+- If the line appears exactly once in file1 AND exactly once in file2:
+  - Mark both lines as `UNIQUE_TYPE`
+  - Set ptr0 to reference each other
 
 ### Process
 
 1. **Iterate through string_table**: For each unique text string
 2. **Check uniqueness**: Line appears exactly once in file1 AND exactly once in file2
-3. **Create bidirectional links**:
-   ```cpp
-   file_state.file_line[to_array_index(FileIndex::First)][linen1].ptr_type = LineType::UNIQUE_TYPE;
-   file_state.file_line[to_array_index(FileIndex::First)][linen1].ptr0 = linen2;
-   file_state.file_line[to_array_index(FileIndex::Second)][linen2].ptr_type = LineType::UNIQUE_TYPE;
-   file_state.file_line[to_array_index(FileIndex::Second)][linen2].ptr0 = linen1;
-   ```
+3. **Create bidirectional links**: Both lines reference each other
 
 ### Why Unique Pairs Matter
 
@@ -279,11 +192,7 @@ If line "function foo()" appears:
 - Line 10 in file1 (only occurrence)
 - Line 5 in file2 (only occurrence)
 
-Then:
-- `file_state.file_line[to_array_index(FileIndex::First)][10].ptr_type = LineType::UNIQUE_TYPE`
-- `file_state.file_line[to_array_index(FileIndex::First)][10].ptr0 = 5`
-- `file_state.file_line[to_array_index(FileIndex::Second)][5].ptr_type = LineType::UNIQUE_TYPE`
-- `file_state.file_line[to_array_index(FileIndex::Second)][5].ptr0 = 10`
+Then both lines are marked as `UNIQUE_TYPE` and reference each other.
 
 If a line appears multiple times in either file, it remains `SYT_TYPE`:
 - "COMMON" appears 3 times in file1, 3 times in file2 → remains `SYT_TYPE` after Pass 2
@@ -297,17 +206,12 @@ If a line appears multiple times in either file, it remains `SYT_TYPE`:
 
 ### Algorithm
 
-```cpp
-for each line m in file1:
-    if file_state.file_line[to_array_index(FileIndex::First)][m].ptr_type == LineType::UNIQUE_TYPE:
-        n = file_state.file_line[to_array_index(FileIndex::First)][m].ptr0  // Corresponding line in file2
-
-        // Extend forward while lines match
-        while (next lines are SYT_TYPE AND text matches):
-            Mark both lines as MATCH_TYPE
-            Create bidirectional links
-            Advance m and n
-```
+For each line in file1:
+- If the line is `UNIQUE_TYPE`:
+  - Find corresponding line in file2
+  - Extend forward while lines match
+  - Mark matching lines as `MATCH_TYPE`
+  - Create bidirectional links
 
 ### Process
 
@@ -315,9 +219,9 @@ for each line m in file1:
 2. **Find unique lines**: When encountering a `UNIQUE_TYPE` line
 3. **Extend forward**: Check if the next lines match
    - **Both lines must be `SYT_TYPE`** (not yet matched, not unique)
-   - Text must be identical (`file_state.file_line[to_array_index(FileIndex::First)][m].file_line_text == file_state.file_line[to_array_index(FileIndex::Second)][n].file_line_text`)
+   - Text must be identical
    - Lines must be consecutive
-4. **Mark matches**: Set `ptr_type = LineType::MATCH_TYPE` and create bidirectional links
+4. **Mark matches**: Set `ptr_type = MATCH_TYPE` and create bidirectional links
 
 ### Critical: Extension Only from SYT_TYPE Lines
 
@@ -328,14 +232,12 @@ for each line m in file1:
 - This is why duplicate lines that match are perfect candidates for Pass 3 extension
 
 Example:
-```
-File1: UNIQUE_A (unique) → COMMON (syt, duplicate) → COMMON (syt, duplicate)
-File2: UNIQUE_A (unique) → COMMON (syt, duplicate) → COMMON (syt, duplicate)
+- File1: UNIQUE_A (unique) → COMMON (syt, duplicate) → COMMON (syt, duplicate)
+- File2: UNIQUE_A (unique) → COMMON (syt, duplicate) → COMMON (syt, duplicate)
 
 After Pass 3:
-File1: UNIQUE_A (unique) → COMMON (match) → COMMON (match)
-File2: UNIQUE_A (unique) → COMMON (match) → COMMON (match)
-```
+- File1: UNIQUE_A (unique) → COMMON (match) → COMMON (match)
+- File2: UNIQUE_A (unique) → COMMON (match) → COMMON (match)
 
 The `COMMON` lines remain `SYT_TYPE` after Pass 2 because they're duplicates, making them eligible for Pass 3 extension.
 
@@ -349,22 +251,14 @@ Match extension stops when:
 
 ### Example
 
-```
-File1:  A (unique) → B (syt) → C (syt) → D (syt)
-File2:  X (unique) → B (syt) → C (syt) → E (syt)
+- File1: A (unique) → B (syt) → C (syt) → D (syt)
+- File2: X (unique) → B (syt) → C (syt) → E (syt)
 
 After Pass 3:
-File1:  A (unique) → B (match) → C (match) → D (syt)
-File2:  X (unique) → B (match) → C (match) → E (syt)
-```
+- File1: A (unique) → B (match) → C (match) → D (syt)
+- File2: X (unique) → B (match) → C (match) → E (syt)
 
-Lines B and C are matched because:
-1. They follow unique anchors (A and X)
-2. Both are `SYT_TYPE` (not yet matched)
-3. Their text matches between files
-4. Extension stops at D/E because text doesn't match
-
-**Important**: If B or C were unique pairs themselves (appearing once in each file), they would have been marked `UNIQUE_TYPE` by Pass 2, and Pass 3 would skip them (cannot extend from `UNIQUE_TYPE` lines).
+Lines B and C are matched because they follow unique anchors, are both `SYT_TYPE`, match text, and are consecutive. Extension stops at D/E because text doesn't match.
 
 ---
 
@@ -374,17 +268,12 @@ Lines B and C are matched because:
 
 ### Algorithm
 
-```cpp
-for each line m in file1 (scanning backward):
-    if file_state.file_line[to_array_index(FileIndex::First)][m].ptr_type == LineType::UNIQUE_TYPE:
-        n = file_state.file_line[to_array_index(FileIndex::First)][m].ptr0  // Corresponding line in file2
-
-        // Extend backward while lines match
-        while (previous lines are SYT_TYPE AND text matches):
-            Mark both lines as MATCH_TYPE
-            Create bidirectional links
-            Decrement m and n
-```
+For each line in file1 (scanning backward):
+- If the line is `UNIQUE_TYPE`:
+  - Find corresponding line in file2
+  - Extend backward while lines match
+  - Mark matching lines as `MATCH_TYPE`
+  - Create bidirectional links
 
 ### Process
 
@@ -394,7 +283,7 @@ for each line m in file1 (scanning backward):
    - Both must be `SYT_TYPE`
    - Text must be identical
    - Lines must be consecutive (decreasing)
-4. **Mark matches**: Set `ptr_type = LineType::MATCH_TYPE` and create links
+4. **Mark matches**: Set `ptr_type = MATCH_TYPE` and create links
 
 ### Why Both Directions
 
@@ -405,14 +294,12 @@ Extending in both directions (forward and backward) ensures:
 
 ### Example
 
-```
-File1:  A (syt) → B (syt) → C (unique)
-File2:  A (syt) → B (syt) → C (unique)
+- File1: A (syt) → B (syt) → C (unique)
+- File2: A (syt) → B (syt) → C (unique)
 
 After Pass 4:
-File1:  A (match) → B (match) → C (unique)
-File2:  A (match) → B (match) → C (unique)
-```
+- File1: A (match) → B (match) → C (unique)
+- File2: A (match) → B (match) → C (unique)
 
 Lines A and B are matched because they precede unique anchors and match.
 
@@ -446,28 +333,9 @@ Lines are grouped into contiguous segments based on their `ptr_type`:
 
 ### Node Creation Process
 
-For each file, `pass5_doit()` groups lines into segments:
-
-```cpp
-while i <= file_state.total_file_nlines[file_idx]:
-    if file_state.file_line[file_idx][i].ptr_type == LineType::SYT_TYPE:
-        // Unmatched block (will be deletion)
-        while (i+1 <= file_state.total_file_nlines[file_idx] AND
-               file_state.file_line[file_idx][i+1].ptr_type == LineType::SYT_TYPE):
-            extend block (i++)
-        i++
-        cost = -(block_size)  // Negative for deletion
-    else:
-        // Matched block - requires consecutive ptr0
-        ptr0 = file_state.file_line[file_idx][i].ptr0
-        exp_ptr0 = ptr0 + 1
-        while (i+1 <= file_state.total_file_nlines[file_idx] AND
-               file_state.file_line[file_idx][i+1].ptr_type != LineType::SYT_TYPE AND
-               file_state.file_line[file_idx][i+1].ptr0 == exp_ptr0):
-            extend block (i++, exp_ptr0++)
-        i++
-        cost = block_size  // Positive for match
-```
+For each file, lines are grouped into segments:
+- Unmatched block: Group consecutive `SYT_TYPE` lines, assign negative cost
+- Matched block: Group consecutive matched lines with consecutive `ptr0`, assign positive cost
 
 **Key Points:**
 - Segment grouping stops when `ptr_type` changes OR `ptr0` is not consecutive
@@ -487,41 +355,32 @@ Each node stores:
 - **Header nodes**: Line 0, cost 0, serve as list heads
   - Created first in each file's tree
   - Stored at indices >= 1 (after dummy entry at index 0)
-  - `prev = NULL_NODE`, `next` points to first segment
 
 - **Trailer nodes**: Line (total_lines + 1), cost 0, serve as list tails
-  - File1 trailer: line = `file_state.total_file_nlines[to_array_index(FileIndex::First)] + 1` (positive)
-  - File2 trailer: line = `-(file_state.total_file_nlines[to_array_index(FileIndex::Second)] + 1)` (negative)
-  - `next = NULL_NODE`, `prev` points to last segment
+  - File1 trailer uses positive line number
+  - File2 trailer uses negative line number
 
-- **Header/Trailer Links**:
-  - `file_state.file_line[to_array_index(FileIndex::First)][0].ptr0 = 0` (header references itself)
-  - `file_state.file_line[to_array_index(FileIndex::Second)][0].ptr0 = 0` (header references itself)
-  - Trailers reference each other for pass8 lookups
+- **Header/Trailer Links**: Reference each other for tree navigation
 
 ### Tree Structure
 
 After Pass 5, each file has a linear tree (doubly-linked list):
-```
-[header] → [segment1] → [segment2] → ... → [trailer]
-```
+- Header → segment1 → segment2 → ... → trailer
 
 **Important properties:**
-- All nodes are initially **leaf nodes** (`branch_start == NULL_NODE`)
+- All nodes are initially **leaf nodes**
 - Nodes with negative cost represent unmatched regions (potential deletions/insertions)
 - Nodes with positive cost represent matched/unique regions
 - Each segment contains consecutive lines with the same matching status
 
 ### Example
 
-```
-File1: A(match) B(match) C(syt) D(syt) E(match) F(match)
-File2: A(match) B(match) X(syt) Y(syt) E(match) F(match)
+- File1: A(match) B(match) C(syt) D(syt) E(match) F(match)
+- File2: A(match) B(match) X(syt) Y(syt) E(match) F(match)
 
 After Pass 5:
-Tree1: [header] → [AB: +2] → [CD: -2] → [EF: +2] → [trailer]
-Tree2: [header] → [AB: +2] → [XY: -2] → [EF: +2] → [trailer]
-```
+- Tree1: header → AB: +2 → CD: -2 → EF: +2 → trailer
+- Tree2: header → AB: +2 → XY: -2 → EF: +2 → trailer
 
 **Segment details:**
 - AB segment: cost=+2, contains lines 1-2 (matched)
@@ -530,47 +389,25 @@ Tree2: [header] → [AB: +2] → [XY: -2] → [EF: +2] → [trailer]
 
 ### Helper Functions
 
-**make_node(NodeDecl)**: Creates a new node in the node table and returns its index
-- First node created after dummy entry will be at index 1
-- Returns `tree_state.node.size() - 1`
-
-**leaf(tree_index)**: Checks if a node is a leaf (has no branch structure)
-- Returns `true` if `tree_state.node[n].branch_start == NULL_NODE`
-- All nodes created by pass5 are initially leaves
-
-**true_line_of(tree_index)**: Gets absolute line number from a node
-- Handles negative line numbers (file2 uses negative values)
-- Returns `abs(tree_state.node[N].linen)`
-
-**free_node(tree_index)**: Adds a node to the free list for reuse
-- Only works if `debug_dont_free == false`
-- Links node into `tree_state.free_nodes_start` chain
-
-**each_line_in_node(tree_index, bool always, int starting_line, function)**: Iterates through all lines in a node
-- If `always=false`: Only iterates if cost > 0 (skips negative cost segments)
-- If `always=true`: Uses absolute value of cost (iterates all segments)
-- `starting_line`: Skip lines before this line number
-- For leaf nodes: iterates from `noden` to `noden.next`
-- For branch nodes: iterates from `branch_start` to `noden`
-
-**count_node(tree_index, LineKinds&)**: Counts cosmetic and non-cosmetic lines in a node
-- Uses `each_line_in_node` with `always=false`
-- Therefore, **negative cost segments are not counted** (they're counted in pass6)
-- `cosmetic_line()` currently always returns `false`, so all lines are non-cosmetic
+- **make_node**: Creates a new node in the node table
+- **leaf**: Checks if a node is a leaf (has no branch structure)
+- **true_line_of**: Gets absolute line number from a node
+- **free_node**: Adds a node to the free list for reuse
+- **each_line_in_node**: Iterates through all lines in a node
+  - If `always=false`: Only iterates if cost > 0 (skips negative cost segments)
+  - If `always=true`: Uses absolute value of cost (iterates all segments)
+- **count_node**: Counts cosmetic and non-cosmetic lines in a node
+  - Uses `each_line_in_node` with `always=false`
+  - Therefore, **negative cost segments are not counted** (they're counted in pass6)
 
 ### Important: Negative Cost Segments
 
 **Critical behavior**: Segments with negative cost (unmatched lines) are handled differently:
 
 - `each_line_in_node()` with `always=false` **skips** negative cost segments
-  - Loop condition: `for (sline = max_start; sline < last; sline++)`
-  - If cost < 0, then `last = sline + cost < sline`, so loop never executes
-
 - `count_node()` uses `always=false`, so unmatched segments are **not counted**
-  - Unmatched segments are counted separately in pass6 (delete/insert operations)
-
-- To iterate unmatched segments, use `always=true`:
-  - `each_line_in_node(node, true, 0, callback)` will iterate all lines regardless of cost sign
+- Unmatched segments are counted separately in pass6 (delete/insert operations)
+- To iterate unmatched segments, use `always=true`
 
 ---
 
@@ -589,242 +426,107 @@ Pass 6 consists of two phases executed sequentially:
 1. **Replace/Delete**: Process unmatched segments in file1
 2. **Insert**: Process unmatched segments in file2
 
-### Phase 1: Replace/Delete (`pass6_do_replace_delete`)
+### Phase 1: Replace/Delete
 
 Scans file1 tree sequentially looking for nodes with negative cost (unmatched segments created by pass5).
 
 For each unmatched segment in file1:
 
-1. **Check if replaceable**: Call `pass6_replaceable(node1)`
-   - Find corresponding location in file2 based on previous matched node
-   - Check if file2 has an unmatched segment at that position
-   - If yes → **REPLACE**
-   - If no → **DELETE**
+1. **Check if replaceable**: Find corresponding location in file2 based on previous matched node
+   - If file2 has an unmatched segment at that position → **REPLACE**
+   - If no unmatched segment → **DELETE**
 
-2. **Replace operation** (`pass6_replace_lines`):
-   - Increment `stats.nchange_blocks` counter
+2. **Replace operation**:
+   - Increment change blocks counter
    - Make both node costs positive (now matched)
-   - Count lines for statistics (`stats.replace1_stats`, `stats.replace2_stats`)
-   - Print context with `after_header()`
-   - Print "REPLACE LINE(s)" header
-   - Print lines from file1
-   - Print "WITH LINE(s)" header
-   - Print lines from file2
-   - Print trailer
+   - Count lines for statistics
+   - Print context and headers
+   - Print lines from file1 and file2
    - Detach file1 node from its tree
-   - If previous node is header: attach file2 node to header as branch
-   - Otherwise: combine previous node with file2 node (creates branch structure)
+   - Attach file2 node to header as branch or combine with previous node (creates branch structure)
 
-3. **Delete operation** (`delete_lines`):
-   - Increment `stats.nchange_blocks` counter
+3. **Delete operation**:
+   - Increment change blocks counter
    - Make cost positive (for output purposes, but node is detached)
-   - Print context with `after_header()` (shows where deletion occurs)
-   - Print "DELETE LINE(s)" header
+   - Print context (shows where deletion occurs)
    - Print deleted lines
-   - Print trailer
-   - Count statistics (`stats.delete_stats`)
+   - Count statistics
    - Detach node from tree (removed from linked list)
 
-**Important**: The iterator `j` is saved before processing because nodes may be detached during processing.
+**Important**: The iterator is saved before processing because nodes may be detached during processing.
 
-### Replaceability Check (`pass6_replaceable`)
+### Replaceability Check
 
 A node in file1 is replaceable if there's a corresponding unmatched node in file2 at the same relative position.
-
-**Algorithm:**
-```cpp
-prev = tree_state.node[node1].prev  // Previous node in file1 tree
-prev_other = find_node(tree_state.trees[to_array_index(FileIndex::Second)],
-                       file_state.file_line[to_array_index(FileIndex::First)][true_line_of(prev)].ptr0)
-noden_other = tree_state.node[prev_other].next  // Next node after prev_other in file2
-if tree_state.node[noden_other].cost < 0:  // Unmatched segment
-    return noden_other  // Replaceable!
-else:
-    return NULL_NODE  // Not replaceable → will be DELETE
-```
 
 **Key Points:**
 - Replacement requires both files to have unmatched segments at the same position
 - The position is determined by finding the corresponding previous matched node
 - If file2's next node has `cost >= 0`, it's matched, so file1's unmatched segment becomes a DELETE
-- The check does NOT verify that following segments match (Reed removed this test)
+- The check does NOT verify that following segments match
 
-### Phase 2: Insert (`pass6_do_insert`)
+### Phase 2: Insert
 
 Scans file2 tree sequentially looking for remaining unmatched segments (negative cost).
 
 For each unmatched segment in file2:
 
-1. **Insert operation** (`pass6_insert_lines`):
-   - Increment `stats.nchange_blocks` counter
+1. **Insert operation**:
+   - Increment change blocks counter
    - Make cost positive (now inserted)
-   - Count statistics (`stats.insert_stats`)
+   - Count statistics
    - Find insertion point in file1 based on previous matched node
-   - Print context with `after_lines()` or `top_msg()` if at start
-   - Print "INSERT LINE(s)" header
+   - Print context or "AFTER TOP" if at start
    - Print inserted lines
-   - Print trailer
    - Detach node from file2 tree
-   - If previous node is header: attach to file1 header as branch
-   - Otherwise: combine with previous matched node in file1 (creates branch structure)
+   - Attach to file1 header as branch or combine with previous matched node (creates branch structure)
 
-**Important**: The iterator `j` is saved before processing because nodes may be detached during processing.
+**Important**: The iterator is saved before processing because nodes may be detached during processing.
 
 ### Helper Functions
 
-**find_node(TreeBounds T, tree_index linen)**: Finds node containing specified line number in a tree
-- Searches linearly through tree nodes
-- Handles negative line numbers (uses absolute value)
-- Returns node index or `NULL_NODE` if not found
-- Used to find corresponding nodes between file1 and file2 trees
-
-**detach_node(tree_index noden)**: Removes node from its doubly-linked list
-- Updates `tree_state.node[prev].next = next` and `tree_state.node[next].prev = prev`
-- Node remains in `tree_state.node` table but is no longer in tree structure
-- Used for DELETE and INSERT operations
-
-**combine_nodes(tree_index node1, tree_index node2)**: Creates branch structure by combining two nodes
-- Creates new parent node with combined cost
-- Sets `branch_start = node1` (or node1's branch_start if node1 is already a branch)
-- Sets `branch_end = node2` (or node2's branch_end if node2 is already a branch)
-- Detaches both original nodes
-- Frees original nodes if they were branches (leaves are kept as branch ends)
-- Inserts new parent node at node1's position
-- Links branch nodes together in sequence
-- Transforms linear tree segments into tree branches
-
-**unique_find(tree_index noden)**: Finds first unique line in a node by scanning backward
-- Scans from `end_line + cost - 1` down to `end_line`
-- Returns first line with `file_state.file_line[file_idx][line].ptr_type == LineType::UNIQUE_TYPE`
-- Returns `NULL_NODE` if no unique line found
-- Used by `after_lines()` to find context anchor point
-
-**after_lines(tree_index noden)**: Prints context lines before a change operation
-- Prints "AFTER LINE(s)" header
-- Searches backward for unique line to start context
-- Handles both leaf and branch nodes when traversing
-- Prints all nodes from unique line to the change point
-
-**after_header(tree_index noden)**: Chooses appropriate context header
-- If `noden == tree_state.trees[to_array_index(FileIndex::First)].start`: calls `top_msg()` → "AFTER TOP"
-- Otherwise: calls `after_lines(noden)` → "AFTER LINE(s)"
-
-**top_msg()**: Prints "AFTER TOP" header for insertions at start of file
-
-**print_header(const char *s)**: Prints formatted header with equals separator
-- Format: `*** <text> ======================================= ***`
-
-**print_header1(const char *s)**: Prints formatted header with dash separator
-- Format: `*** <text> -------------------------------------- ***`
-
-**print_trailer()**: Prints formatted trailer separator
-- Format: `*** ===================================================== ***\n`
+- **find_node**: Finds node containing specified line number in a tree
+- **detach_node**: Removes node from its doubly-linked list
+- **combine_nodes**: Creates branch structure by combining two nodes
+  - Transforms linear tree segments into tree branches
+- **unique_find**: Finds first unique line in a node by scanning backward
+- **after_lines**: Prints context lines before a change operation
+- **after_header**: Chooses appropriate context header
+- **top_msg**: Prints "AFTER TOP" header for insertions at start
+- **print_header/print_header1/print_trailer**: Format output headers and trailers
 
 ### Node Combination Details
 
-`combine_nodes(node1, node2)` creates a branch structure when nodes are combined:
-
-**Process:**
-1. Calculate combined cost: `cost = tree_state.node[node1].cost + tree_state.node[node2].cost`
-2. Use node1's starting line number
-3. Detach node2 from its tree
-4. Detach node1 from its tree
-5. If node1 is a branch (not leaf): extract its branch structure
-6. If node2 is a branch (not leaf): extract its branch structure
-7. Create new parent node
-8. Insert new node at node1's original position
-9. Link branch nodes together in sequence
-
-**Result Structure:**
-```
-Before: [prev] → [node1] → [next]
-        [prev2] → [node2] → [next2]
-
-After:  [prev] → [parent (branch)]
-                      ↓
-              [branch_start] → ... → [branch_end]
-                     ↑                    ↑
-                  node1 sequence      node2 sequence
-```
-
-This transforms linear tree segments into tree branches, enabling move detection in pass8.
+`combine_nodes` creates a branch structure when nodes are combined, transforming linear tree segments into tree branches with parent-child relationships. This enables move detection in pass8.
 
 ### Statistics Tracking
 
-Pass6 updates separate statistics for each operation type (stored in `stats` nested struct):
-
-- **stats.delete_stats**: Counts lines deleted from file1
-  - Updated by `count_node(noden, stats.delete_stats)` in `delete_lines()`
-  - Uses `always=false`, so only counts non-cosmetic lines
-
-- **stats.insert_stats**: Counts lines inserted from file2
-  - Updated by `count_node(noden, stats.insert_stats)` in `pass6_insert_lines()`
-
-- **stats.replace1_stats**: Counts lines replaced in file1
-  - Updated by `count_node(node1, stats.replace1_stats)` in `pass6_replace_lines()`
-
-- **stats.replace2_stats**: Counts lines replaced in file2
-  - Updated by `count_node(node2, stats.replace2_stats)` in `pass6_replace_lines()`
-
-- **stats.nchange_blocks**: Incremented for each DELETE, INSERT, or REPLACE operation
+Pass6 updates separate statistics for each operation type:
+- Deletion stats
+- Insertion stats
+- Replacement stats (both files)
+- Change block counter
 
 ### Output Format
 
-Pass 6 produces formatted output for each operation:
+Pass 6 produces formatted output for each operation type:
+- **DELETE**: Shows context, deleted lines, and separator
+- **INSERT**: Shows context (or "AFTER TOP"), inserted lines with `+` prefix, and separator
+- **REPLACE**: Shows context, old lines, new lines with `+` prefix, and separator
 
-**DELETE operation:**
-```
-*** AFTER LINE(s) ======================================= ***
-     10|matched line before deletion
-*** DELETE LINE(s) -------------------------------------- ***
-     11|deleted line
-*** ===================================================== ***
-```
-
-**INSERT operation:**
-```
-*** AFTER LINE(s) ======================================= ***
-     10|matched line before insertion
-*** INSERT LINE(s) -------------------------------------- ***
-+    11|inserted line
-*** ===================================================== ***
-```
-
-**REPLACE operation:**
-```
-*** AFTER LINE(s) ======================================= ***
-     10|matched line before replacement
-*** REPLACE LINE(s) ------------------------------------- ***
-     11|old line
-*** WITH LINE(s) ---------------------------------------- ***
-+    11|new line
-*** ===================================================== ***
-```
-
-**Insert at top:**
-```
-*** AFTER TOP =========================================== ***
-*** INSERT LINE(s) -------------------------------------- ***
-+     1|inserted at start
-*** ===================================================== ***
-```
-
-Line numbers are prefixed with `+` for file2 lines (insertions/replacements) to distinguish from file1 line numbers.
+Line numbers are prefixed with `+` for file2 lines to distinguish from file1 line numbers.
 
 ### Important Implementation Details
 
-1. **Iterator Safety**: In `pass6_do_replace_delete()` and `pass6_do_insert()`, the iterator `j` is saved before processing because nodes may be detached during processing, which would invalidate `tree_state.node[i].next`.
+1. **Iterator Safety**: The iterator is saved before processing because nodes may be detached during processing
 
-2. **Cost Sign Change**:
-   - In `delete_lines()`: Cost is made positive before counting (for output purposes)
-   - In `pass6_replace_lines()`: Both costs are made positive (now matched)
-   - In `pass6_insert_lines()`: Cost is made positive (now inserted)
+2. **Cost Sign Change**: Costs are made positive for output purposes and statistics
 
 3. **Branch Creation**: Replace and insert operations create branch structures, transforming the initially linear trees from pass5 into trees with branches. This is necessary for pass8 to detect moved segments.
 
-4. **Context Printing**: `after_lines()` traverses backward through the tree (handling branches) to find a unique line for context, ensuring users can identify where changes occur.
+4. **Context Printing**: Traverses backward through the tree to find a unique line for context
 
-5. **Order of Operations**: Pass6 processes replace/delete before insert. This was switched by Reed from the original order (likely to handle replacements before insertions for better output organization).
+5. **Order of Operations**: Pass6 processes replace/delete before insert for better output organization
 
 ---
 
@@ -834,24 +536,20 @@ Line numbers are prefixed with `+` for file2 lines (insertions/replacements) to 
 
 ### Algorithm
 
-```cpp
-for each node in tree_state.trees[to_array_index(FileIndex::First)]:
-    if node and next_node are also adjacent in file2:
-        combine_nodes(node, next_node)  // In both files
-```
+For each node in file1 tree:
+- If node and next_node are also adjacent in file2:
+  - Combine both nodes
 
 ### Adjacency Check
 
 Two nodes are adjacent if:
-- They are consecutive in file1's tree (`node1.next == node2`)
+- They are consecutive in file1's tree
 - Their corresponding nodes in file2 are also consecutive
 
 ### Process
 
 1. **Scan file1 tree**: For each node, check if it can combine with next
-2. **Verify adjacency in file2**:
-   - Find file2 nodes corresponding to file1 nodes using `ptr0` values
-   - Check if they're consecutive
+2. **Verify adjacency in file2**: Find corresponding nodes and check if consecutive
 3. **Combine**: If adjacent in both files, merge them
    - Creates larger matched segments
    - Simplifies tree structure
@@ -873,15 +571,8 @@ A safety check prevents infinite loops:
 
 ### Example
 
-```
-Before Pass 7:
-File1: [A: +1] → [B: +1] → [C: +1]
-File2: [A: +1] → [B: +1] → [C: +1]
-
-After Pass 7:
-File1: [ABC: +3]
-File2: [ABC: +3]
-```
+- Before Pass 7: A(+1) → B(+1) → C(+1)
+- After Pass 7: ABC(+3)
 
 If A, B, C are adjacent in both files, they're combined into one node.
 
@@ -897,55 +588,26 @@ Pass 8 repeatedly scans both trees in parallel, looking for misalignments that i
 
 ### Scanning Process
 
-```cpp
-while true:
-    i = tree_state.trees[to_array_index(FileIndex::First)].start
-    j = tree_state.trees[to_array_index(FileIndex::Second)].start
-
-    // Skip headers
-    i = tree_state.node[i].next
-    j = tree_state.node[j].next
-
-    // Scan in parallel while aligned
-    while i != tree_state.trees[to_array_index(FileIndex::First)].end AND
-          file_state.file_line[to_array_index(FileIndex::First)][true_line_of(i)].ptr0 == true_line_of(j):
-        i = tree_state.node[i].next
-        j = tree_state.node[j].next
-
-    // Misalignment found
-    if i == tree_state.trees[to_array_index(FileIndex::First)].end: break  // Done
-
-    // Find minimum cost node in misaligned region
-    min_node = pass8_min_cost_node(i, tree_state.trees[to_array_index(FileIndex::First)].end)
-
-    // Find where it should go in file2
-    target_pos = find_node_in_file1(corresponding_to_prev_in_file2)
-
-    // Move the segment
-    pass8_move_lines(target_pos, min_node)
-
-    // Restart from beginning
-```
+While scanning:
+- Skip headers and scan in parallel while aligned
+- When misalignment found: find minimum cost node in misaligned region
+- Determine target position in file2
+- Move the segment
+- Restart from beginning
 
 ### Minimum Cost Selection
 
-`pass8_min_cost_node(start, end)` finds the node with minimum cost in a range:
-- Scans all nodes from `start` to `end` using `tree_state.node[current].next`
-- Returns node with smallest `tree_state.node[current].cost` value
+Finds the node with minimum cost in a range:
+- Scans all nodes from start to end
+- Returns node with smallest cost value
 - Prefers smaller segments (fewer lines to move)
 
 ### Move Operation
 
-`pass8_move_lines(node1, node2)`:
-
-1. **Detach node2** from its current position using `detach_node(node2)`
-2. **Insert node2** after `node1` using `insert_node_after(node1, node2)`
-3. **Print output**:
-   - "AFTER LINE(s)" context
-   - "MOVE LINE(s)" header
-   - Lines from moved segment
-   - Trailer
-4. **Update statistics**: Count moved lines in `stats.move_stats`
+1. **Detach** node from its current position
+2. **Insert** node at target position
+3. **Print output**: context, "MOVE LINE(s)" header, moved lines, trailer
+4. **Update statistics**: Count moved lines
 5. **Re-run Pass 7**: Try to combine adjacent nodes after move
 
 ### Why Minimum Cost
@@ -964,81 +626,34 @@ Pass 8 restarts from the beginning after each move because:
 
 ### Example
 
-```
-Before move:
-File1: A → B → C → D → E
-File2: A → C → D → B → E
-
-After scanning: A matches, then misalignment at B
-- B should come after D (where it appears in file2)
-- Move B to after D
-
-After move:
-File1: A → C → D → B → E
-File2: A → C → D → B → E
-```
+- Before move: A → B → C → D → E vs A → C → D → B → E
+- After scanning: A matches, then misalignment at B
+- Move: B should come after D (where it appears in file2)
+- After move: A → C → D → B → E (aligned)
 
 ### Termination
 
-Pass 8 terminates when:
-- Scanning reaches the end without misalignment
-- All segments are properly aligned
+Pass 8 terminates when scanning reaches the end without misalignment.
 
 ---
 
 ## Output Format
 
-The algorithm produces pseudo-update format output:
+The algorithm produces pseudo-update format output with four block types:
 
-### Block Types
-
-1. **DELETE**:
-```
-*** AFTER LINE(s) ======================================= ***
-     <context lines>
-*** DELETE LINE(s) -------------------------------------- ***
-     <deleted lines>
-*** ===================================================== ***
-```
-
-2. **INSERT**:
-```
-*** AFTER TOP =========================================== ***
-*** INSERT LINE(s) -------------------------------------- ***
-+    <inserted lines>
-*** ===================================================== ***
-```
-
-3. **REPLACE**:
-```
-*** AFTER LINE(s) ======================================= ***
-     <context lines>
-*** REPLACE LINE(s) ------------------------------------- ***
-     <old lines>
-*** WITH LINE(s) ---------------------------------------- ***
-+    <new lines>
-*** ===================================================== ***
-```
-
-4. **MOVE**:
-```
-*** AFTER LINE(s) ======================================= ***
-     <context lines>
-*** MOVE LINE(s) ---------------------------------------- ***
-     <moved lines>
-*** ===================================================== ***
-```
+1. **DELETE**: Shows context lines, deleted lines, and separators
+2. **INSERT**: Shows "AFTER TOP" or context, inserted lines with `+` prefix, and separators
+3. **REPLACE**: Shows context, old lines, new lines with `+` prefix, and separators
+4. **MOVE**: Shows context, moved lines, and separators
 
 ### Summary Statistics
 
-At the end:
-```
-     <n> lines deleted from old.
-     <n> lines inserted in new.
-     <n> lines deleted from old and replaced with <n> lines of new.
-     <n> lines moved in old.
-     <n> change blocks.
-```
+At the end, displays counts for:
+- Lines deleted from old
+- Lines inserted in new
+- Lines replaced in old and new
+- Lines moved in old
+- Total change blocks
 
 ---
 
