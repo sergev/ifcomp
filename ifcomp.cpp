@@ -6,6 +6,103 @@
 #include <iomanip>
 #include <iostream>
 
+// Nested struct implementations
+
+//
+// Initialize hash table state with empty buckets.
+//
+Ifcomp::HashTableState::HashTableState()
+{
+    for (int i = 0; i < NBUCKETS; i++)
+        sec_hash_start_node[i] = NULL_HASH_LIST;
+}
+
+//
+// Clear hash table state, resetting all buckets to empty.
+//
+void Ifcomp::HashTableState::clear()
+{
+    hash_node.clear();
+    for (int i = 0; i < NBUCKETS; i++)
+        sec_hash_start_node[i] = NULL_HASH_LIST;
+}
+
+//
+// Initialize file state with empty line counts and dummy entries at index 0.
+//
+Ifcomp::FileState::FileState() : total_file_nlines{ 0, 0 }
+{
+    file_line[0].resize(1);
+    file_line[1].resize(1);
+}
+
+//
+// Clear file state, resetting line counts and reinitializing arrays.
+//
+void Ifcomp::FileState::clear()
+{
+    file_line[0].clear();
+    file_line[1].clear();
+    file_line[0].resize(1);
+    file_line[1].resize(1);
+    total_file_nlines[0] = 0;
+    total_file_nlines[1] = 0;
+}
+
+//
+// Clear line matching state, preserving dummy entries at index 0 for 1-based indexing.
+//
+void Ifcomp::LineMatchingState::clear()
+{
+    line_table.clear();
+    string_table.clear();
+    // Add dummy entries at index 0 for 1-based indexing
+    line_table.emplace_back();
+    string_table.emplace_back();
+}
+
+//
+// Initialize tree state with null free nodes and empty tree bounds.
+//
+Ifcomp::TreeState::TreeState() : free_nodes_start(NULL_NODE)
+{
+    trees[0] = TreeBounds{};
+    trees[1] = TreeBounds{};
+}
+
+//
+// Clear tree state, resetting nodes, tree bounds, and free node list.
+//
+void Ifcomp::TreeState::clear()
+{
+    node.clear();
+    trees[0] = TreeBounds{};
+    trees[1] = TreeBounds{};
+    free_nodes_start = NULL_NODE;
+}
+
+//
+// Initialize statistics with zero counts for all change types.
+//
+Ifcomp::Statistics::Statistics()
+    : delete_stats{}, insert_stats{}, move_stats{}, replace1_stats{}, replace2_stats{},
+      nchange_blocks(0)
+{
+}
+
+//
+// Clear statistics, resetting all counts to zero.
+//
+void Ifcomp::Statistics::clear()
+{
+    delete_stats = LineKinds{};
+    insert_stats = LineKinds{};
+    move_stats = LineKinds{};
+    replace1_stats = LineKinds{};
+    replace2_stats = LineKinds{};
+    nchange_blocks = 0;
+}
+
 // Ifcomp class implementation
 Ifcomp::Ifcomp(std::ostream &out) : out(out)
 {
