@@ -9,3 +9,4 @@ Testing
 *.h-
 *.c-
 *.cpp-
+*.gcov
