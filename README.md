@@ -158,6 +158,12 @@ ifcomp/
 │   │   ├── main.rs
 │   │   └── lib.rs
 │   └── tests/
+├── go/                 # Go implementation
+│   ├── main.go
+│   ├── types.go
+│   ├── pass1.go - pass8.go
+│   ├── ifcomp_test.go
+│   └── README.md
 └── CMakeLists.txt      # CMake build configuration
 ```
 
@@ -172,7 +178,13 @@ $ ctest --verbose
 
 ## Implementation
 
-The primary implementation is in C++ (originally C), with an experimental Rust version in the `rust/` directory. See [Theory.md](Theory.md) for implementation details.
+The primary implementation is in C++ (originally C), with an experimental Rust version in the `rust/` directory and a Go implementation in the `go/` directory. See [Theory.md](Theory.md) for implementation details.
+
+### Available Implementations
+
+- **C++**: Primary implementation (original C code, modern C++ refactoring)
+- **Rust**: Experimental Rust implementation in `rust/`
+- **Go**: Go language port in `go/` - see [go/README.md](go/README.md) for details
 
 ## License
 
