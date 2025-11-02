@@ -168,6 +168,9 @@ type Ifcomp struct {
 	TreeState         TreeState
 	Stats             Statistics
 
+	// Output writer
+	output *outputWriter
+
 	// Debug flags
 	DebugDontFree        bool
 	DebugSytFull         bool
@@ -176,4 +179,23 @@ type Ifcomp struct {
 	DebugDumpTreesFull   bool
 	DebugAlloc           bool
 	DebugReadCurrentLine bool
+}
+
+// outputWriter is a helper to redirect output to either os.Stdout or a custom writer
+type outputWriter struct {
+	out interface {
+		Write([]byte) (int, error)
+		WriteString(string) (int, error)
+	}
+}
+
+func (w *outputWriter) Write(p []byte) (int, error) {
+	return w.out.Write(p)
+}
+
+func (w *outputWriter) WriteString(s string) (int, error) {
+	if ws, ok := w.out.(interface{ WriteString(string) (int, error) }); ok {
+		return ws.WriteString(s)
+	}
+	return w.out.Write([]byte(s))
 }

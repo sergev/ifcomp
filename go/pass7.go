@@ -17,7 +17,7 @@ func (i *Ifcomp) pass7CombineAdjacentNodes(node1 TreeIndex) bool {
 	}
 
 	if i.DebugDumpTreesFull {
-		fmt.Printf("combine node1=%d ln=%d to node2=%d ln=%d\n",
+		i.printf("combine node1=%d ln=%d to node2=%d ln=%d\n",
 			node1, i.TreeState.Node[node1].Linen, node2, i.TreeState.Node[node2].Linen)
 	}
 

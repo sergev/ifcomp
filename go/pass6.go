@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"strings"
 )
 
@@ -22,20 +21,20 @@ func (i *Ifcomp) trueLineOf(N TreeIndex) LineCount {
 func (i *Ifcomp) printHeader(s string) {
 	padding := 52
 	out := s + " " + strings.Repeat("=", padding-len(s))
-	fmt.Printf("*** %s ***\n", out)
+	i.printf("*** %s ***\n", out)
 }
 
 // Print formatted header1
 func (i *Ifcomp) printHeader1(s string) {
 	padding := 52
 	out := s + " " + strings.Repeat("-", padding-len(s))
-	fmt.Printf("*** %s ***\n", out)
+	i.printf("*** %s ***\n", out)
 }
 
 // Print formatted trailer
 func (i *Ifcomp) printTrailer() {
 	out := strings.Repeat("=", 53)
-	fmt.Printf("*** %s ***\n\n", out)
+	i.printf("*** %s ***\n\n", out)
 }
 
 // Print lines in a node
@@ -50,7 +49,7 @@ func (i *Ifcomp) printNode1(noden TreeIndex, always bool, startingLine int) {
 		if whichFile == Second {
 			prefix = "+"
 		}
-		fmt.Printf("%s%6d|%s\n", prefix, lineno, text)
+		i.printf("%s%6d|%s\n", prefix, lineno, text)
 	})
 }
 
@@ -124,7 +123,7 @@ func (i *Ifcomp) findNode(T TreeBounds, linen TreeIndex) TreeIndex {
 	for N != T.End {
 		if i.trueLineOf(N) == LineCount(absLinen) {
 			if i.DebugDumpTreesFull {
-				fmt.Printf("In tree %d:%d, find line %d at %d\n", T.Start, T.End, linen, N)
+				i.printf("In tree %d:%d, find line %d at %d\n", T.Start, T.End, linen, N)
 			}
 			return N
 		}
@@ -133,13 +132,13 @@ func (i *Ifcomp) findNode(T TreeBounds, linen TreeIndex) TreeIndex {
 	// Node not found
 	if i.DebugDumpTreesFull {
 		N = T.Start
-		fmt.Printf("[")
+		i.printf("[")
 		for N != T.End {
-			fmt.Printf("%d ", N)
+			i.printf("%d ", N)
 			N = i.TreeState.Node[N].Next
 		}
-		fmt.Printf("] ln=%d\n", linen)
-		fmt.Printf("*** Warning: find_node could not find line %d in tree %d:%d\n", linen, T.Start, T.End)
+		i.printf("] ln=%d\n", linen)
+		i.printf("*** Warning: find_node could not find line %d in tree %d:%d\n", linen, T.Start, T.End)
 	}
 	return NullNode
 }
@@ -159,7 +158,7 @@ func (i *Ifcomp) pass6Replaceable(noden TreeIndex) TreeIndex {
 	nodenOtherFile := i.TreeState.Node[prevOtherFile].Next
 	if i.TreeState.Node[nodenOtherFile].Cost >= 0 {
 		if i.DebugDumpTreesFull {
-			fmt.Printf("replaceable fails: noden_other_file(%d) has neg cost.\n", nodenOtherFile)
+			i.printf("replaceable fails: noden_other_file(%d) has neg cost.\n", nodenOtherFile)
 		}
 		return NullNode
 	}
@@ -288,9 +287,9 @@ func (i *Ifcomp) dumpTrees(pass int) {
 		return
 	}
 	if pass == 99 {
-		fmt.Println("dump trees")
+		i.println("dump trees")
 	} else {
-		fmt.Printf("dump_trees after pass%d\n", pass)
+		i.printf("dump_trees after pass%d\n", pass)
 	}
 	i.dumpTree(i.TreeState.Trees[0].Start)
 	i.dumpTree(i.TreeState.Trees[1].Start)
@@ -298,7 +297,7 @@ func (i *Ifcomp) dumpTrees(pass int) {
 
 // Dump tree structure for debugging
 func (i *Ifcomp) dumpTree(treeStart TreeIndex) {
-	fmt.Printf("Tree %d:\n", treeStart)
+	i.printf("Tree %d:\n", treeStart)
 	branch := false
 	T := treeStart
 	for T != NullNode {
@@ -328,7 +327,7 @@ func (i *Ifcomp) dumpTree(treeStart TreeIndex) {
 
 // Format and print node information
 func (i *Ifcomp) formatNode(noden TreeIndex, pad int) {
-	fmt.Printf("%s[%d<-N%d->%d, cost=%2d linen=%2d",
+	i.printf("%s[%d<-N%d->%d, cost=%2d linen=%2d",
 		strings.Repeat(" ", pad*7), i.TreeState.Node[noden].Prev, noden,
 		i.TreeState.Node[noden].Next, i.TreeState.Node[noden].Cost, i.TreeState.Node[noden].Linen)
 
@@ -336,12 +335,12 @@ func (i *Ifcomp) formatNode(noden TreeIndex, pad int) {
 	fileno := getWhichFile(L)
 	L = getAbsLine(L)
 	filenoIdx := toArrayIndex(fileno)
-	fmt.Printf("(%d)", i.FileState.FileLine[filenoIdx][L].Ptr0)
+	i.printf("(%d)", i.FileState.FileLine[filenoIdx][L].Ptr0)
 
 	if i.TreeState.Node[noden].BranchStart != NullNode || i.TreeState.Node[noden].BranchEnd != NullNode {
-		fmt.Printf(" bs=%2d be=%2d", i.TreeState.Node[noden].BranchStart, i.TreeState.Node[noden].BranchEnd)
+		i.printf(" bs=%2d be=%2d", i.TreeState.Node[noden].BranchStart, i.TreeState.Node[noden].BranchEnd)
 	}
-	fmt.Printf("]\n")
+	i.printf("]\n")
 }
 
 // Make a new tree node
@@ -349,7 +348,7 @@ func (i *Ifcomp) makeNode(p NodeDecl) TreeIndex {
 	i.TreeState.Node = append(i.TreeState.Node, p)
 	idx := TreeIndex(len(i.TreeState.Node) - 1)
 	if i.DebugDumpTreesFull {
-		fmt.Printf("just made ")
+		i.printf("just made ")
 		i.formatNode(idx, 0)
 	}
 	return idx

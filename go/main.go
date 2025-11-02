@@ -77,8 +77,30 @@ func main() {
 // NewIfcomp creates a new Ifcomp instance with initialized data structures
 func NewIfcomp() *Ifcomp {
 	ifc := &Ifcomp{}
+	ifc.output = &outputWriter{out: os.Stdout}
 	ifc.InitializeTables()
 	return ifc
+}
+
+// SetOutput sets a custom output writer for ifcomp
+func (i *Ifcomp) SetOutput(out interface {
+	Write([]byte) (int, error)
+	WriteString(string) (int, error)
+}) {
+	i.output = &outputWriter{out: out}
+}
+
+// Output helpers that redirect to the output writer
+func (i *Ifcomp) printf(format string, args ...interface{}) {
+	fmt.Fprintf(i.output, format, args...)
+}
+
+func (i *Ifcomp) println(args ...interface{}) {
+	fmt.Fprintln(i.output, args...)
+}
+
+func (i *Ifcomp) print(args ...interface{}) {
+	fmt.Fprint(i.output, args...)
 }
 
 // InitializeTables initializes data structure tables with dummy entries
@@ -162,12 +184,12 @@ func (i *Ifcomp) Compare(firstFname, secondFname string) {
 
 // Summary prints summary statistics
 func (i *Ifcomp) summary() {
-	fmt.Printf("%8d lines deleted from old.\n", i.Stats.DeleteStats.NonCosmetic)
-	fmt.Printf("%8d lines inserted in new.\n", i.Stats.InsertStats.NonCosmetic)
-	fmt.Printf("%8d lines deleted from old and replaced with %d lines of new.\n",
+	i.printf("%8d lines deleted from old.\n", i.Stats.DeleteStats.NonCosmetic)
+	i.printf("%8d lines inserted in new.\n", i.Stats.InsertStats.NonCosmetic)
+	i.printf("%8d lines deleted from old and replaced with %d lines of new.\n",
 		i.Stats.Replace1Stats.NonCosmetic, i.Stats.Replace2Stats.NonCosmetic)
-	fmt.Printf("%8d lines moved in old.\n", i.Stats.MoveStats.NonCosmetic)
-	fmt.Printf("%8d change blocks.\n", i.Stats.NChangeBlocks)
+	i.printf("%8d lines moved in old.\n", i.Stats.MoveStats.NonCosmetic)
+	i.printf("%8d change blocks.\n", i.Stats.NChangeBlocks)
 }
 
 // PrintStatistics prints detailed memory usage statistics
@@ -176,33 +198,33 @@ func (i *Ifcomp) PrintStatistics() {
 
 	// string_table
 	stringSize := int64(len(i.LineMatchingState.StringTable)) * int64(32) // Approximate
-	fmt.Printf("%8d (%d max, %d bytes) string entries used.\n",
+	i.printf("%8d (%d max, %d bytes) string entries used.\n",
 		len(i.LineMatchingState.StringTable), len(i.LineMatchingState.StringTable), stringSize)
 	memUsed += stringSize
 
 	// line_table
 	lineSize := int64(len(i.LineMatchingState.LineTable)) * int64(16) // Approximate
-	fmt.Printf("%8d (%d max, %d bytes) line_table entries used.\n",
+	i.printf("%8d (%d max, %d bytes) line_table entries used.\n",
 		len(i.LineMatchingState.LineTable), len(i.LineMatchingState.LineTable), lineSize)
 	memUsed += lineSize
 
 	// file_line[FIRST_FILE]
 	file0Size := int64(len(i.FileState.FileLine[0])) * int64(24) // Approximate
-	fmt.Printf("%8d (%d max, %d bytes) file_line[FIRST_FILE] entries used.\n",
+	i.printf("%8d (%d max, %d bytes) file_line[FIRST_FILE] entries used.\n",
 		len(i.FileState.FileLine[0]), len(i.FileState.FileLine[0]), file0Size)
 	memUsed += file0Size
 
 	// file_line[SECOND_FILE]
 	file1Size := int64(len(i.FileState.FileLine[1])) * int64(24) // Approximate
-	fmt.Printf("%8d (%d max, %d bytes) file_line[SECOND_FILE] entries used.\n",
+	i.printf("%8d (%d max, %d bytes) file_line[SECOND_FILE] entries used.\n",
 		len(i.FileState.FileLine[1]), len(i.FileState.FileLine[1]), file1Size)
 	memUsed += file1Size
 
-	fmt.Println("\t\thash_node space was freed before allocating nodes:")
+	i.println("\t\thash_node space was freed before allocating nodes:")
 
 	// node
 	nodeSize := int64(len(i.TreeState.Node)) * int64(32) // Approximate
-	fmt.Printf("%8d (%d max, %d bytes) node entries used.\n",
+	i.printf("%8d (%d max, %d bytes) node entries used.\n",
 		len(i.TreeState.Node), len(i.TreeState.Node), nodeSize)
 	memUsed += nodeSize
 
@@ -211,9 +233,9 @@ func (i *Ifcomp) PrintStatistics() {
 	for _, str := range i.LineMatchingState.StringTable {
 		stringBytes += int64(len(str.Text))
 	}
-	fmt.Printf("%8d bytes of line texts.\n", stringBytes)
+	i.printf("%8d bytes of line texts.\n", stringBytes)
 	memUsed += stringBytes
-	fmt.Printf("%8d total bytes of memory used.\n", memUsed)
+	i.printf("%8d total bytes of memory used.\n", memUsed)
 }
 
 // Clear methods for state structures
@@ -262,10 +284,10 @@ func (i *Ifcomp) testList(pass int) {
 		maxLines = i.FileState.TotalFileNLines[1]
 	}
 
-	fmt.Printf("test list after pass%d\n", pass)
+	i.printf("test list after pass%d\n", pass)
 	for j := 1; j <= maxLines; j++ {
 		if j > i.FileState.TotalFileNLines[0] {
-			fmt.Println("=============")
+			i.println("=============")
 		} else {
 			i.formatFileLine(i.FileState.FileLine[0][j])
 		}
@@ -273,21 +295,21 @@ func (i *Ifcomp) testList(pass int) {
 			i.formatFileLine(i.FileState.FileLine[1][j])
 		}
 	}
-	fmt.Println()
+	i.println()
 }
 
 // FormatFileLine formats and prints a file line entry
 func (i *Ifcomp) formatFileLine(p FileLineDecl) {
-	fmt.Printf("|%3d|", p.Linen)
+	i.printf("|%3d|", p.Linen)
 	switch p.PtrType {
 	case SYT_TYPE:
-		fmt.Print("S      ")
+		i.print("S      ")
 	case UNIQUE_TYPE:
-		fmt.Printf("U%5d", p.Ptr0)
+		i.printf("U%5d", p.Ptr0)
 	case MATCH_TYPE:
-		fmt.Printf("M%5d", p.Ptr0)
+		i.printf("M%5d", p.Ptr0)
 	default:
-		fmt.Print("??????")
+		i.print("??????")
 	}
-	fmt.Printf("|%s|\n", i.LineMatchingState.StringTable[p.FileLineText].Text)
+	i.printf("|%s|\n", i.LineMatchingState.StringTable[p.FileLineText].Text)
 }

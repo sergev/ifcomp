@@ -27,7 +27,7 @@ func (i *Ifcomp) pass8MinCostNode(startNode, endNode TreeIndex) TreeIndex {
 		N = i.TreeState.Node[N].Next
 	}
 	if i.DebugDumpTreesFull {
-		fmt.Printf("min_cost_node(%d,%d)=%d\n", startNode, endNode, minNode)
+		i.printf("min_cost_node(%d,%d)=%d\n", startNode, endNode, minNode)
 	}
 	return minNode
 }
@@ -85,7 +85,7 @@ func (i *Ifcomp) pass8() {
 
 			// Scan through the two files while file1 references the same line in file2
 			if i.DebugDumpTreesFull {
-				fmt.Printf("node %d lno %d -> %d, node %d lno %d\n",
+				i.printf("node %d lno %d -> %d, node %d lno %d\n",
 					nodeIdx, i.trueLineOf(nodeIdx),
 					i.FileState.FileLine[firstIdx][i.trueLineOf(nodeIdx)].Ptr0,
 					nodeJ, i.trueLineOf(nodeJ))

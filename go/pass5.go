@@ -1,12 +1,10 @@
 package main
 
-import "fmt"
-
 // Build tree structure for a single file
 func (i *Ifcomp) pass5Doit(fileno FileIndex, Np *NodeDecl) {
 	filenoIdx := toArrayIndex(fileno)
 	if i.DebugDumpTrees {
-		fmt.Printf("Make tree for file %d\n", filenoIdx+1)
+		i.printf("Make tree for file %d\n", filenoIdx+1)
 	}
 
 	lineCount := 1
