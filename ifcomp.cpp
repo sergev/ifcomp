@@ -136,14 +136,13 @@ void Ifcomp::initialize_tables()
 }
 
 //
-// Open a file for reading, exiting with error if file cannot be opened.
+// Open a file for reading, throwing exception if file cannot be opened.
 //
 std::ifstream Ifcomp::open_file(const char *fn)
 {
     std::ifstream file(fn);
     if (!file.is_open()) {
-        std::cerr << "Can't open file " << fn << std::endl;
-        std::exit(1);
+        throw std::runtime_error(std::string("Can't open file ") + fn);
     }
     return file;
 }

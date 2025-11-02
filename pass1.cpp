@@ -2,6 +2,7 @@
 #include <cstring>
 #include <iomanip>
 #include <iostream>
+#include <stdexcept>
 
 #include "ifcomp.h"
 
@@ -261,8 +262,7 @@ void Ifcomp::read_lines(FileIndex which_file, std::istream &input_file)
 
     file_state.total_file_nlines[which_idx] = current_line;
     if (current_line == 0) {
-        out << "File " << which_idx << " has no lines.\n";
-        std::exit(which_idx);
+        throw std::runtime_error("File " + std::to_string(which_idx) + " has no lines.");
     }
 }
 

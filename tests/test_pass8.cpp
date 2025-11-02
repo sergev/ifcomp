@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <sstream>
+#include <stdexcept>
 #include <string>
 
 #include "../ifcomp.h"
@@ -656,25 +657,12 @@ TEST_F(Pass8, WithDuplicateLines)
 
 TEST_F(Pass8, EmptyFiles)
 {
-    // Test pass8() with empty files
+    // Test pass8() with empty files - should throw exception
     std::istringstream file1("");
     std::istringstream file2("");
 
-    ifc.pass1(file1, file2);
-    ifc.pass2();
-    ifc.pass3();
-    ifc.pass4();
-    ifc.pass5();
-    ifc.pass6();
-    ifc.pass7();
-
-    int initial_blocks = ifc.stats.nchange_blocks;
-
-    // Run pass8 - should complete without error
-    ifc.pass8();
-
-    // Verify no moves (files are already aligned)
-    EXPECT_EQ(ifc.stats.nchange_blocks, initial_blocks) << "Should not increment change blocks";
+    // Empty files now throw std::runtime_error
+    EXPECT_THROW(ifc.pass1(file1, file2), std::runtime_error);
 }
 
 TEST_F(Pass8, SingleLineFiles)

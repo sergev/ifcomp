@@ -1,4 +1,6 @@
 #include <iostream>
+#include <sstream>
+#include <stdexcept>
 
 #include "ifcomp.h"
 
@@ -92,9 +94,10 @@ void Ifcomp::pass8()
         // Safety check: prevent infinite loops
         iteration_count++;
         if (iteration_count > MAX_ITERATIONS) {
-            std::cerr << "*** Internal error in pass8: infinite loop detected after "
-                      << iteration_count << " iterations\n";
-            std::exit(1);
+            std::ostringstream oss;
+            oss << "*** Internal error in pass8: infinite loop detected after " << iteration_count
+                << " iterations";
+            throw std::runtime_error(oss.str());
         }
 
         tree_index i = tree_state.trees[first_idx].start;

@@ -1,6 +1,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
+#include <stdexcept>
 #include <string>
 
 #include "ifcomp.h"
@@ -59,10 +60,15 @@ int main(int argc, char **argv)
 
     std::cout << "Comparing: " << first_fname << " " << second_fname << "\n\n";
 
-    ifc.compare(first_fname, second_fname);
+    try {
+        ifc.compare(first_fname, second_fname);
 
-    if (statistics) {
-        std::cout << "\nStatistics:\n";
-        ifc.print_statistics();
+        if (statistics) {
+            std::cout << "\nStatistics:\n";
+            ifc.print_statistics();
+        }
+    } catch (const std::runtime_error &e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+        return 1;
     }
 }
