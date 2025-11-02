@@ -1,8 +1,10 @@
 #include "ifcomp.h"
 
+#include <algorithm>
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
+#include <functional>
 #include <iomanip>
 #include <iostream>
 
@@ -318,6 +320,292 @@ void Ifcomp::print_statistics() const
     out << std::setw(8) << string_bytes << " bytes of line texts.\n";
     mem_used += string_bytes;
     out << std::setw(8) << mem_used << " total bytes of memory used.\n";
+}
+
+//
+// Check if a line is cosmetic (currently always returns false).
+//
+inline bool cosmetic_line(char first_byte)
+{
+    return false;
+}
+
+//
+// Check if a node is a leaf (has no branch structure).
+//
+bool Ifcomp::leaf(tree_index n) const
+{
+    return tree_state.node[n].branch_start == NULL_NODE;
+}
+
+//
+// Get absolute line number from node (handle negative file2 line numbers).
+//
+line_count Ifcomp::true_line_of(tree_index N) const
+{
+    return (tree_state.node[N].linen < 0) ? -tree_state.node[N].linen : tree_state.node[N].linen;
+}
+
+//
+// Free a node by adding it to the free node list for reuse.
+//
+void Ifcomp::free_node(tree_index n)
+{
+    if (debug_dont_free)
+        return;
+    tree_state.node[n].next = tree_state.free_nodes_start;
+    tree_state.free_nodes_start = n;
+}
+
+//
+// Create a new tree node and return its index.
+//
+tree_index Ifcomp::make_node(const NodeDecl &p)
+{
+    tree_state.node.push_back(p);
+    tree_index i = static_cast<tree_index>(tree_state.node.size() - 1);
+    if (debug_dump_trees_full) {
+        out << "just made ";
+        format_node(i, 0);
+    }
+    return i;
+}
+
+//
+// Iterate through all lines in a node and call function for each line.
+//
+void Ifcomp::each_line_in_node(
+    tree_index noden, bool always, int starting_line,
+    std::function<void(FileIndex which_file, const std::string &text, int lineno)> func) const
+{
+    tree_index start, finish;
+    if (!leaf(noden)) {
+        start = tree_state.node[noden].branch_start;
+        finish = noden;
+    } else {
+        start = noden;
+        finish = tree_state.node[noden].next;
+    }
+
+    for (tree_index current = start; current != finish; current = tree_state.node[current].next) {
+        line_count sline = tree_state.node[current].linen;
+        FileIndex fileno = get_which_file(sline);
+        sline = get_abs_line(sline);
+        int fileno_idx = to_array_index(fileno);
+
+        // cost is the number of nodes. Can be negative.
+        int cost = tree_state.node[current].cost;
+        if (always)
+            cost = (cost < 0) ? -cost : cost;
+        int last = sline + cost;
+
+        // He may have passed a place to start later than the beginning of a node.
+        int max_start = (sline > starting_line) ? sline : starting_line;
+        for (sline = max_start; sline < last; sline++) {
+            func(fileno,
+                 line_matching_state
+                     .string_table[file_state.file_line[fileno_idx][sline].file_line_text]
+                     .text,
+                 file_state.file_line[fileno_idx][sline].linen);
+        }
+    }
+}
+
+//
+// Count cosmetic and non-cosmetic lines in a node for statistics.
+//
+void Ifcomp::count_node(tree_index noden, LineKinds &p)
+{
+    each_line_in_node(noden, false, 0,
+                      [&p](FileIndex which_file, const std::string &text, int lineno) {
+                          if (!text.empty() && cosmetic_line(text[0]))
+                              p.cosmetic++;
+                          else
+                              p.non_cosmetic++;
+                      });
+}
+
+//
+// Format and print node information for debugging.
+//
+void Ifcomp::format_node(tree_index noden, int pad) const
+{
+    for (int i = 0; i < pad; i++)
+        out << " ";
+
+    const NodeDecl &n = tree_state.node[noden];
+    out << "[" << n.prev << "<-N" << noden << "->" << n.next << ", cost=" << std::setw(2) << n.cost
+        << " linen=" << std::setw(2) << n.linen;
+
+    line_count L = n.linen;
+    FileIndex fileno = get_which_file(L);
+    L = get_abs_line(L);
+    int fileno_idx = to_array_index(fileno);
+    out << "(" << file_state.file_line[fileno_idx][L].ptr0 << ")";
+
+    if (n.branch_start != NULL_NODE || n.branch_end != NULL_NODE)
+        out << " bs=" << std::setw(2) << n.branch_start << " be=" << std::setw(2) << n.branch_end;
+    out << "]\n";
+}
+
+//
+// Print all lines in a node (for output formatting).
+//
+void Ifcomp::print_node1(tree_index noden, bool always, int starting_line) const
+{
+    // Use a lambda that captures 'this' to access the 'out' member
+    each_line_in_node(noden, always, starting_line,
+                      [this](FileIndex which_file, const std::string &text, int lineno) {
+                          out << (which_file == FileIndex::First ? ' ' : '+') << std::setw(6)
+                              << lineno << "|" << text << "\n";
+                      });
+}
+
+//
+// Print lines in a node (convenience wrapper).
+//
+void Ifcomp::print_node(tree_index noden) const
+{
+    print_node1(noden, false, 0);
+}
+
+//
+// Dump tree structure for debugging.
+//
+void Ifcomp::dump_tree(tree_index tree_start) const
+{
+    out << "Tree " << tree_start << ":\n";
+    bool branch = false;
+    tree_index T = tree_start;
+    while (T != NULL_NODE) {
+        tree_index T2 = T;
+        if (leaf(T)) {
+            format_node(T, branch ? 8 : 1);
+            T = tree_state.node[T].next;
+            if (debug_dump_trees_full)
+                print_node1(T2, true, 0);
+        } else {
+            if (branch) {
+                branch = false;
+                T = tree_state.node[T].next;
+            } else {
+                format_node(T, 1);
+                T = tree_state.node[T].branch_start;
+                branch = true;
+            }
+        }
+    }
+}
+
+//
+// Dump both file trees for debugging after a pass.
+//
+void Ifcomp::dump_trees(int pass) const
+{
+    if (!debug_dump_trees)
+        return;
+    constexpr int no_pass_value = 99;
+    if (pass == no_pass_value)
+        out << "dump trees\n";
+    else
+        out << "dump_trees after pass" << pass << "\n";
+    dump_tree(tree_state.trees[to_array_index(FileIndex::First)].start);
+    dump_tree(tree_state.trees[to_array_index(FileIndex::Second)].start);
+}
+
+//
+// Find node in tree containing the specified line number.
+//
+tree_index Ifcomp::find_node(const TreeBounds &T, tree_index linen) const
+{
+    int abs_linen = std::abs(linen);
+    tree_index N = T.start;
+    while (N != T.end) {
+        if (true_line_of(N) == abs_linen) {
+            if (debug_dump_trees_full)
+                out << "In tree " << T.start << ":" << T.end << ", find line " << linen << " at "
+                    << N << "\n";
+            return N;
+        }
+        N = tree_state.node[N].next;
+    }
+    // Node not found - return NULL_NODE instead of crashing
+    if (debug_dump_trees_full) {
+        // Debug info if requested
+        N = T.start;
+        out << "[";
+        while (N != T.end) {
+            out << N << " ";
+            N = tree_state.node[N].next;
+        }
+        out << "] ln=" << linen << "\n";
+        out << "*** Warning: find_node could not find line " << linen << " in tree " << T.start
+            << ":" << T.end << "\n";
+    }
+    return NULL_NODE;
+}
+
+//
+// Remove a node from its linked list by updating prev/next pointers.
+//
+void Ifcomp::detach_node(tree_index noden)
+{
+    // Remove noden from the linked list.
+    tree_index prev = tree_state.node[noden].prev;
+    tree_index next = tree_state.node[noden].next;
+    tree_state.node[prev].next = next;
+    tree_state.node[next].prev = prev;
+}
+
+//
+// Combine two adjacent nodes into a branch structure, creating a parent node.
+//
+void Ifcomp::combine_nodes(tree_index node1, tree_index node2)
+{
+    tree_index branch_link1, branch_link2;
+    NodeDecl N;
+    N.cost = tree_state.node[node1].cost + tree_state.node[node2].cost;
+    N.linen = tree_state.node[node1].linen;
+
+    // First remove node2 from file2.
+    // Node2 must be detached first to get a true last and next ptr
+    // from node1 -- i.e., node2 may be adjacent to node1.
+    detach_node(node2);
+    N.prev = tree_state.node[node1].prev;
+    N.next = tree_state.node[node1].next;
+
+    // Now remove node1 from file1.
+    detach_node(node1);
+
+    if (!leaf(node1)) {
+        // Just want the branch.
+        N.branch_start = tree_state.node[node1].branch_start;
+        branch_link1 = tree_state.node[node1].branch_end;
+        // The sequence in node1 is absorbed in N and hence isn't needed.
+        free_node(node1);
+        node1 = N.branch_start;
+    } else {
+        N.branch_start = branch_link1 = node1;
+    }
+
+    if (!leaf(node2)) {
+        branch_link2 = tree_state.node[node2].branch_start;
+        N.branch_end = tree_state.node[node2].branch_end;
+        // The sequence in node2 is absorbed in N and hence isn't needed.
+        free_node(node2);
+        node2 = branch_link2;
+    } else {
+        branch_link2 = N.branch_end = node2;
+    }
+
+    tree_index new_node = make_node(N);
+    // Insert new_node after N.prev and before N.next; i.e., it replaces node1.
+    tree_state.node[N.prev].next = new_node;
+    tree_state.node[N.next].prev = new_node;
+    tree_state.node[N.branch_start].prev = new_node;
+    tree_state.node[N.branch_end].next = new_node;
+    tree_state.node[branch_link1].next = branch_link2;
+    tree_state.node[branch_link2].prev = branch_link1;
 }
 
 // Pass function implementations are in pass*.cpp files
