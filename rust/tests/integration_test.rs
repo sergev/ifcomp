@@ -1,12 +1,10 @@
-use assert_cmd::Command;
+use assert_cmd::cargo::cargo_bin_cmd;
 use regex::Regex;
 use std::error::Error;
 use std::fs;
 use tempfile::NamedTempFile;
 
 type TestResult = Result<(), Box<dyn Error>>;
-
-const PRG: &str = "ifcomp";
 
 // OutputStatistics represents the statistics extracted from ifcomp output
 struct OutputStatistics {
@@ -137,7 +135,7 @@ fn run_ifcomp(content_a: &str, content_b: &str) -> Result<String, Box<dyn Error>
     fs::write(path2, content_b)?;
 
     // Capture output
-    let output = Command::cargo_bin(PRG)?
+    let output = cargo_bin_cmd!("ifcomp")
         .arg(path1.to_str().unwrap())
         .arg(path2.to_str().unwrap())
         .output()?;

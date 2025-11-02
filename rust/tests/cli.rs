@@ -1,15 +1,13 @@
-use assert_cmd::Command;
+use assert_cmd::cargo::cargo_bin_cmd;
 use predicates::prelude::*;
 use std::error::Error;
 
 type TestResult = Result<(), Box<dyn Error>>;
 
-const PRG: &str = "ifcomp";
-
 #[test]
 fn usage() -> TestResult {
     for flag in &["-h", "--help"] {
-        Command::cargo_bin(PRG)?
+        cargo_bin_cmd!("ifcomp")
             .arg(flag)
             .assert()
             .stdout(predicate::str::contains("USAGE"));
