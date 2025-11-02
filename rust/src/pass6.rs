@@ -342,4 +342,179 @@ impl Ifcomp {
             }
         }
     }
+
+    // Dump trees for debugging
+    pub fn dump_trees(&self, pass: i32) {
+        if !self.debug_dump_trees {
+            return;
+        }
+        if pass == 99 {
+            println!("dump trees");
+        } else {
+            println!("dump_trees after pass{}", pass);
+        }
+        self.dump_tree(self.tree_state.trees[0].start);
+        self.dump_tree(self.tree_state.trees[1].start);
+    }
+
+    // Dump single tree structure
+    pub fn dump_tree(&self, tree_start: TreeIndex) {
+        println!("Tree {}:", tree_start);
+        let mut branch = false;
+        let mut t = tree_start;
+        while t != NULL_NODE {
+            if self.leaf(t) {
+                let pad = if branch { 1 } else { 0 };
+                self.format_node(t, pad);
+                t = self.tree_state.node[t].next;
+                if self.debug_dump_trees_full {
+                    // Note: print_node1 needs &mut self, so we'll need to refactor or skip this
+                    // For now, just format the node as a workaround
+                    // In Go, this calls printNode1 which prints the actual lines
+                }
+            } else {
+                if branch {
+                    branch = false;
+                    t = self.tree_state.node[t].next;
+                } else {
+                    self.format_node(t, 0);
+                    t = self.tree_state.node[t].branch_start;
+                    branch = true;
+                }
+            }
+        }
+    }
+
+    // Format node information
+    pub fn format_node(&self, noden: TreeIndex, pad: usize) {
+        let padding = " ".repeat(pad * 7);
+        print!("{}[{}<-N{}->{}, cost={:>2} linen={:>2}",
+            padding,
+            self.tree_state.node[noden].prev,
+            noden,
+            self.tree_state.node[noden].next,
+            self.tree_state.node[noden].cost,
+            self.tree_state.node[noden].linen
+        );
+
+        let l = self.tree_state.node[noden].linen;
+        let fileno = get_which_file(l);
+        let l_abs = get_abs_line(l);
+        let fileno_idx = fileno.to_array_index();
+
+        // Check bounds before accessing FileLine - end nodes may have Linen beyond file bounds
+        if (l_abs as usize) < self.file_state.file_line[fileno_idx].len() {
+            print!("({})", self.file_state.file_line[fileno_idx][l_abs as usize].ptr0);
+        } else {
+            print!("(end)");
+        }
+
+        if self.tree_state.node[noden].branch_start != NULL_NODE || 
+           self.tree_state.node[noden].branch_end != NULL_NODE {
+            print!(" bs={:>2} be={:>2}",
+                self.tree_state.node[noden].branch_start,
+                self.tree_state.node[noden].branch_end
+            );
+        }
+        println!("]");
+    }
+
+    // Print test listing after pass (debug function)
+    pub fn test_list(&mut self, pass: i32) {
+        let mut max_lines = self.file_state.total_file_n_lines[0];
+        if self.file_state.total_file_n_lines[1] > max_lines {
+            max_lines = self.file_state.total_file_n_lines[1];
+        }
+
+        println!("test list after pass{}", pass);
+        for j in 1..=max_lines {
+            if j > self.file_state.total_file_n_lines[0] {
+                println!("=============");
+            } else {
+                self.format_file_line(&self.file_state.file_line[0][j]);
+            }
+            if j <= self.file_state.total_file_n_lines[1] {
+                self.format_file_line(&self.file_state.file_line[1][j]);
+            }
+        }
+        println!();
+    }
+
+    // Format file line entry
+    pub fn format_file_line(&self, p: &FileLineDecl) {
+        print!("|{:>3}|", p.linen);
+        match p.ptr_type {
+            LineType::SytType => print!("S      "),
+            LineType::UniqueType => print!("U{:>5}", p.ptr0),
+            LineType::MatchType => print!("M{:>5}", p.ptr0),
+        }
+        let text = &self.line_matching_state.string_table[p.file_line_text].text;
+        println!("|{}|", text);
+    }
+
+    // Print summary statistics
+    pub fn summary(&self) {
+        println!("{:>8} lines deleted from old.", self.stats.delete_stats.non_cosmetic);
+        println!("{:>8} lines inserted in new.", self.stats.insert_stats.non_cosmetic);
+        println!("{:>8} lines deleted from old and replaced with {} lines of new.",
+            self.stats.replace1_stats.non_cosmetic, self.stats.replace2_stats.non_cosmetic);
+        println!("{:>8} lines moved in old.", self.stats.move_stats.non_cosmetic);
+        println!("{:>8} change blocks.", self.stats.n_change_blocks);
+    }
+
+    // Print detailed memory statistics
+    pub fn print_statistics(&self) {
+        let mut mem_used: i64 = 0;
+
+        // string_table
+        let string_size = (self.line_matching_state.string_table.len() as i64) * 32; // Approximate
+        println!("{:>8} ({} max, {} bytes) string entries used.",
+            self.line_matching_state.string_table.len(),
+            self.line_matching_state.string_table.len(),
+            string_size);
+        mem_used += string_size;
+
+        // line_table
+        let line_size = (self.line_matching_state.line_table.len() as i64) * 16; // Approximate
+        println!("{:>8} ({} max, {} bytes) line_table entries used.",
+            self.line_matching_state.line_table.len(),
+            self.line_matching_state.line_table.len(),
+            line_size);
+        mem_used += line_size;
+
+        // file_line[FIRST_FILE]
+        let file0_size = (self.file_state.file_line[0].len() as i64) * 24; // Approximate
+        println!("{:>8} ({} max, {} bytes) file_line[FIRST_FILE] entries used.",
+            self.file_state.file_line[0].len(),
+            self.file_state.file_line[0].len(),
+            file0_size);
+        mem_used += file0_size;
+
+        // file_line[SECOND_FILE]
+        let file1_size = (self.file_state.file_line[1].len() as i64) * 24; // Approximate
+        println!("{:>8} ({} max, {} bytes) file_line[SECOND_FILE] entries used.",
+            self.file_state.file_line[1].len(),
+            self.file_state.file_line[1].len(),
+            file1_size);
+        mem_used += file1_size;
+
+        println!("\t\thash_node space was freed before allocating nodes:");
+
+        // node
+        let node_size = (self.tree_state.node.len() as i64) * 32; // Approximate
+        println!("{:>8} ({} max, {} bytes) node entries used.",
+            self.tree_state.node.len(),
+            self.tree_state.node.len(),
+            node_size);
+        mem_used += node_size;
+
+        // Calculate string bytes
+        let mut string_bytes: i64 = 0;
+        for str in &self.line_matching_state.string_table {
+            string_bytes += str.text.len() as i64;
+        }
+        println!("{:>8} bytes of line texts.", string_bytes);
+        mem_used += string_bytes;
+        println!("{:>8} total bytes of memory used.", mem_used);
+    }
 }

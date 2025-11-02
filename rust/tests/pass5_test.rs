@@ -1,4 +1,4 @@
-use ifcomp::{FileIndex, Ifcomp, LineCount, LineType, LineKinds, NULL_NODE};
+use ifcomp::{FileIndex, Ifcomp, LineCount, LineKinds, NULL_NODE};
 
 // Test helper: create fresh Ifcomp instance for each test
 fn setup_pass5_test() -> Ifcomp {

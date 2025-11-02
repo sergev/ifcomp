@@ -117,6 +117,13 @@ pub struct Config {
     pub first_file: String,
     pub second_file: String,
     pub debug_flag: bool,
+    pub statistics: bool,
+    pub debug_st: bool,
+    pub debug_stfull: bool,
+    pub debug_trees: bool,
+    pub debug_treesfull: bool,
+    pub debug_alloc: bool,
+    pub debug_nofree: bool,
 }
 
 //
@@ -128,22 +135,68 @@ pub fn get_args() -> MyResult<Config> {
         .author("Serge Vakulenko <serge.vakulenko@gmail.com>")
         .about("Rust version of IFCOMP")
         .arg(
+            clap::Arg::with_name("stat")
+                .long("stat")
+                .short("s")
+                .help("Print detailed memory usage statistics")
+                .takes_value(false),
+        )
+        .arg(
+            clap::Arg::with_name("debug")
+                .long("debug")
+                .short("d")
+                .help("Enable all debug output modes")
+                .takes_value(false),
+        )
+        .arg(
+            clap::Arg::with_name("st")
+                .long("st")
+                .help("Enable symbol table debugging")
+                .takes_value(false),
+        )
+        .arg(
+            clap::Arg::with_name("stfull")
+                .long("stfull")
+                .help("Enable full symbol table debugging")
+                .takes_value(false),
+        )
+        .arg(
+            clap::Arg::with_name("trees")
+                .long("trees")
+                .help("Enable tree structure debugging")
+                .takes_value(false),
+        )
+        .arg(
+            clap::Arg::with_name("treesfull")
+                .long("treesfull")
+                .help("Enable full tree structure debugging")
+                .takes_value(false),
+        )
+        .arg(
+            clap::Arg::with_name("alloc")
+                .long("alloc")
+                .help("Enable memory allocation debugging")
+                .takes_value(false),
+        )
+        .arg(
+            clap::Arg::with_name("nofree")
+                .long("nofree")
+                .help("Disable memory freeing (for debugging)")
+                .takes_value(false),
+        )
+        .arg(
             clap::Arg::with_name("first_file")
                 .value_name("FILE")
                 .help("First input file")
-                .required(true),
+                .required(true)
+                .index(1),
         )
         .arg(
             clap::Arg::with_name("second_file")
                 .value_name("FILE")
                 .help("Second input file")
-                .required(true),
-        )
-        .arg(
-            clap::Arg::with_name("debug")
-                .long("debug")
-                .help("Print debug info")
-                .takes_value(false),
+                .required(true)
+                .index(2),
         )
         .get_matches();
 
@@ -151,6 +204,13 @@ pub fn get_args() -> MyResult<Config> {
         first_file: matches.value_of("first_file").unwrap().to_string(),
         second_file: matches.value_of("second_file").unwrap().to_string(),
         debug_flag: matches.is_present("debug"),
+        statistics: matches.is_present("stat"),
+        debug_st: matches.is_present("st"),
+        debug_stfull: matches.is_present("stfull"),
+        debug_trees: matches.is_present("trees"),
+        debug_treesfull: matches.is_present("treesfull"),
+        debug_alloc: matches.is_present("alloc"),
+        debug_nofree: matches.is_present("nofree"),
     })
 }
 
@@ -158,9 +218,42 @@ pub fn get_args() -> MyResult<Config> {
 // Run the application.
 //
 pub fn run(config: Config) -> MyResult<()> {
+    // Create Ifcomp instance
+    let mut ifc = Ifcomp::new();
+
+    // Clear and reinitialize
+    ifc.clear();
+
+    // Set debug flags from Config
     if config.debug_flag {
-        println!("ifcomp {} {}", config.first_file, config.second_file);
+        // If --debug, set all flags
+        ifc.debug_syt_full = true;
+        ifc.debug_syt = true;
+        ifc.debug_dump_trees = true;
+        ifc.debug_dump_trees_full = true;
+    } else {
+        // Otherwise set individual flags
+        if config.debug_stfull {
+            ifc.debug_syt_full = true;
+        }
+        if config.debug_st {
+            ifc.debug_syt = true;
+        }
+        if config.debug_trees {
+            ifc.debug_dump_trees = true;
+        }
+        if config.debug_treesfull {
+            ifc.debug_dump_trees_full = true;
+        }
     }
+    if config.debug_alloc {
+        ifc.debug_alloc = true;
+    }
+    if config.debug_nofree {
+        ifc.debug_dont_free = true;
+    }
+
+    println!("Comparing: {} {}\n", config.first_file, config.second_file);
 
     // Open input files
     let file1 = std::fs::File::open(&config.first_file)
@@ -168,47 +261,61 @@ pub fn run(config: Config) -> MyResult<()> {
     let file2 = std::fs::File::open(&config.second_file)
         .map_err(|e| format!("can't open file {}: {}", config.second_file, e))?;
 
-    // Create Ifcomp instance
-    let mut ifc = Ifcomp::new();
-
-    // Set debug flags
-    if config.debug_flag {
-        ifc.debug_syt_full = true;
-        ifc.debug_syt = true;
-        ifc.debug_dump_trees = true;
-        ifc.debug_dump_trees_full = true;
-    }
-
-    println!("Comparing: {} {}\n", config.first_file, config.second_file);
-
-    // Execute pass1
+    // Pass 1-4
     if let Err(e) = ifc.pass1(file1, file2) {
         return Err(format!("Error: {}", e).into());
     }
+    if ifc.debug_syt {
+        ifc.test_list(1);
+    }
 
-    // Execute pass2
     ifc.pass2();
+    if ifc.debug_syt {
+        ifc.test_list(2);
+    }
 
-    // Execute pass3
     ifc.pass3();
+    if ifc.debug_syt {
+        ifc.test_list(3);
+    }
 
-    // Execute pass4
     ifc.pass4();
+    if ifc.debug_syt {
+        ifc.test_list(4);
+    }
 
-    // Execute pass5
+    // Pass 5-8
     ifc.pass5();
+    if ifc.debug_dump_trees {
+        ifc.dump_trees(5);
+    }
 
-    // Execute pass6
     ifc.pass6();
+    if ifc.debug_dump_trees {
+        ifc.dump_trees(6);
+    }
 
-    // Execute pass7
     if let Err(e) = ifc.pass7() {
         return Err(format!("Error in pass7: {}", e).into());
     }
+    if ifc.debug_dump_trees {
+        ifc.dump_trees(7);
+    }
 
-    // Execute pass8
     if let Err(e) = ifc.pass8() {
         return Err(format!("Error in pass8: {}", e).into());
+    }
+    if ifc.debug_dump_trees {
+        ifc.dump_trees(8);
+    }
+
+    // Always print summary
+    ifc.summary();
+
+    // Print statistics if flag is set
+    if config.statistics {
+        println!("\nStatistics:");
+        ifc.print_statistics();
     }
 
     Ok(())
