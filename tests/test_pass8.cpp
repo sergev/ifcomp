@@ -37,34 +37,34 @@ TEST_F(Pass8, InsertNodeAfter_Basic)
     ifc.pass2();
     ifc.pass5();
 
-    tree_index header = ifc.trees[FIRST_FILE].start;
-    tree_index node1 = ifc.node[header].next;
-    tree_index node2 = ifc.node[node1].next;
-    tree_index node3 = ifc.node[node2].next; // Third segment (matched UNIQUE_B)
-    tree_index trailer = ifc.trees[FIRST_FILE].end;
+    tree_index header = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index node1 = ifc.tree_state.node[header].next;
+    tree_index node2 = ifc.tree_state.node[node1].next;
+    tree_index node3 = ifc.tree_state.node[node2].next; // Third segment (matched UNIQUE_B)
+    tree_index trailer = ifc.tree_state.trees[to_array_index(FileIndex::First)].end;
     (void)trailer; // Suppress unused warning - used for verification
 
     // Verify initial structure: header -> node1 (matched) -> node2 (unmatched) -> node3 (matched)
     // -> trailer
-    EXPECT_EQ(ifc.node[node1].prev, header);
-    EXPECT_EQ(ifc.node[node1].next, node2);
-    EXPECT_EQ(ifc.node[node2].prev, node1);
-    EXPECT_EQ(ifc.node[node2].next, node3);
-    EXPECT_EQ(ifc.node[node3].prev, node2);
-    EXPECT_EQ(ifc.node[node3].next, trailer);
-    EXPECT_EQ(ifc.node[trailer].prev, node3);
+    EXPECT_EQ(ifc.tree_state.node[node1].prev, header);
+    EXPECT_EQ(ifc.tree_state.node[node1].next, node2);
+    EXPECT_EQ(ifc.tree_state.node[node2].prev, node1);
+    EXPECT_EQ(ifc.tree_state.node[node2].next, node3);
+    EXPECT_EQ(ifc.tree_state.node[node3].prev, node2);
+    EXPECT_EQ(ifc.tree_state.node[node3].next, trailer);
+    EXPECT_EQ(ifc.tree_state.node[trailer].prev, node3);
 
     // Insert node2 after header (move unmatched segment to start)
     ifc.detach_node(node2); // Detach first
     ifc.insert_node_after(header, node2);
 
     // Verify new structure: header -> node2 -> node1 -> node3 -> trailer
-    EXPECT_EQ(ifc.node[header].next, node2) << "header.next should be node2";
-    EXPECT_EQ(ifc.node[node2].prev, header) << "node2.prev should be header";
-    EXPECT_EQ(ifc.node[node2].next, node1) << "node2.next should be node1";
-    EXPECT_EQ(ifc.node[node1].prev, node2) << "node1.prev should be node2";
-    EXPECT_EQ(ifc.node[node1].next, node3) << "node1.next should be node3";
-    EXPECT_EQ(ifc.node[node3].prev, node1) << "node3.prev should be node1";
+    EXPECT_EQ(ifc.tree_state.node[header].next, node2) << "header.next should be node2";
+    EXPECT_EQ(ifc.tree_state.node[node2].prev, header) << "node2.prev should be header";
+    EXPECT_EQ(ifc.tree_state.node[node2].next, node1) << "node2.next should be node1";
+    EXPECT_EQ(ifc.tree_state.node[node1].prev, node2) << "node1.prev should be node2";
+    EXPECT_EQ(ifc.tree_state.node[node1].next, node3) << "node1.next should be node3";
+    EXPECT_EQ(ifc.tree_state.node[node3].prev, node1) << "node3.prev should be node1";
 }
 
 TEST_F(Pass8, InsertNodeAfter_Middle)
@@ -78,13 +78,13 @@ TEST_F(Pass8, InsertNodeAfter_Middle)
     ifc.pass2();
     ifc.pass5();
 
-    tree_index header = ifc.trees[FIRST_FILE].start;
-    tree_index node1 = ifc.node[header].next; // matched UNIQUE_A
-    tree_index node2 = ifc.node[node1].next;  // unmatched DIFF1
-    tree_index node3 = ifc.node[node2].next;  // matched UNIQUE_B
-    tree_index node4 = ifc.node[node3].next;  // unmatched DIFF2
-    tree_index node5 = ifc.node[node4].next;  // matched UNIQUE_C
-    tree_index trailer = ifc.trees[FIRST_FILE].end;
+    tree_index header = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index node1 = ifc.tree_state.node[header].next; // matched UNIQUE_A
+    tree_index node2 = ifc.tree_state.node[node1].next;  // unmatched DIFF1
+    tree_index node3 = ifc.tree_state.node[node2].next;  // matched UNIQUE_B
+    tree_index node4 = ifc.tree_state.node[node3].next;  // unmatched DIFF2
+    tree_index node5 = ifc.tree_state.node[node4].next;  // matched UNIQUE_C
+    tree_index trailer = ifc.tree_state.trees[to_array_index(FileIndex::First)].end;
     (void)trailer; // Suppress unused warning - used for verification
 
     // Initial: header -> node1 -> node2 -> node3 -> node4 -> node5 -> trailer
@@ -92,11 +92,11 @@ TEST_F(Pass8, InsertNodeAfter_Middle)
     ifc.detach_node(node5);
     ifc.insert_node_after(node1, node5);
 
-    EXPECT_EQ(ifc.node[node1].next, node5) << "node1.next should be node5";
-    EXPECT_EQ(ifc.node[node5].prev, node1) << "node5.prev should be node1";
-    EXPECT_EQ(ifc.node[node5].next, node2) << "node5.next should be node2";
-    EXPECT_EQ(ifc.node[node2].prev, node5) << "node2.prev should be node5";
-    EXPECT_EQ(ifc.node[node2].next, node3) << "node2.next should be node3";
+    EXPECT_EQ(ifc.tree_state.node[node1].next, node5) << "node1.next should be node5";
+    EXPECT_EQ(ifc.tree_state.node[node5].prev, node1) << "node5.prev should be node1";
+    EXPECT_EQ(ifc.tree_state.node[node5].next, node2) << "node5.next should be node2";
+    EXPECT_EQ(ifc.tree_state.node[node2].prev, node5) << "node2.prev should be node5";
+    EXPECT_EQ(ifc.tree_state.node[node2].next, node3) << "node2.next should be node3";
 }
 
 TEST_F(Pass8, Pass8MinCostNode_SingleNode)
@@ -109,9 +109,9 @@ TEST_F(Pass8, Pass8MinCostNode_SingleNode)
     ifc.pass2();
     ifc.pass5();
 
-    tree_index header = ifc.trees[FIRST_FILE].start;
-    tree_index node1 = ifc.node[header].next;
-    tree_index trailer = ifc.trees[FIRST_FILE].end;
+    tree_index header = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index node1 = ifc.tree_state.node[header].next;
+    tree_index trailer = ifc.tree_state.trees[to_array_index(FileIndex::First)].end;
 
     tree_index min_node = ifc.pass8_min_cost_node(node1, trailer);
     EXPECT_EQ(min_node, node1) << "Should return the only node";
@@ -127,10 +127,10 @@ TEST_F(Pass8, Pass8MinCostNode_MultipleNodes)
     ifc.pass2();
     ifc.pass5();
 
-    tree_index header = ifc.trees[FIRST_FILE].start;
-    tree_index node1 = ifc.node[header].next;
-    tree_index node2 = ifc.node[node1].next;
-    tree_index trailer = ifc.trees[FIRST_FILE].end;
+    tree_index header = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index node1 = ifc.tree_state.node[header].next;
+    tree_index node2 = ifc.tree_state.node[node1].next;
+    tree_index trailer = ifc.tree_state.trees[to_array_index(FileIndex::First)].end;
     (void)node2;   // Suppress unused warning - used for verification
     (void)trailer; // Suppress unused warning - used in test
 
@@ -154,14 +154,14 @@ TEST_F(Pass8, Pass8MinCostNode_DifferentCosts)
     ifc.pass4();
     ifc.pass5();
 
-    tree_index header = ifc.trees[FIRST_FILE].start;
-    tree_index current = ifc.node[header].next;
-    tree_index trailer = ifc.trees[FIRST_FILE].end;
+    tree_index header = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index current = ifc.tree_state.node[header].next;
+    tree_index trailer = ifc.tree_state.trees[to_array_index(FileIndex::First)].end;
 
     // Find range of nodes
     tree_index first_node = current;
     while (current != trailer) {
-        current = ifc.node[current].next;
+        current = ifc.tree_state.node[current].next;
     }
 
     // Find minimum cost node
@@ -171,10 +171,11 @@ TEST_F(Pass8, Pass8MinCostNode_DifferentCosts)
 
     // Verify it has minimum cost among all nodes in range
     current = first_node;
-    int min_cost = ifc.node[min_node].cost;
+    int min_cost = ifc.tree_state.node[min_node].cost;
     while (current != trailer) {
-        EXPECT_GE(ifc.node[current].cost, min_cost) << "All nodes should have cost >= minimum";
-        current = ifc.node[current].next;
+        EXPECT_GE(ifc.tree_state.node[current].cost, min_cost)
+            << "All nodes should have cost >= minimum";
+        current = ifc.tree_state.node[current].next;
     }
 }
 
@@ -191,32 +192,33 @@ TEST_F(Pass8, Pass8MoveLines_Basic)
     ifc.pass4();
     ifc.pass5();
 
-    tree_index header = ifc.trees[FIRST_FILE].start;
-    tree_index node1 = ifc.node[header].next;
+    tree_index header = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index node1 = ifc.tree_state.node[header].next;
     // Find a second segment to move (might need to skip combined segments)
     tree_index current = node1;
-    tree_index node2 = ifc.node[current].next;
-    while (node2 != ifc.trees[FIRST_FILE].end && node2 == current) {
+    tree_index node2 = ifc.tree_state.node[current].next;
+    while (node2 != ifc.tree_state.trees[to_array_index(FileIndex::First)].end &&
+           node2 == current) {
         current = node2;
-        node2 = ifc.node[current].next;
+        node2 = ifc.tree_state.node[current].next;
     }
 
     // If we have multiple segments, test moving one
-    if (node2 != ifc.trees[FIRST_FILE].end) {
-        int initial_blocks = ifc.nchange_blocks;
-        int initial_moved = ifc.move_stats.cosmetic + ifc.move_stats.non_cosmetic;
+    if (node2 != ifc.tree_state.trees[to_array_index(FileIndex::First)].end) {
+        int initial_blocks = ifc.stats.nchange_blocks;
+        int initial_moved = ifc.stats.move_stats.cosmetic + ifc.stats.move_stats.non_cosmetic;
 
         // Move node2 after header (move to start)
         ifc.pass8_move_lines(header, node2);
 
         // Verify statistics updated
-        EXPECT_EQ(ifc.nchange_blocks, initial_blocks + 1) << "Should increment change blocks";
-        EXPECT_GT(ifc.move_stats.cosmetic + ifc.move_stats.non_cosmetic, initial_moved)
+        EXPECT_EQ(ifc.stats.nchange_blocks, initial_blocks + 1) << "Should increment change blocks";
+        EXPECT_GT(ifc.stats.move_stats.cosmetic + ifc.stats.move_stats.non_cosmetic, initial_moved)
             << "Should increment move stats";
 
         // Verify node was moved
-        EXPECT_EQ(ifc.node[header].next, node2) << "node2 should be after header";
-        EXPECT_EQ(ifc.node[node2].prev, header) << "node2.prev should point to header";
+        EXPECT_EQ(ifc.tree_state.node[header].next, node2) << "node2 should be after header";
+        EXPECT_EQ(ifc.tree_state.node[node2].prev, header) << "node2.prev should point to header";
     } else {
         // All segments combined - nothing to move (expected for identical files)
         // This is fine - pass5 already combined everything
@@ -233,17 +235,17 @@ TEST_F(Pass8, Pass8MoveLines_CallsPass7)
     ifc.pass2();
     ifc.pass5();
 
-    tree_index header = ifc.trees[FIRST_FILE].start;
-    tree_index node1 = ifc.node[header].next;
-    tree_index node2 = ifc.node[node1].next;
-    tree_index trailer = ifc.trees[FIRST_FILE].end;
+    tree_index header = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index node1 = ifc.tree_state.node[header].next;
+    tree_index node2 = ifc.tree_state.node[node1].next;
+    tree_index trailer = ifc.tree_state.trees[to_array_index(FileIndex::First)].end;
 
     // Count nodes before move
-    tree_index current = ifc.node[header].next;
+    tree_index current = ifc.tree_state.node[header].next;
     int nodes_before = 0;
     while (current != trailer) {
         nodes_before++;
-        current = ifc.node[current].next;
+        current = ifc.tree_state.node[current].next;
     }
 
     // Move node2 after node1 (not to start, so pass7 should be called)
@@ -251,11 +253,11 @@ TEST_F(Pass8, Pass8MoveLines_CallsPass7)
     ifc.pass8_move_lines(node1, node2);
 
     // After pass7, nodes may have combined
-    current = ifc.node[header].next;
+    current = ifc.tree_state.node[header].next;
     int nodes_after = 0;
     while (current != trailer) {
         nodes_after++;
-        current = ifc.node[current].next;
+        current = ifc.tree_state.node[current].next;
     }
 
     // Nodes may have combined if they were adjacent
@@ -280,24 +282,24 @@ TEST_F(Pass8, IdenticalFiles_NoMoves)
     ifc.pass6();
     ifc.pass7();
 
-    int initial_blocks = ifc.nchange_blocks;
-    int initial_moved = ifc.move_stats.cosmetic + ifc.move_stats.non_cosmetic;
+    int initial_blocks = ifc.stats.nchange_blocks;
+    int initial_moved = ifc.stats.move_stats.cosmetic + ifc.stats.move_stats.non_cosmetic;
 
     // Run pass8
     ifc.pass8();
 
     // Verify no moves detected
-    EXPECT_EQ(ifc.nchange_blocks, initial_blocks) << "Should not increment change blocks";
-    EXPECT_EQ(ifc.move_stats.cosmetic + ifc.move_stats.non_cosmetic, initial_moved)
+    EXPECT_EQ(ifc.stats.nchange_blocks, initial_blocks) << "Should not increment change blocks";
+    EXPECT_EQ(ifc.stats.move_stats.cosmetic + ifc.stats.move_stats.non_cosmetic, initial_moved)
         << "Should not increment move stats";
 
     // Verify tree structure unchanged (files already aligned)
-    tree_index header = ifc.trees[FIRST_FILE].start;
-    tree_index current = ifc.node[header].next;
+    tree_index header = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index current = ifc.tree_state.node[header].next;
     int node_count = 0;
-    while (current != ifc.trees[FIRST_FILE].end) {
+    while (current != ifc.tree_state.trees[to_array_index(FileIndex::First)].end) {
         node_count++;
-        current = ifc.node[current].next;
+        current = ifc.tree_state.node[current].next;
     }
     EXPECT_GE(node_count, 1) << "Should have at least one node";
 }
@@ -319,29 +321,31 @@ TEST_F(Pass8, SingleMove_Backward)
     ifc.pass6();
     ifc.pass7();
 
-    int initial_blocks = ifc.nchange_blocks;
+    int initial_blocks = ifc.stats.nchange_blocks;
 
     // Run pass8
     ifc.pass8();
 
     // Verify move detected
-    EXPECT_GT(ifc.nchange_blocks, initial_blocks) << "Should increment change blocks";
-    EXPECT_GT(ifc.move_stats.cosmetic + ifc.move_stats.non_cosmetic, 0)
+    EXPECT_GT(ifc.stats.nchange_blocks, initial_blocks) << "Should increment change blocks";
+    EXPECT_GT(ifc.stats.move_stats.cosmetic + ifc.stats.move_stats.non_cosmetic, 0)
         << "Should have moved lines";
 
     // Verify files are now aligned
-    tree_index i = ifc.trees[FIRST_FILE].start;
-    tree_index j = ifc.trees[SECOND_FILE].start;
+    tree_index i = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index j = ifc.tree_state.trees[to_array_index(FileIndex::Second)].start;
 
-    i = ifc.node[i].next;
-    j = ifc.node[j].next;
+    i = ifc.tree_state.node[i].next;
+    j = ifc.tree_state.node[j].next;
 
-    while (i != ifc.trees[FIRST_FILE].end && j != ifc.trees[SECOND_FILE].end) {
-        line_count ptr0 = ifc.file_line[FIRST_FILE][ifc.true_line_of(i)].ptr0;
+    while (i != ifc.tree_state.trees[to_array_index(FileIndex::First)].end &&
+           j != ifc.tree_state.trees[to_array_index(FileIndex::Second)].end) {
+        line_count ptr0 =
+            ifc.file_state.file_line[to_array_index(FileIndex::First)][ifc.true_line_of(i)].ptr0;
         line_count file2_line = ifc.true_line_of(j);
         EXPECT_EQ(ptr0, file2_line) << "Files should be aligned after pass8";
-        i = ifc.node[i].next;
-        j = ifc.node[j].next;
+        i = ifc.tree_state.node[i].next;
+        j = ifc.tree_state.node[j].next;
     }
 }
 
@@ -362,29 +366,31 @@ TEST_F(Pass8, SingleMove_Forward)
     ifc.pass6();
     ifc.pass7();
 
-    int initial_blocks = ifc.nchange_blocks;
+    int initial_blocks = ifc.stats.nchange_blocks;
 
     // Run pass8
     ifc.pass8();
 
     // Verify move detected
-    EXPECT_GT(ifc.nchange_blocks, initial_blocks) << "Should increment change blocks";
-    EXPECT_GT(ifc.move_stats.cosmetic + ifc.move_stats.non_cosmetic, 0)
+    EXPECT_GT(ifc.stats.nchange_blocks, initial_blocks) << "Should increment change blocks";
+    EXPECT_GT(ifc.stats.move_stats.cosmetic + ifc.stats.move_stats.non_cosmetic, 0)
         << "Should have moved lines";
 
     // Verify alignment after move
-    tree_index i = ifc.trees[FIRST_FILE].start;
-    tree_index j = ifc.trees[SECOND_FILE].start;
+    tree_index i = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index j = ifc.tree_state.trees[to_array_index(FileIndex::Second)].start;
 
-    i = ifc.node[i].next;
-    j = ifc.node[j].next;
+    i = ifc.tree_state.node[i].next;
+    j = ifc.tree_state.node[j].next;
 
-    while (i != ifc.trees[FIRST_FILE].end && j != ifc.trees[SECOND_FILE].end) {
-        line_count ptr0 = ifc.file_line[FIRST_FILE][ifc.true_line_of(i)].ptr0;
+    while (i != ifc.tree_state.trees[to_array_index(FileIndex::First)].end &&
+           j != ifc.tree_state.trees[to_array_index(FileIndex::Second)].end) {
+        line_count ptr0 =
+            ifc.file_state.file_line[to_array_index(FileIndex::First)][ifc.true_line_of(i)].ptr0;
         line_count file2_line = ifc.true_line_of(j);
         EXPECT_EQ(ptr0, file2_line) << "Files should be aligned after pass8";
-        i = ifc.node[i].next;
-        j = ifc.node[j].next;
+        i = ifc.tree_state.node[i].next;
+        j = ifc.tree_state.node[j].next;
     }
 }
 
@@ -405,29 +411,31 @@ TEST_F(Pass8, MultipleMoves)
     ifc.pass6();
     ifc.pass7();
 
-    int initial_blocks = ifc.nchange_blocks;
+    int initial_blocks = ifc.stats.nchange_blocks;
 
     // Run pass8
     ifc.pass8();
 
     // Verify multiple moves detected
-    EXPECT_GT(ifc.nchange_blocks, initial_blocks) << "Should increment change blocks";
-    EXPECT_GT(ifc.move_stats.cosmetic + ifc.move_stats.non_cosmetic, 0)
+    EXPECT_GT(ifc.stats.nchange_blocks, initial_blocks) << "Should increment change blocks";
+    EXPECT_GT(ifc.stats.move_stats.cosmetic + ifc.stats.move_stats.non_cosmetic, 0)
         << "Should have moved lines";
 
     // Verify final alignment
-    tree_index i = ifc.trees[FIRST_FILE].start;
-    tree_index j = ifc.trees[SECOND_FILE].start;
+    tree_index i = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index j = ifc.tree_state.trees[to_array_index(FileIndex::Second)].start;
 
-    i = ifc.node[i].next;
-    j = ifc.node[j].next;
+    i = ifc.tree_state.node[i].next;
+    j = ifc.tree_state.node[j].next;
 
-    while (i != ifc.trees[FIRST_FILE].end && j != ifc.trees[SECOND_FILE].end) {
-        line_count ptr0 = ifc.file_line[FIRST_FILE][ifc.true_line_of(i)].ptr0;
+    while (i != ifc.tree_state.trees[to_array_index(FileIndex::First)].end &&
+           j != ifc.tree_state.trees[to_array_index(FileIndex::Second)].end) {
+        line_count ptr0 =
+            ifc.file_state.file_line[to_array_index(FileIndex::First)][ifc.true_line_of(i)].ptr0;
         line_count file2_line = ifc.true_line_of(j);
         EXPECT_EQ(ptr0, file2_line) << "Files should be aligned after all moves";
-        i = ifc.node[i].next;
-        j = ifc.node[j].next;
+        i = ifc.tree_state.node[i].next;
+        j = ifc.tree_state.node[j].next;
     }
 }
 
@@ -448,29 +456,31 @@ TEST_F(Pass8, MoveToStart)
     ifc.pass6();
     ifc.pass7();
 
-    int initial_blocks = ifc.nchange_blocks;
+    int initial_blocks = ifc.stats.nchange_blocks;
 
     // Run pass8
     ifc.pass8();
 
     // Verify move detected
-    EXPECT_GT(ifc.nchange_blocks, initial_blocks) << "Should increment change blocks";
-    EXPECT_GT(ifc.move_stats.cosmetic + ifc.move_stats.non_cosmetic, 0)
+    EXPECT_GT(ifc.stats.nchange_blocks, initial_blocks) << "Should increment change blocks";
+    EXPECT_GT(ifc.stats.move_stats.cosmetic + ifc.stats.move_stats.non_cosmetic, 0)
         << "Should have moved lines";
 
     // Verify alignment
-    tree_index i = ifc.trees[FIRST_FILE].start;
-    tree_index j = ifc.trees[SECOND_FILE].start;
+    tree_index i = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index j = ifc.tree_state.trees[to_array_index(FileIndex::Second)].start;
 
-    i = ifc.node[i].next;
-    j = ifc.node[j].next;
+    i = ifc.tree_state.node[i].next;
+    j = ifc.tree_state.node[j].next;
 
-    while (i != ifc.trees[FIRST_FILE].end && j != ifc.trees[SECOND_FILE].end) {
-        line_count ptr0 = ifc.file_line[FIRST_FILE][ifc.true_line_of(i)].ptr0;
+    while (i != ifc.tree_state.trees[to_array_index(FileIndex::First)].end &&
+           j != ifc.tree_state.trees[to_array_index(FileIndex::Second)].end) {
+        line_count ptr0 =
+            ifc.file_state.file_line[to_array_index(FileIndex::First)][ifc.true_line_of(i)].ptr0;
         line_count file2_line = ifc.true_line_of(j);
         EXPECT_EQ(ptr0, file2_line) << "Files should be aligned after move to start";
-        i = ifc.node[i].next;
-        j = ifc.node[j].next;
+        i = ifc.tree_state.node[i].next;
+        j = ifc.tree_state.node[j].next;
     }
 }
 
@@ -491,29 +501,31 @@ TEST_F(Pass8, MoveToEnd)
     ifc.pass6();
     ifc.pass7();
 
-    int initial_blocks = ifc.nchange_blocks;
+    int initial_blocks = ifc.stats.nchange_blocks;
 
     // Run pass8
     ifc.pass8();
 
     // Verify move detected
-    EXPECT_GT(ifc.nchange_blocks, initial_blocks) << "Should increment change blocks";
-    EXPECT_GT(ifc.move_stats.cosmetic + ifc.move_stats.non_cosmetic, 0)
+    EXPECT_GT(ifc.stats.nchange_blocks, initial_blocks) << "Should increment change blocks";
+    EXPECT_GT(ifc.stats.move_stats.cosmetic + ifc.stats.move_stats.non_cosmetic, 0)
         << "Should have moved lines";
 
     // Verify alignment
-    tree_index i = ifc.trees[FIRST_FILE].start;
-    tree_index j = ifc.trees[SECOND_FILE].start;
+    tree_index i = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index j = ifc.tree_state.trees[to_array_index(FileIndex::Second)].start;
 
-    i = ifc.node[i].next;
-    j = ifc.node[j].next;
+    i = ifc.tree_state.node[i].next;
+    j = ifc.tree_state.node[j].next;
 
-    while (i != ifc.trees[FIRST_FILE].end && j != ifc.trees[SECOND_FILE].end) {
-        line_count ptr0 = ifc.file_line[FIRST_FILE][ifc.true_line_of(i)].ptr0;
+    while (i != ifc.tree_state.trees[to_array_index(FileIndex::First)].end &&
+           j != ifc.tree_state.trees[to_array_index(FileIndex::Second)].end) {
+        line_count ptr0 =
+            ifc.file_state.file_line[to_array_index(FileIndex::First)][ifc.true_line_of(i)].ptr0;
         line_count file2_line = ifc.true_line_of(j);
         EXPECT_EQ(ptr0, file2_line) << "Files should be aligned after move to end";
-        i = ifc.node[i].next;
-        j = ifc.node[j].next;
+        i = ifc.tree_state.node[i].next;
+        j = ifc.tree_state.node[j].next;
     }
 }
 
@@ -534,29 +546,31 @@ TEST_F(Pass8, ComplexPermutation)
     ifc.pass6();
     ifc.pass7();
 
-    int initial_blocks = ifc.nchange_blocks;
+    int initial_blocks = ifc.stats.nchange_blocks;
 
     // Run pass8
     ifc.pass8();
 
     // Verify moves detected
-    EXPECT_GT(ifc.nchange_blocks, initial_blocks) << "Should increment change blocks";
-    EXPECT_GT(ifc.move_stats.cosmetic + ifc.move_stats.non_cosmetic, 0)
+    EXPECT_GT(ifc.stats.nchange_blocks, initial_blocks) << "Should increment change blocks";
+    EXPECT_GT(ifc.stats.move_stats.cosmetic + ifc.stats.move_stats.non_cosmetic, 0)
         << "Should have moved lines";
 
     // Verify final alignment
-    tree_index i = ifc.trees[FIRST_FILE].start;
-    tree_index j = ifc.trees[SECOND_FILE].start;
+    tree_index i = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index j = ifc.tree_state.trees[to_array_index(FileIndex::Second)].start;
 
-    i = ifc.node[i].next;
-    j = ifc.node[j].next;
+    i = ifc.tree_state.node[i].next;
+    j = ifc.tree_state.node[j].next;
 
-    while (i != ifc.trees[FIRST_FILE].end && j != ifc.trees[SECOND_FILE].end) {
-        line_count ptr0 = ifc.file_line[FIRST_FILE][ifc.true_line_of(i)].ptr0;
+    while (i != ifc.tree_state.trees[to_array_index(FileIndex::First)].end &&
+           j != ifc.tree_state.trees[to_array_index(FileIndex::Second)].end) {
+        line_count ptr0 =
+            ifc.file_state.file_line[to_array_index(FileIndex::First)][ifc.true_line_of(i)].ptr0;
         line_count file2_line = ifc.true_line_of(j);
         EXPECT_EQ(ptr0, file2_line) << "Files should be aligned after complex moves";
-        i = ifc.node[i].next;
-        j = ifc.node[j].next;
+        i = ifc.tree_state.node[i].next;
+        j = ifc.tree_state.node[j].next;
     }
 }
 
@@ -581,18 +595,20 @@ TEST_F(Pass8, MinimumCostSelection)
     ifc.pass8();
 
     // Verify alignment achieved
-    tree_index i = ifc.trees[FIRST_FILE].start;
-    tree_index j = ifc.trees[SECOND_FILE].start;
+    tree_index i = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index j = ifc.tree_state.trees[to_array_index(FileIndex::Second)].start;
 
-    i = ifc.node[i].next;
-    j = ifc.node[j].next;
+    i = ifc.tree_state.node[i].next;
+    j = ifc.tree_state.node[j].next;
 
-    while (i != ifc.trees[FIRST_FILE].end && j != ifc.trees[SECOND_FILE].end) {
-        line_count ptr0 = ifc.file_line[FIRST_FILE][ifc.true_line_of(i)].ptr0;
+    while (i != ifc.tree_state.trees[to_array_index(FileIndex::First)].end &&
+           j != ifc.tree_state.trees[to_array_index(FileIndex::Second)].end) {
+        line_count ptr0 =
+            ifc.file_state.file_line[to_array_index(FileIndex::First)][ifc.true_line_of(i)].ptr0;
         line_count file2_line = ifc.true_line_of(j);
         EXPECT_EQ(ptr0, file2_line) << "Files should be aligned";
-        i = ifc.node[i].next;
-        j = ifc.node[j].next;
+        i = ifc.tree_state.node[i].next;
+        j = ifc.tree_state.node[j].next;
     }
 }
 
@@ -615,21 +631,23 @@ TEST_F(Pass8, WithDuplicateLines)
 
     // Verify moves if needed
     // The alignment check will verify if moves were successful
-    tree_index i = ifc.trees[FIRST_FILE].start;
-    tree_index j = ifc.trees[SECOND_FILE].start;
+    tree_index i = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index j = ifc.tree_state.trees[to_array_index(FileIndex::Second)].start;
 
-    i = ifc.node[i].next;
-    j = ifc.node[j].next;
+    i = ifc.tree_state.node[i].next;
+    j = ifc.tree_state.node[j].next;
 
     int aligned_count = 0;
-    while (i != ifc.trees[FIRST_FILE].end && j != ifc.trees[SECOND_FILE].end) {
-        line_count ptr0 = ifc.file_line[FIRST_FILE][ifc.true_line_of(i)].ptr0;
+    while (i != ifc.tree_state.trees[to_array_index(FileIndex::First)].end &&
+           j != ifc.tree_state.trees[to_array_index(FileIndex::Second)].end) {
+        line_count ptr0 =
+            ifc.file_state.file_line[to_array_index(FileIndex::First)][ifc.true_line_of(i)].ptr0;
         line_count file2_line = ifc.true_line_of(j);
         if (ptr0 == file2_line) {
             aligned_count++;
         }
-        i = ifc.node[i].next;
-        j = ifc.node[j].next;
+        i = ifc.tree_state.node[i].next;
+        j = ifc.tree_state.node[j].next;
     }
 
     // Should have significant alignment
@@ -650,13 +668,13 @@ TEST_F(Pass8, EmptyFiles)
     ifc.pass6();
     ifc.pass7();
 
-    int initial_blocks = ifc.nchange_blocks;
+    int initial_blocks = ifc.stats.nchange_blocks;
 
     // Run pass8 - should complete without error
     ifc.pass8();
 
     // Verify no moves (files are already aligned)
-    EXPECT_EQ(ifc.nchange_blocks, initial_blocks) << "Should not increment change blocks";
+    EXPECT_EQ(ifc.stats.nchange_blocks, initial_blocks) << "Should not increment change blocks";
 }
 
 TEST_F(Pass8, SingleLineFiles)
@@ -673,13 +691,13 @@ TEST_F(Pass8, SingleLineFiles)
     ifc.pass6();
     ifc.pass7();
 
-    int initial_blocks = ifc.nchange_blocks;
+    int initial_blocks = ifc.stats.nchange_blocks;
 
     // Run pass8
     ifc.pass8();
 
     // Verify no moves needed (already aligned)
-    EXPECT_EQ(ifc.nchange_blocks, initial_blocks) << "Should not increment change blocks";
+    EXPECT_EQ(ifc.stats.nchange_blocks, initial_blocks) << "Should not increment change blocks";
 }
 
 TEST_F(Pass8, LargePermutation)
@@ -704,29 +722,31 @@ TEST_F(Pass8, LargePermutation)
     ifc.pass6();
     ifc.pass7();
 
-    int initial_blocks = ifc.nchange_blocks;
+    int initial_blocks = ifc.stats.nchange_blocks;
 
     // Run pass8
     ifc.pass8();
 
     // Verify moves detected
-    EXPECT_GT(ifc.nchange_blocks, initial_blocks) << "Should increment change blocks";
-    EXPECT_GT(ifc.move_stats.cosmetic + ifc.move_stats.non_cosmetic, 0)
+    EXPECT_GT(ifc.stats.nchange_blocks, initial_blocks) << "Should increment change blocks";
+    EXPECT_GT(ifc.stats.move_stats.cosmetic + ifc.stats.move_stats.non_cosmetic, 0)
         << "Should have moved lines";
 
     // Verify final alignment
-    tree_index i = ifc.trees[FIRST_FILE].start;
-    tree_index j = ifc.trees[SECOND_FILE].start;
+    tree_index i = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index j = ifc.tree_state.trees[to_array_index(FileIndex::Second)].start;
 
-    i = ifc.node[i].next;
-    j = ifc.node[j].next;
+    i = ifc.tree_state.node[i].next;
+    j = ifc.tree_state.node[j].next;
 
-    while (i != ifc.trees[FIRST_FILE].end && j != ifc.trees[SECOND_FILE].end) {
-        line_count ptr0 = ifc.file_line[FIRST_FILE][ifc.true_line_of(i)].ptr0;
+    while (i != ifc.tree_state.trees[to_array_index(FileIndex::First)].end &&
+           j != ifc.tree_state.trees[to_array_index(FileIndex::Second)].end) {
+        line_count ptr0 =
+            ifc.file_state.file_line[to_array_index(FileIndex::First)][ifc.true_line_of(i)].ptr0;
         line_count file2_line = ifc.true_line_of(j);
         EXPECT_EQ(ptr0, file2_line) << "Files should be aligned after all moves";
-        i = ifc.node[i].next;
-        j = ifc.node[j].next;
+        i = ifc.tree_state.node[i].next;
+        j = ifc.tree_state.node[j].next;
     }
 }
 
@@ -744,15 +764,15 @@ TEST_F(Pass8, StatisticsTracking)
     ifc.pass6();
     ifc.pass7();
 
-    int initial_blocks = ifc.nchange_blocks;
-    int initial_moved = ifc.move_stats.cosmetic + ifc.move_stats.non_cosmetic;
+    int initial_blocks = ifc.stats.nchange_blocks;
+    int initial_moved = ifc.stats.move_stats.cosmetic + ifc.stats.move_stats.non_cosmetic;
 
     // Run pass8
     ifc.pass8();
 
     // Verify statistics updated
-    EXPECT_GT(ifc.nchange_blocks, initial_blocks) << "Should increment change blocks";
-    EXPECT_GT(ifc.move_stats.cosmetic + ifc.move_stats.non_cosmetic, initial_moved)
+    EXPECT_GT(ifc.stats.nchange_blocks, initial_blocks) << "Should increment change blocks";
+    EXPECT_GT(ifc.stats.move_stats.cosmetic + ifc.stats.move_stats.non_cosmetic, initial_moved)
         << "Should increment move stats";
 }
 
@@ -778,18 +798,20 @@ TEST_F(Pass8, RestartAfterMove)
     ifc.pass8();
 
     // Verify all moves completed and alignment achieved
-    tree_index i = ifc.trees[FIRST_FILE].start;
-    tree_index j = ifc.trees[SECOND_FILE].start;
+    tree_index i = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index j = ifc.tree_state.trees[to_array_index(FileIndex::Second)].start;
 
-    i = ifc.node[i].next;
-    j = ifc.node[j].next;
+    i = ifc.tree_state.node[i].next;
+    j = ifc.tree_state.node[j].next;
 
-    while (i != ifc.trees[FIRST_FILE].end && j != ifc.trees[SECOND_FILE].end) {
-        line_count ptr0 = ifc.file_line[FIRST_FILE][ifc.true_line_of(i)].ptr0;
+    while (i != ifc.tree_state.trees[to_array_index(FileIndex::First)].end &&
+           j != ifc.tree_state.trees[to_array_index(FileIndex::Second)].end) {
+        line_count ptr0 =
+            ifc.file_state.file_line[to_array_index(FileIndex::First)][ifc.true_line_of(i)].ptr0;
         line_count file2_line = ifc.true_line_of(j);
         EXPECT_EQ(ptr0, file2_line) << "Files should be fully aligned";
-        i = ifc.node[i].next;
-        j = ifc.node[j].next;
+        i = ifc.tree_state.node[i].next;
+        j = ifc.tree_state.node[j].next;
     }
 }
 
@@ -809,23 +831,23 @@ TEST_F(Pass8, Pass7AfterMove)
     ifc.pass7();
 
     // Count nodes before pass8
-    tree_index header = ifc.trees[FIRST_FILE].start;
-    tree_index current = ifc.node[header].next;
+    tree_index header = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index current = ifc.tree_state.node[header].next;
     int nodes_before = 0;
-    while (current != ifc.trees[FIRST_FILE].end) {
+    while (current != ifc.tree_state.trees[to_array_index(FileIndex::First)].end) {
         nodes_before++;
-        current = ifc.node[current].next;
+        current = ifc.tree_state.node[current].next;
     }
 
     // Run pass8
     ifc.pass8();
 
     // Count nodes after pass8
-    current = ifc.node[header].next;
+    current = ifc.tree_state.node[header].next;
     int nodes_after = 0;
-    while (current != ifc.trees[FIRST_FILE].end) {
+    while (current != ifc.tree_state.trees[to_array_index(FileIndex::First)].end) {
         nodes_after++;
-        current = ifc.node[current].next;
+        current = ifc.tree_state.node[current].next;
     }
 
     // After moving and calling pass7, nodes may have combined
@@ -853,18 +875,20 @@ TEST_F(Pass8, EdgeCase_TwoSegmentSwap)
     ifc.pass8();
 
     // Verify alignment
-    tree_index i = ifc.trees[FIRST_FILE].start;
-    tree_index j = ifc.trees[SECOND_FILE].start;
+    tree_index i = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index j = ifc.tree_state.trees[to_array_index(FileIndex::Second)].start;
 
-    i = ifc.node[i].next;
-    j = ifc.node[j].next;
+    i = ifc.tree_state.node[i].next;
+    j = ifc.tree_state.node[j].next;
 
-    while (i != ifc.trees[FIRST_FILE].end && j != ifc.trees[SECOND_FILE].end) {
-        line_count ptr0 = ifc.file_line[FIRST_FILE][ifc.true_line_of(i)].ptr0;
+    while (i != ifc.tree_state.trees[to_array_index(FileIndex::First)].end &&
+           j != ifc.tree_state.trees[to_array_index(FileIndex::Second)].end) {
+        line_count ptr0 =
+            ifc.file_state.file_line[to_array_index(FileIndex::First)][ifc.true_line_of(i)].ptr0;
         line_count file2_line = ifc.true_line_of(j);
         EXPECT_EQ(ptr0, file2_line) << "Files should be aligned after swap";
-        i = ifc.node[i].next;
-        j = ifc.node[j].next;
+        i = ifc.tree_state.node[i].next;
+        j = ifc.tree_state.node[j].next;
     }
 }
 
@@ -892,17 +916,19 @@ TEST_F(Pass8, StressTest_ManyMoves)
     ifc.pass8();
 
     // Verify alignment
-    tree_index i = ifc.trees[FIRST_FILE].start;
-    tree_index j = ifc.trees[SECOND_FILE].start;
+    tree_index i = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index j = ifc.tree_state.trees[to_array_index(FileIndex::Second)].start;
 
-    i = ifc.node[i].next;
-    j = ifc.node[j].next;
+    i = ifc.tree_state.node[i].next;
+    j = ifc.tree_state.node[j].next;
 
-    while (i != ifc.trees[FIRST_FILE].end && j != ifc.trees[SECOND_FILE].end) {
-        line_count ptr0 = ifc.file_line[FIRST_FILE][ifc.true_line_of(i)].ptr0;
+    while (i != ifc.tree_state.trees[to_array_index(FileIndex::First)].end &&
+           j != ifc.tree_state.trees[to_array_index(FileIndex::Second)].end) {
+        line_count ptr0 =
+            ifc.file_state.file_line[to_array_index(FileIndex::First)][ifc.true_line_of(i)].ptr0;
         line_count file2_line = ifc.true_line_of(j);
         EXPECT_EQ(ptr0, file2_line) << "Files should be aligned after all moves";
-        i = ifc.node[i].next;
-        j = ifc.node[j].next;
+        i = ifc.tree_state.node[i].next;
+        j = ifc.tree_state.node[j].next;
     }
 }

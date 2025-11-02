@@ -36,14 +36,18 @@ TEST_F(Pass2, SingleUniquePair)
     ifc.pass2();
 
     // Both lines should be marked as UNIQUE_TYPE
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][1].ptr_type, LineType::UNIQUE_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][1].ptr_type,
+              LineType::UNIQUE_TYPE)
         << "Line 1 in file1 should be marked as UNIQUE_TYPE";
-    EXPECT_EQ(ifc.file_line[SECOND_FILE][1].ptr_type, LineType::UNIQUE_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][1].ptr_type,
+              LineType::UNIQUE_TYPE)
         << "Line 1 in file2 should be marked as UNIQUE_TYPE";
 
     // ptr0 should reference each other
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][1].ptr0, 1) << "File1 line 1 should point to file2 line 1";
-    EXPECT_EQ(ifc.file_line[SECOND_FILE][1].ptr0, 1) << "File2 line 1 should point to file1 line 1";
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][1].ptr0, 1)
+        << "File1 line 1 should point to file2 line 1";
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][1].ptr0, 1)
+        << "File2 line 1 should point to file1 line 1";
 }
 
 TEST_F(Pass2, MultipleUniquePairs)
@@ -57,13 +61,15 @@ TEST_F(Pass2, MultipleUniquePairs)
 
     // All lines should be marked as UNIQUE_TYPE
     for (int i = 1; i <= 3; i++) {
-        EXPECT_EQ(ifc.file_line[FIRST_FILE][i].ptr_type, LineType::UNIQUE_TYPE)
+        EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][i].ptr_type,
+                  LineType::UNIQUE_TYPE)
             << "File1 line " << i << " should be UNIQUE_TYPE";
-        EXPECT_EQ(ifc.file_line[SECOND_FILE][i].ptr_type, LineType::UNIQUE_TYPE)
+        EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][i].ptr_type,
+                  LineType::UNIQUE_TYPE)
             << "File2 line " << i << " should be UNIQUE_TYPE";
-        EXPECT_EQ(ifc.file_line[FIRST_FILE][i].ptr0, i)
+        EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][i].ptr0, i)
             << "File1 line " << i << " should point to file2 line " << i;
-        EXPECT_EQ(ifc.file_line[SECOND_FILE][i].ptr0, i)
+        EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][i].ptr0, i)
             << "File2 line " << i << " should point to file1 line " << i;
     }
 }
@@ -79,9 +85,11 @@ TEST_F(Pass2, NoUniquePairs_AllDuplicates)
 
     // All lines should remain SYT_TYPE (not unique)
     for (int i = 1; i <= 2; i++) {
-        EXPECT_EQ(ifc.file_line[FIRST_FILE][i].ptr_type, LineType::SYT_TYPE)
+        EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][i].ptr_type,
+                  LineType::SYT_TYPE)
             << "File1 line " << i << " should remain SYT_TYPE (duplicate)";
-        EXPECT_EQ(ifc.file_line[SECOND_FILE][i].ptr_type, LineType::SYT_TYPE)
+        EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][i].ptr_type,
+                  LineType::SYT_TYPE)
             << "File2 line " << i << " should remain SYT_TYPE (duplicate)";
     }
 }
@@ -97,10 +105,12 @@ TEST_F(Pass2, NoUniquePairs_DuplicateInFirstFile)
 
     // None should be marked as unique (appears twice in file1)
     for (int i = 1; i <= 2; i++) {
-        EXPECT_EQ(ifc.file_line[FIRST_FILE][i].ptr_type, LineType::SYT_TYPE)
+        EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][i].ptr_type,
+                  LineType::SYT_TYPE)
             << "File1 line " << i << " should remain SYT_TYPE (duplicate in file1)";
     }
-    EXPECT_EQ(ifc.file_line[SECOND_FILE][1].ptr_type, LineType::SYT_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][1].ptr_type,
+              LineType::SYT_TYPE)
         << "File2 line 1 should remain SYT_TYPE (duplicate in file1)";
 }
 
@@ -114,10 +124,12 @@ TEST_F(Pass2, NoUniquePairs_DuplicateInSecondFile)
     ifc.pass2();
 
     // None should be marked as unique (appears twice in file2)
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][1].ptr_type, LineType::SYT_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][1].ptr_type,
+              LineType::SYT_TYPE)
         << "File1 line 1 should remain SYT_TYPE (duplicate in file2)";
     for (int i = 1; i <= 2; i++) {
-        EXPECT_EQ(ifc.file_line[SECOND_FILE][i].ptr_type, LineType::SYT_TYPE)
+        EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][i].ptr_type,
+                  LineType::SYT_TYPE)
             << "File2 line " << i << " should remain SYT_TYPE (duplicate in file2)";
     }
 }
@@ -132,23 +144,31 @@ TEST_F(Pass2, MixedUniqueAndDuplicates)
     ifc.pass2();
 
     // Unique lines should be marked
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][1].ptr_type, LineType::UNIQUE_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][1].ptr_type,
+              LineType::UNIQUE_TYPE)
         << "UNIQUE1 in file1 should be UNIQUE_TYPE";
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][4].ptr_type, LineType::UNIQUE_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][4].ptr_type,
+              LineType::UNIQUE_TYPE)
         << "UNIQUE2 in file1 should be UNIQUE_TYPE";
-    EXPECT_EQ(ifc.file_line[SECOND_FILE][1].ptr_type, LineType::UNIQUE_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][1].ptr_type,
+              LineType::UNIQUE_TYPE)
         << "UNIQUE1 in file2 should be UNIQUE_TYPE";
-    EXPECT_EQ(ifc.file_line[SECOND_FILE][4].ptr_type, LineType::UNIQUE_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][4].ptr_type,
+              LineType::UNIQUE_TYPE)
         << "UNIQUE2 in file2 should be UNIQUE_TYPE";
 
     // Duplicate lines should remain SYT_TYPE
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][2].ptr_type, LineType::SYT_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][2].ptr_type,
+              LineType::SYT_TYPE)
         << "DUPLICATE at file1 line 2 should remain SYT_TYPE";
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][3].ptr_type, LineType::SYT_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][3].ptr_type,
+              LineType::SYT_TYPE)
         << "DUPLICATE at file1 line 3 should remain SYT_TYPE";
-    EXPECT_EQ(ifc.file_line[SECOND_FILE][2].ptr_type, LineType::SYT_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][2].ptr_type,
+              LineType::SYT_TYPE)
         << "DUPLICATE at file2 line 2 should remain SYT_TYPE";
-    EXPECT_EQ(ifc.file_line[SECOND_FILE][3].ptr_type, LineType::SYT_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][3].ptr_type,
+              LineType::SYT_TYPE)
         << "DUPLICATE at file2 line 3 should remain SYT_TYPE";
 }
 
@@ -162,25 +182,33 @@ TEST_F(Pass2, InterleavedUniqueAndNonUnique)
     ifc.pass2();
 
     // Unique lines should be marked
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][1].ptr_type, LineType::UNIQUE_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][1].ptr_type,
+              LineType::UNIQUE_TYPE)
         << "UNIQUE_A should be UNIQUE_TYPE";
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][4].ptr_type, LineType::UNIQUE_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][4].ptr_type,
+              LineType::UNIQUE_TYPE)
         << "UNIQUE_B should be UNIQUE_TYPE";
-    EXPECT_EQ(ifc.file_line[SECOND_FILE][1].ptr_type, LineType::UNIQUE_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][1].ptr_type,
+              LineType::UNIQUE_TYPE)
         << "UNIQUE_A should be UNIQUE_TYPE";
-    EXPECT_EQ(ifc.file_line[SECOND_FILE][4].ptr_type, LineType::UNIQUE_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][4].ptr_type,
+              LineType::UNIQUE_TYPE)
         << "UNIQUE_B should be UNIQUE_TYPE";
 
     // COMMON lines (appearing 4 times total) should remain SYT_TYPE
     for (int i = 2; i <= 3; i++) {
-        EXPECT_EQ(ifc.file_line[FIRST_FILE][i].ptr_type, LineType::SYT_TYPE)
+        EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][i].ptr_type,
+                  LineType::SYT_TYPE)
             << "COMMON at file1 line " << i << " should remain SYT_TYPE";
-        EXPECT_EQ(ifc.file_line[SECOND_FILE][i].ptr_type, LineType::SYT_TYPE)
+        EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][i].ptr_type,
+                  LineType::SYT_TYPE)
             << "COMMON at file2 line " << i << " should remain SYT_TYPE";
     }
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][5].ptr_type, LineType::SYT_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][5].ptr_type,
+              LineType::SYT_TYPE)
         << "COMMON at file1 line 5 should remain SYT_TYPE";
-    EXPECT_EQ(ifc.file_line[SECOND_FILE][5].ptr_type, LineType::SYT_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][5].ptr_type,
+              LineType::SYT_TYPE)
         << "COMMON at file2 line 5 should remain SYT_TYPE";
 }
 
@@ -194,27 +222,35 @@ TEST_F(Pass2, DifferentOrderButSameContent)
     ifc.pass2();
 
     // All lines are unique pairs (each appears once in each file)
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][1].ptr_type, LineType::UNIQUE_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][1].ptr_type,
+              LineType::UNIQUE_TYPE)
         << "A should be marked as UNIQUE_TYPE";
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][2].ptr_type, LineType::UNIQUE_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][2].ptr_type,
+              LineType::UNIQUE_TYPE)
         << "B should be marked as UNIQUE_TYPE";
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][3].ptr_type, LineType::UNIQUE_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][3].ptr_type,
+              LineType::UNIQUE_TYPE)
         << "C should be marked as UNIQUE_TYPE";
-    EXPECT_EQ(ifc.file_line[SECOND_FILE][1].ptr_type, LineType::UNIQUE_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][1].ptr_type,
+              LineType::UNIQUE_TYPE)
         << "C should be marked as UNIQUE_TYPE";
-    EXPECT_EQ(ifc.file_line[SECOND_FILE][2].ptr_type, LineType::UNIQUE_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][2].ptr_type,
+              LineType::UNIQUE_TYPE)
         << "B should be marked as UNIQUE_TYPE";
-    EXPECT_EQ(ifc.file_line[SECOND_FILE][3].ptr_type, LineType::UNIQUE_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][3].ptr_type,
+              LineType::UNIQUE_TYPE)
         << "A should be marked as UNIQUE_TYPE";
 
     // Check that ptr0 points to correct lines (different positions)
     // A in file1 (line 1) should point to A in file2 (line 3)
-    string_index si_a = ifc.file_line[FIRST_FILE][1].file_line_text;
-    string_index si_a2 = ifc.file_line[SECOND_FILE][3].file_line_text;
+    string_index si_a =
+        ifc.file_state.file_line[to_array_index(FileIndex::First)][1].file_line_text;
+    string_index si_a2 =
+        ifc.file_state.file_line[to_array_index(FileIndex::Second)][3].file_line_text;
     EXPECT_EQ(si_a, si_a2) << "A should reference same string entry";
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][1].ptr0, 3)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][1].ptr0, 3)
         << "File1 A (line 1) should point to file2 A (line 3)";
-    EXPECT_EQ(ifc.file_line[SECOND_FILE][3].ptr0, 1)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][3].ptr0, 1)
         << "File2 A (line 3) should point to file1 A (line 1)";
 }
 
@@ -229,9 +265,11 @@ TEST_F(Pass2, CompletelyDifferentFiles)
 
     // No lines should be marked as unique (none appear in both files)
     for (int i = 1; i <= 2; i++) {
-        EXPECT_EQ(ifc.file_line[FIRST_FILE][i].ptr_type, LineType::SYT_TYPE)
+        EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][i].ptr_type,
+                  LineType::SYT_TYPE)
             << "File1 line " << i << " should remain SYT_TYPE (no match)";
-        EXPECT_EQ(ifc.file_line[SECOND_FILE][i].ptr_type, LineType::SYT_TYPE)
+        EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][i].ptr_type,
+                  LineType::SYT_TYPE)
             << "File2 line " << i << " should remain SYT_TYPE (no match)";
     }
 }
@@ -246,25 +284,33 @@ TEST_F(Pass2, PartialOverlap)
     ifc.pass2();
 
     // COMMON lines appear twice (once in each file) - should be unique pairs
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][1].ptr_type, LineType::UNIQUE_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][1].ptr_type,
+              LineType::UNIQUE_TYPE)
         << "COMMON1 should be UNIQUE_TYPE";
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][3].ptr_type, LineType::UNIQUE_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][3].ptr_type,
+              LineType::UNIQUE_TYPE)
         << "COMMON2 should be UNIQUE_TYPE";
-    EXPECT_EQ(ifc.file_line[SECOND_FILE][1].ptr_type, LineType::UNIQUE_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][1].ptr_type,
+              LineType::UNIQUE_TYPE)
         << "COMMON1 should be UNIQUE_TYPE";
-    EXPECT_EQ(ifc.file_line[SECOND_FILE][2].ptr_type, LineType::UNIQUE_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][2].ptr_type,
+              LineType::UNIQUE_TYPE)
         << "COMMON2 should be UNIQUE_TYPE";
 
     // UNIQUE_A appears once in each file - should be unique pair
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][2].ptr_type, LineType::UNIQUE_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][2].ptr_type,
+              LineType::UNIQUE_TYPE)
         << "UNIQUE_A in file1 should be UNIQUE_TYPE";
-    EXPECT_EQ(ifc.file_line[SECOND_FILE][3].ptr_type, LineType::UNIQUE_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][3].ptr_type,
+              LineType::UNIQUE_TYPE)
         << "UNIQUE_A in file2 should be UNIQUE_TYPE";
 
     // UNIQUE_B and DIFFERENT appear only in one file - should remain SYT_TYPE
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][4].ptr_type, LineType::SYT_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][4].ptr_type,
+              LineType::SYT_TYPE)
         << "UNIQUE_B should remain SYT_TYPE (only in file1)";
-    EXPECT_EQ(ifc.file_line[SECOND_FILE][4].ptr_type, LineType::SYT_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][4].ptr_type,
+              LineType::SYT_TYPE)
         << "DIFFERENT should remain SYT_TYPE (only in file2)";
 }
 
@@ -279,9 +325,11 @@ TEST_F(Pass2, ThreeOccurrences_NoUnique)
 
     // No lines should be marked as unique (all appear 3 times)
     for (int i = 1; i <= 3; i++) {
-        EXPECT_EQ(ifc.file_line[FIRST_FILE][i].ptr_type, LineType::SYT_TYPE)
+        EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][i].ptr_type,
+                  LineType::SYT_TYPE)
             << "File1 line " << i << " should remain SYT_TYPE (3 occurrences)";
-        EXPECT_EQ(ifc.file_line[SECOND_FILE][i].ptr_type, LineType::SYT_TYPE)
+        EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][i].ptr_type,
+                  LineType::SYT_TYPE)
             << "File2 line " << i << " should remain SYT_TYPE (3 occurrences)";
     }
 }
@@ -297,9 +345,11 @@ TEST_F(Pass2, EmptyLines)
 
     // Empty lines appearing twice in each file should remain SYT_TYPE
     for (int i = 1; i <= 2; i++) {
-        EXPECT_EQ(ifc.file_line[FIRST_FILE][i].ptr_type, LineType::SYT_TYPE)
+        EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][i].ptr_type,
+                  LineType::SYT_TYPE)
             << "Empty line " << i << " in file1 should remain SYT_TYPE (duplicate)";
-        EXPECT_EQ(ifc.file_line[SECOND_FILE][i].ptr_type, LineType::SYT_TYPE)
+        EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][i].ptr_type,
+                  LineType::SYT_TYPE)
             << "Empty line " << i << " in file2 should remain SYT_TYPE (duplicate)";
     }
 }
@@ -314,9 +364,11 @@ TEST_F(Pass2, SingleEmptyLine_Unique)
     ifc.pass2();
 
     // Should be marked as unique pair
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][1].ptr_type, LineType::UNIQUE_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][1].ptr_type,
+              LineType::UNIQUE_TYPE)
         << "Single empty line should be UNIQUE_TYPE";
-    EXPECT_EQ(ifc.file_line[SECOND_FILE][1].ptr_type, LineType::UNIQUE_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][1].ptr_type,
+              LineType::UNIQUE_TYPE)
         << "Single empty line should be UNIQUE_TYPE";
 }
 
@@ -332,9 +384,11 @@ TEST_F(Pass2, LongLines_Unique)
     ifc.pass2();
 
     // Should be marked as unique pair
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][1].ptr_type, LineType::UNIQUE_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][1].ptr_type,
+              LineType::UNIQUE_TYPE)
         << "Long unique line should be UNIQUE_TYPE";
-    EXPECT_EQ(ifc.file_line[SECOND_FILE][1].ptr_type, LineType::UNIQUE_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][1].ptr_type,
+              LineType::UNIQUE_TYPE)
         << "Long unique line should be UNIQUE_TYPE";
 }
 
@@ -348,13 +402,17 @@ TEST_F(Pass2, SpecialCharacters_Unique)
     ifc.pass2();
 
     // Both should be marked as unique pairs
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][1].ptr_type, LineType::UNIQUE_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][1].ptr_type,
+              LineType::UNIQUE_TYPE)
         << "Line with tabs should be UNIQUE_TYPE";
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][2].ptr_type, LineType::UNIQUE_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][2].ptr_type,
+              LineType::UNIQUE_TYPE)
         << "Line with spaces should be UNIQUE_TYPE";
-    EXPECT_EQ(ifc.file_line[SECOND_FILE][1].ptr_type, LineType::UNIQUE_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][1].ptr_type,
+              LineType::UNIQUE_TYPE)
         << "Line with tabs should be UNIQUE_TYPE";
-    EXPECT_EQ(ifc.file_line[SECOND_FILE][2].ptr_type, LineType::UNIQUE_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][2].ptr_type,
+              LineType::UNIQUE_TYPE)
         << "Line with spaces should be UNIQUE_TYPE";
 }
 
@@ -368,12 +426,16 @@ TEST_F(Pass2, BidirectionalLinking)
     ifc.pass2();
 
     // A in file1 (line 1) should point to A in file2 (line 2)
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][1].ptr0, 2) << "File1 A should point to file2 line 2";
-    EXPECT_EQ(ifc.file_line[SECOND_FILE][2].ptr0, 1) << "File2 A should point to file1 line 1";
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][1].ptr0, 2)
+        << "File1 A should point to file2 line 2";
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][2].ptr0, 1)
+        << "File2 A should point to file1 line 1";
 
     // B in file1 (line 2) should point to B in file2 (line 1)
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][2].ptr0, 1) << "File1 B should point to file2 line 1";
-    EXPECT_EQ(ifc.file_line[SECOND_FILE][1].ptr0, 2) << "File2 B should point to file1 line 2";
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][2].ptr0, 1)
+        << "File1 B should point to file2 line 1";
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][1].ptr0, 2)
+        << "File2 B should point to file1 line 2";
 }
 
 TEST_F(Pass2, LargeNumberOfUniquePairs)
@@ -393,13 +455,15 @@ TEST_F(Pass2, LargeNumberOfUniquePairs)
 
     // All lines should be marked as unique pairs
     for (int i = 1; i <= 100; i++) {
-        EXPECT_EQ(ifc.file_line[FIRST_FILE][i].ptr_type, LineType::UNIQUE_TYPE)
+        EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][i].ptr_type,
+                  LineType::UNIQUE_TYPE)
             << "Line " << i << " in file1 should be UNIQUE_TYPE";
-        EXPECT_EQ(ifc.file_line[SECOND_FILE][i].ptr_type, LineType::UNIQUE_TYPE)
+        EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][i].ptr_type,
+                  LineType::UNIQUE_TYPE)
             << "Line " << i << " in file2 should be UNIQUE_TYPE";
-        EXPECT_EQ(ifc.file_line[FIRST_FILE][i].ptr0, i)
+        EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][i].ptr0, i)
             << "File1 line " << i << " should point to file2 line " << i;
-        EXPECT_EQ(ifc.file_line[SECOND_FILE][i].ptr0, i)
+        EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][i].ptr0, i)
             << "File2 line " << i << " should point to file1 line " << i;
     }
 }
@@ -414,17 +478,22 @@ TEST_F(Pass2, OneFileLarger)
     ifc.pass2();
 
     // UNIQUE_A and UNIQUE_B should be marked as unique pairs
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][1].ptr_type, LineType::UNIQUE_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][1].ptr_type,
+              LineType::UNIQUE_TYPE)
         << "UNIQUE_A should be UNIQUE_TYPE";
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][2].ptr_type, LineType::UNIQUE_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][2].ptr_type,
+              LineType::UNIQUE_TYPE)
         << "UNIQUE_B should be UNIQUE_TYPE";
-    EXPECT_EQ(ifc.file_line[SECOND_FILE][1].ptr_type, LineType::UNIQUE_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][1].ptr_type,
+              LineType::UNIQUE_TYPE)
         << "UNIQUE_A should be UNIQUE_TYPE";
-    EXPECT_EQ(ifc.file_line[SECOND_FILE][2].ptr_type, LineType::UNIQUE_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][2].ptr_type,
+              LineType::UNIQUE_TYPE)
         << "UNIQUE_B should be UNIQUE_TYPE";
 
     // UNIQUE_C only in file1 - should remain SYT_TYPE
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][3].ptr_type, LineType::SYT_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][3].ptr_type,
+              LineType::SYT_TYPE)
         << "UNIQUE_C should remain SYT_TYPE (only in file1)";
 }
 
@@ -438,17 +507,22 @@ TEST_F(Pass2, OneFileSmaller)
     ifc.pass2();
 
     // UNIQUE_A and UNIQUE_B should be marked as unique pairs
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][1].ptr_type, LineType::UNIQUE_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][1].ptr_type,
+              LineType::UNIQUE_TYPE)
         << "UNIQUE_A should be UNIQUE_TYPE";
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][2].ptr_type, LineType::UNIQUE_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][2].ptr_type,
+              LineType::UNIQUE_TYPE)
         << "UNIQUE_B should be UNIQUE_TYPE";
-    EXPECT_EQ(ifc.file_line[SECOND_FILE][1].ptr_type, LineType::UNIQUE_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][1].ptr_type,
+              LineType::UNIQUE_TYPE)
         << "UNIQUE_A should be UNIQUE_TYPE";
-    EXPECT_EQ(ifc.file_line[SECOND_FILE][2].ptr_type, LineType::UNIQUE_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][2].ptr_type,
+              LineType::UNIQUE_TYPE)
         << "UNIQUE_B should be UNIQUE_TYPE";
 
     // UNIQUE_C only in file2 - should remain SYT_TYPE
-    EXPECT_EQ(ifc.file_line[SECOND_FILE][3].ptr_type, LineType::SYT_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][3].ptr_type,
+              LineType::SYT_TYPE)
         << "UNIQUE_C should remain SYT_TYPE (only in file2)";
 }
 
@@ -462,19 +536,25 @@ TEST_F(Pass2, MultipleOccurrencesInBothFiles)
     ifc.pass2();
 
     // A appears twice in each file - should remain SYT_TYPE
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][1].ptr_type, LineType::SYT_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][1].ptr_type,
+              LineType::SYT_TYPE)
         << "A at file1 line 1 should remain SYT_TYPE (2 occurrences)";
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][3].ptr_type, LineType::SYT_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][3].ptr_type,
+              LineType::SYT_TYPE)
         << "A at file1 line 3 should remain SYT_TYPE (2 occurrences)";
-    EXPECT_EQ(ifc.file_line[SECOND_FILE][1].ptr_type, LineType::SYT_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][1].ptr_type,
+              LineType::SYT_TYPE)
         << "A at file2 line 1 should remain SYT_TYPE (2 occurrences)";
-    EXPECT_EQ(ifc.file_line[SECOND_FILE][3].ptr_type, LineType::SYT_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][3].ptr_type,
+              LineType::SYT_TYPE)
         << "A at file2 line 3 should remain SYT_TYPE (2 occurrences)";
 
     // B appears once in each file - should be UNIQUE_TYPE
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][2].ptr_type, LineType::UNIQUE_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][2].ptr_type,
+              LineType::UNIQUE_TYPE)
         << "B should be UNIQUE_TYPE";
-    EXPECT_EQ(ifc.file_line[SECOND_FILE][2].ptr_type, LineType::UNIQUE_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][2].ptr_type,
+              LineType::UNIQUE_TYPE)
         << "B should be UNIQUE_TYPE";
 }
 
@@ -499,9 +579,11 @@ TEST_F(Pass2, AllLinesUnique)
 
     // No lines should be marked as unique (none appear in both files)
     for (int i = 1; i <= 50; i++) {
-        EXPECT_EQ(ifc.file_line[FIRST_FILE][i].ptr_type, LineType::SYT_TYPE)
+        EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][i].ptr_type,
+                  LineType::SYT_TYPE)
             << "File1 line " << i << " should remain SYT_TYPE (no match)";
-        EXPECT_EQ(ifc.file_line[SECOND_FILE][i].ptr_type, LineType::SYT_TYPE)
+        EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][i].ptr_type,
+                  LineType::SYT_TYPE)
             << "File2 line " << i << " should remain SYT_TYPE (no match)";
     }
 }
@@ -516,16 +598,24 @@ TEST_F(Pass2, ComplexPattern)
     ifc.pass2();
 
     // COMMON appears 3 times in file1, 3 times in file2 - should remain SYT_TYPE
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][2].ptr_type, LineType::SYT_TYPE);
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][3].ptr_type, LineType::SYT_TYPE);
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][5].ptr_type, LineType::SYT_TYPE);
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][2].ptr_type,
+              LineType::SYT_TYPE);
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][3].ptr_type,
+              LineType::SYT_TYPE);
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][5].ptr_type,
+              LineType::SYT_TYPE);
 
     // UNIQUE lines should be marked
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][1].ptr_type, LineType::UNIQUE_TYPE);
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][4].ptr_type, LineType::UNIQUE_TYPE);
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][6].ptr_type, LineType::UNIQUE_TYPE);
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][1].ptr_type,
+              LineType::UNIQUE_TYPE);
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][4].ptr_type,
+              LineType::UNIQUE_TYPE);
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][6].ptr_type,
+              LineType::UNIQUE_TYPE);
 
     // DIFF lines only in one file - should remain SYT_TYPE
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][7].ptr_type, LineType::SYT_TYPE);
-    EXPECT_EQ(ifc.file_line[SECOND_FILE][6].ptr_type, LineType::SYT_TYPE);
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][7].ptr_type,
+              LineType::SYT_TYPE);
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][6].ptr_type,
+              LineType::SYT_TYPE);
 }

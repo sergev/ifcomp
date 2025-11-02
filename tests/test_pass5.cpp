@@ -37,10 +37,14 @@ TEST_F(Pass5, MakeNode_Basic)
     ifc.pass5();
 
     // Should have created dummy entry + header, segment, and trailer nodes
-    EXPECT_GT(ifc.node.size(), 3u) << "Should have dummy + header, segment, and trailer nodes";
-    EXPECT_NE(ifc.trees[FIRST_FILE].start, NULL_NODE) << "Tree should have header";
-    EXPECT_GE(ifc.trees[FIRST_FILE].start, 1) << "Header should be at index >= 1 (after dummy)";
-    EXPECT_NE(ifc.trees[FIRST_FILE].end, NULL_NODE) << "Tree should have trailer";
+    EXPECT_GT(ifc.tree_state.node.size(), 3u)
+        << "Should have dummy + header, segment, and trailer nodes";
+    EXPECT_NE(ifc.tree_state.trees[to_array_index(FileIndex::First)].start, NULL_NODE)
+        << "Tree should have header";
+    EXPECT_GE(ifc.tree_state.trees[to_array_index(FileIndex::First)].start, 1)
+        << "Header should be at index >= 1 (after dummy)";
+    EXPECT_NE(ifc.tree_state.trees[to_array_index(FileIndex::First)].end, NULL_NODE)
+        << "Tree should have trailer";
 }
 
 TEST_F(Pass5, Leaf_Basic)
@@ -54,7 +58,8 @@ TEST_F(Pass5, Leaf_Basic)
     ifc.pass5();
 
     // Segment node should be a leaf (no branch structure initially)
-    tree_index segment_node = ifc.node[ifc.trees[FIRST_FILE].start].next;
+    tree_index segment_node =
+        ifc.tree_state.node[ifc.tree_state.trees[to_array_index(FileIndex::First)].start].next;
     EXPECT_TRUE(ifc.leaf(segment_node)) << "Segment node should be a leaf";
 }
 
@@ -69,7 +74,8 @@ TEST_F(Pass5, TrueLineOf_File1)
     ifc.pass5();
 
     // Segment node should have positive line number
-    tree_index segment_node = ifc.node[ifc.trees[FIRST_FILE].start].next;
+    tree_index segment_node =
+        ifc.tree_state.node[ifc.tree_state.trees[to_array_index(FileIndex::First)].start].next;
     line_count line = ifc.true_line_of(segment_node);
     EXPECT_EQ(line, 1) << "File1 segment should have line 1";
     EXPECT_GE(line, 0) << "Line should be non-negative";
@@ -86,8 +92,9 @@ TEST_F(Pass5, TrueLineOf_File2)
     ifc.pass5();
 
     // Segment node for file2 should have negative line number
-    tree_index segment_node = ifc.node[ifc.trees[SECOND_FILE].start].next;
-    line_count stored_line = ifc.node[segment_node].linen;
+    tree_index segment_node =
+        ifc.tree_state.node[ifc.tree_state.trees[to_array_index(FileIndex::Second)].start].next;
+    line_count stored_line = ifc.tree_state.node[segment_node].linen;
     EXPECT_LT(stored_line, 0) << "File2 segment should have negative line number";
 
     line_count line = ifc.true_line_of(segment_node);
@@ -106,14 +113,16 @@ TEST_F(Pass5, FreeNode_Basic)
     ifc.pass5();
 
     // Get a node to free
-    tree_index segment_node = ifc.node[ifc.trees[FIRST_FILE].start].next;
-    tree_index original_free_start = ifc.free_nodes_start;
+    tree_index segment_node =
+        ifc.tree_state.node[ifc.tree_state.trees[to_array_index(FileIndex::First)].start].next;
+    tree_index original_free_start = ifc.tree_state.free_nodes_start;
 
     // Free the node
     ifc.free_node(segment_node);
 
-    EXPECT_EQ(ifc.free_nodes_start, segment_node) << "Freed node should be at head of free list";
-    EXPECT_EQ(ifc.node[segment_node].next, original_free_start)
+    EXPECT_EQ(ifc.tree_state.free_nodes_start, segment_node)
+        << "Freed node should be at head of free list";
+    EXPECT_EQ(ifc.tree_state.node[segment_node].next, original_free_start)
         << "Freed node should link to previous free start";
 }
 
@@ -132,25 +141,25 @@ TEST_F(Pass5, SingleMatchedLine)
     ifc.pass5();
 
     // Should have: header -> segment -> trailer
-    tree_index header = ifc.trees[FIRST_FILE].start;
-    tree_index segment = ifc.node[header].next;
-    tree_index trailer = ifc.trees[FIRST_FILE].end;
+    tree_index header = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index segment = ifc.tree_state.node[header].next;
+    tree_index trailer = ifc.tree_state.trees[to_array_index(FileIndex::First)].end;
 
     EXPECT_NE(header, NULL_NODE);
     EXPECT_NE(segment, NULL_NODE);
     EXPECT_NE(trailer, NULL_NODE);
 
     // Header should point to segment
-    EXPECT_EQ(ifc.node[header].next, segment);
-    EXPECT_EQ(ifc.node[segment].prev, header);
+    EXPECT_EQ(ifc.tree_state.node[header].next, segment);
+    EXPECT_EQ(ifc.tree_state.node[segment].prev, header);
 
     // Segment should point to trailer
-    EXPECT_EQ(ifc.node[segment].next, trailer);
-    EXPECT_EQ(ifc.node[trailer].prev, segment);
+    EXPECT_EQ(ifc.tree_state.node[segment].next, trailer);
+    EXPECT_EQ(ifc.tree_state.node[trailer].prev, segment);
 
     // Segment should have positive cost (matched)
-    EXPECT_GT(ifc.node[segment].cost, 0) << "Matched segment should have positive cost";
-    EXPECT_EQ(ifc.node[segment].cost, 1) << "Single line segment should have cost 1";
+    EXPECT_GT(ifc.tree_state.node[segment].cost, 0) << "Matched segment should have positive cost";
+    EXPECT_EQ(ifc.tree_state.node[segment].cost, 1) << "Single line segment should have cost 1";
 }
 
 TEST_F(Pass5, MultipleMatchedLines)
@@ -164,11 +173,11 @@ TEST_F(Pass5, MultipleMatchedLines)
     ifc.pass5();
 
     // Should have single segment with cost 3
-    tree_index header = ifc.trees[FIRST_FILE].start;
-    tree_index segment = ifc.node[header].next;
+    tree_index header = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index segment = ifc.tree_state.node[header].next;
 
-    EXPECT_EQ(ifc.node[segment].cost, 3) << "Three matched lines should have cost 3";
-    EXPECT_GT(ifc.node[segment].cost, 0) << "Matched segment should have positive cost";
+    EXPECT_EQ(ifc.tree_state.node[segment].cost, 3) << "Three matched lines should have cost 3";
+    EXPECT_GT(ifc.tree_state.node[segment].cost, 0) << "Matched segment should have positive cost";
 }
 
 TEST_F(Pass5, SingleUnmatchedLine)
@@ -182,11 +191,12 @@ TEST_F(Pass5, SingleUnmatchedLine)
     ifc.pass5();
 
     // Should have segment with negative cost
-    tree_index header = ifc.trees[FIRST_FILE].start;
-    tree_index segment = ifc.node[header].next;
+    tree_index header = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index segment = ifc.tree_state.node[header].next;
 
-    EXPECT_LT(ifc.node[segment].cost, 0) << "Unmatched segment should have negative cost";
-    EXPECT_EQ(ifc.node[segment].cost, -1) << "Single unmatched line should have cost -1";
+    EXPECT_LT(ifc.tree_state.node[segment].cost, 0)
+        << "Unmatched segment should have negative cost";
+    EXPECT_EQ(ifc.tree_state.node[segment].cost, -1) << "Single unmatched line should have cost -1";
 }
 
 TEST_F(Pass5, MultipleUnmatchedLines)
@@ -200,11 +210,12 @@ TEST_F(Pass5, MultipleUnmatchedLines)
     ifc.pass5();
 
     // Should have single segment with negative cost
-    tree_index header = ifc.trees[FIRST_FILE].start;
-    tree_index segment = ifc.node[header].next;
+    tree_index header = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index segment = ifc.tree_state.node[header].next;
 
-    EXPECT_LT(ifc.node[segment].cost, 0) << "Unmatched segment should have negative cost";
-    EXPECT_EQ(ifc.node[segment].cost, -3) << "Three unmatched lines should have cost -3";
+    EXPECT_LT(ifc.tree_state.node[segment].cost, 0)
+        << "Unmatched segment should have negative cost";
+    EXPECT_EQ(ifc.tree_state.node[segment].cost, -3) << "Three unmatched lines should have cost -3";
 }
 
 TEST_F(Pass5, MixedMatchedAndUnmatched)
@@ -218,27 +229,27 @@ TEST_F(Pass5, MixedMatchedAndUnmatched)
     ifc.pass5();
 
     // Should have 4 segments: matched, unmatched, matched, unmatched
-    tree_index header = ifc.trees[FIRST_FILE].start;
-    tree_index seg1 = ifc.node[header].next;
-    tree_index seg2 = ifc.node[seg1].next;
-    tree_index seg3 = ifc.node[seg2].next;
-    tree_index seg4 = ifc.node[seg3].next;
+    tree_index header = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index seg1 = ifc.tree_state.node[header].next;
+    tree_index seg2 = ifc.tree_state.node[seg1].next;
+    tree_index seg3 = ifc.tree_state.node[seg2].next;
+    tree_index seg4 = ifc.tree_state.node[seg3].next;
 
     // First segment: matched (UNIQUE_A)
-    EXPECT_GT(ifc.node[seg1].cost, 0) << "First segment should be matched";
-    EXPECT_EQ(ifc.node[seg1].cost, 1) << "First segment should have cost 1";
+    EXPECT_GT(ifc.tree_state.node[seg1].cost, 0) << "First segment should be matched";
+    EXPECT_EQ(ifc.tree_state.node[seg1].cost, 1) << "First segment should have cost 1";
 
     // Second segment: unmatched (DIFF1)
-    EXPECT_LT(ifc.node[seg2].cost, 0) << "Second segment should be unmatched";
-    EXPECT_EQ(ifc.node[seg2].cost, -1) << "Second segment should have cost -1";
+    EXPECT_LT(ifc.tree_state.node[seg2].cost, 0) << "Second segment should be unmatched";
+    EXPECT_EQ(ifc.tree_state.node[seg2].cost, -1) << "Second segment should have cost -1";
 
     // Third segment: matched (UNIQUE_B)
-    EXPECT_GT(ifc.node[seg3].cost, 0) << "Third segment should be matched";
-    EXPECT_EQ(ifc.node[seg3].cost, 1) << "Third segment should have cost 1";
+    EXPECT_GT(ifc.tree_state.node[seg3].cost, 0) << "Third segment should be matched";
+    EXPECT_EQ(ifc.tree_state.node[seg3].cost, 1) << "Third segment should have cost 1";
 
     // Fourth segment: unmatched (DIFF2)
-    EXPECT_LT(ifc.node[seg4].cost, 0) << "Fourth segment should be unmatched";
-    EXPECT_EQ(ifc.node[seg4].cost, -1) << "Fourth segment should have cost -1";
+    EXPECT_LT(ifc.tree_state.node[seg4].cost, 0) << "Fourth segment should be unmatched";
+    EXPECT_EQ(ifc.tree_state.node[seg4].cost, -1) << "Fourth segment should have cost -1";
 }
 
 TEST_F(Pass5, HeaderNodes)
@@ -252,13 +263,13 @@ TEST_F(Pass5, HeaderNodes)
     ifc.pass5();
 
     // Header nodes should have cost 0, line 0
-    tree_index header1 = ifc.trees[FIRST_FILE].start;
-    tree_index header2 = ifc.trees[SECOND_FILE].start;
+    tree_index header1 = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index header2 = ifc.tree_state.trees[to_array_index(FileIndex::Second)].start;
 
-    EXPECT_EQ(ifc.node[header1].cost, 0) << "Header should have cost 0";
-    EXPECT_EQ(ifc.node[header1].linen, 0) << "Header should have line 0";
-    EXPECT_EQ(ifc.node[header2].cost, 0) << "Header should have cost 0";
-    EXPECT_EQ(ifc.node[header2].linen, 0) << "Header should have line 0";
+    EXPECT_EQ(ifc.tree_state.node[header1].cost, 0) << "Header should have cost 0";
+    EXPECT_EQ(ifc.tree_state.node[header1].linen, 0) << "Header should have line 0";
+    EXPECT_EQ(ifc.tree_state.node[header2].cost, 0) << "Header should have cost 0";
+    EXPECT_EQ(ifc.tree_state.node[header2].linen, 0) << "Header should have line 0";
 }
 
 TEST_F(Pass5, TrailerNodes)
@@ -272,13 +283,15 @@ TEST_F(Pass5, TrailerNodes)
     ifc.pass5();
 
     // Trailer nodes should have cost 0, line (total_lines + 1)
-    tree_index trailer1 = ifc.trees[FIRST_FILE].end;
-    tree_index trailer2 = ifc.trees[SECOND_FILE].end;
+    tree_index trailer1 = ifc.tree_state.trees[to_array_index(FileIndex::First)].end;
+    tree_index trailer2 = ifc.tree_state.trees[to_array_index(FileIndex::Second)].end;
 
-    EXPECT_EQ(ifc.node[trailer1].cost, 0) << "Trailer should have cost 0";
-    EXPECT_EQ(ifc.node[trailer1].linen, 2) << "Trailer should have line 2 (total_lines + 1)";
-    EXPECT_EQ(ifc.node[trailer2].cost, 0) << "Trailer should have cost 0";
-    EXPECT_EQ(ifc.node[trailer2].linen, -2) << "File2 trailer should have negative line -2";
+    EXPECT_EQ(ifc.tree_state.node[trailer1].cost, 0) << "Trailer should have cost 0";
+    EXPECT_EQ(ifc.tree_state.node[trailer1].linen, 2)
+        << "Trailer should have line 2 (total_lines + 1)";
+    EXPECT_EQ(ifc.tree_state.node[trailer2].cost, 0) << "Trailer should have cost 0";
+    EXPECT_EQ(ifc.tree_state.node[trailer2].linen, -2)
+        << "File2 trailer should have negative line -2";
 }
 
 TEST_F(Pass5, DoublyLinkedList)
@@ -291,23 +304,23 @@ TEST_F(Pass5, DoublyLinkedList)
     ifc.pass2();
     ifc.pass5();
 
-    tree_index header = ifc.trees[FIRST_FILE].start;
-    tree_index seg1 = ifc.node[header].next;
-    tree_index seg2 = ifc.node[seg1].next;
-    tree_index seg3 = ifc.node[seg2].next;
-    tree_index trailer = ifc.trees[FIRST_FILE].end;
+    tree_index header = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index seg1 = ifc.tree_state.node[header].next;
+    tree_index seg2 = ifc.tree_state.node[seg1].next;
+    tree_index seg3 = ifc.tree_state.node[seg2].next;
+    tree_index trailer = ifc.tree_state.trees[to_array_index(FileIndex::First)].end;
 
     // Forward links
-    EXPECT_EQ(ifc.node[header].next, seg1);
-    EXPECT_EQ(ifc.node[seg1].next, seg2);
-    EXPECT_EQ(ifc.node[seg2].next, seg3);
-    EXPECT_EQ(ifc.node[seg3].next, trailer);
+    EXPECT_EQ(ifc.tree_state.node[header].next, seg1);
+    EXPECT_EQ(ifc.tree_state.node[seg1].next, seg2);
+    EXPECT_EQ(ifc.tree_state.node[seg2].next, seg3);
+    EXPECT_EQ(ifc.tree_state.node[seg3].next, trailer);
 
     // Backward links
-    EXPECT_EQ(ifc.node[seg1].prev, header);
-    EXPECT_EQ(ifc.node[seg2].prev, seg1);
-    EXPECT_EQ(ifc.node[seg3].prev, seg2);
-    EXPECT_EQ(ifc.node[trailer].prev, seg3);
+    EXPECT_EQ(ifc.tree_state.node[seg1].prev, header);
+    EXPECT_EQ(ifc.tree_state.node[seg2].prev, seg1);
+    EXPECT_EQ(ifc.tree_state.node[seg3].prev, seg2);
+    EXPECT_EQ(ifc.tree_state.node[trailer].prev, seg3);
 }
 
 TEST_F(Pass5, File2NegativeLineNumbers)
@@ -320,16 +333,20 @@ TEST_F(Pass5, File2NegativeLineNumbers)
     ifc.pass2();
     ifc.pass5();
 
-    tree_index seg1 = ifc.node[ifc.trees[FIRST_FILE].start].next;
-    tree_index seg2 = ifc.node[ifc.trees[SECOND_FILE].start].next;
+    tree_index seg1 =
+        ifc.tree_state.node[ifc.tree_state.trees[to_array_index(FileIndex::First)].start].next;
+    tree_index seg2 =
+        ifc.tree_state.node[ifc.tree_state.trees[to_array_index(FileIndex::Second)].start].next;
 
     // File1 should have positive line number
-    EXPECT_GT(ifc.node[seg1].linen, 0) << "File1 segment should have positive line number";
-    EXPECT_EQ(ifc.node[seg1].linen, 1) << "File1 segment should have line 1";
+    EXPECT_GT(ifc.tree_state.node[seg1].linen, 0)
+        << "File1 segment should have positive line number";
+    EXPECT_EQ(ifc.tree_state.node[seg1].linen, 1) << "File1 segment should have line 1";
 
     // File2 should have negative line number
-    EXPECT_LT(ifc.node[seg2].linen, 0) << "File2 segment should have negative line number";
-    EXPECT_EQ(ifc.node[seg2].linen, -1) << "File2 segment should have line -1";
+    EXPECT_LT(ifc.tree_state.node[seg2].linen, 0)
+        << "File2 segment should have negative line number";
+    EXPECT_EQ(ifc.tree_state.node[seg2].linen, -1) << "File2 segment should have line -1";
 }
 
 TEST_F(Pass5, ConsecutiveUnmatchedLines)
@@ -342,13 +359,13 @@ TEST_F(Pass5, ConsecutiveUnmatchedLines)
     ifc.pass2();
     ifc.pass5();
 
-    tree_index header = ifc.trees[FIRST_FILE].start;
-    tree_index segment = ifc.node[header].next;
+    tree_index header = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index segment = ifc.tree_state.node[header].next;
 
     // Should be single segment with all 4 lines
-    EXPECT_EQ(ifc.node[segment].cost, -4)
+    EXPECT_EQ(ifc.tree_state.node[segment].cost, -4)
         << "Four consecutive unmatched lines should form single segment";
-    EXPECT_LT(ifc.node[segment].cost, 0) << "Should have negative cost";
+    EXPECT_LT(ifc.tree_state.node[segment].cost, 0) << "Should have negative cost";
 }
 
 TEST_F(Pass5, ConsecutiveMatchedLines)
@@ -361,13 +378,13 @@ TEST_F(Pass5, ConsecutiveMatchedLines)
     ifc.pass2();
     ifc.pass5();
 
-    tree_index header = ifc.trees[FIRST_FILE].start;
-    tree_index segment = ifc.node[header].next;
+    tree_index header = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index segment = ifc.tree_state.node[header].next;
 
     // Should be single segment with all 4 lines
-    EXPECT_EQ(ifc.node[segment].cost, 4)
+    EXPECT_EQ(ifc.tree_state.node[segment].cost, 4)
         << "Four consecutive matched lines should form single segment";
-    EXPECT_GT(ifc.node[segment].cost, 0) << "Should have positive cost";
+    EXPECT_GT(ifc.tree_state.node[segment].cost, 0) << "Should have positive cost";
 }
 
 TEST_F(Pass5, MixedWithPass3Pass4Extension)
@@ -384,11 +401,12 @@ TEST_F(Pass5, MixedWithPass3Pass4Extension)
 
     // After pass3/4, all COMMON lines should be MATCH_TYPE
     // Should have single segment with cost 5
-    tree_index header = ifc.trees[FIRST_FILE].start;
-    tree_index segment = ifc.node[header].next;
+    tree_index header = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index segment = ifc.tree_state.node[header].next;
 
-    EXPECT_EQ(ifc.node[segment].cost, 5) << "All 5 lines should be in single matched segment";
-    EXPECT_GT(ifc.node[segment].cost, 0) << "Should have positive cost";
+    EXPECT_EQ(ifc.tree_state.node[segment].cost, 5)
+        << "All 5 lines should be in single matched segment";
+    EXPECT_GT(ifc.tree_state.node[segment].cost, 0) << "Should have positive cost";
 }
 
 TEST_F(Pass5, EmptyLinesFiles)
@@ -402,12 +420,12 @@ TEST_F(Pass5, EmptyLinesFiles)
     ifc.pass5();
 
     // Should still have header and trailer
-    EXPECT_NE(ifc.trees[FIRST_FILE].start, NULL_NODE);
-    EXPECT_NE(ifc.trees[FIRST_FILE].end, NULL_NODE);
+    EXPECT_NE(ifc.tree_state.trees[to_array_index(FileIndex::First)].start, NULL_NODE);
+    EXPECT_NE(ifc.tree_state.trees[to_array_index(FileIndex::First)].end, NULL_NODE);
 
     // Should have at least one segment for the empty line
-    tree_index header = ifc.trees[FIRST_FILE].start;
-    EXPECT_NE(ifc.node[header].next, NULL_NODE) << "Should have segment after header";
+    tree_index header = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    EXPECT_NE(ifc.tree_state.node[header].next, NULL_NODE) << "Should have segment after header";
 }
 
 TEST_F(Pass5, ComplexPattern)
@@ -425,10 +443,11 @@ TEST_F(Pass5, ComplexPattern)
 
     // Count segments
     int segment_count = 0;
-    tree_index current = ifc.node[ifc.trees[FIRST_FILE].start].next;
-    while (current != ifc.trees[FIRST_FILE].end) {
+    tree_index current =
+        ifc.tree_state.node[ifc.tree_state.trees[to_array_index(FileIndex::First)].start].next;
+    while (current != ifc.tree_state.trees[to_array_index(FileIndex::First)].end) {
         segment_count++;
-        current = ifc.node[current].next;
+        current = ifc.tree_state.node[current].next;
     }
 
     // Should have multiple segments (matched, unmatched, matched, etc.)
@@ -445,13 +464,13 @@ TEST_F(Pass5, SingleSegmentAllMatched)
     ifc.pass2();
     ifc.pass5();
 
-    tree_index header = ifc.trees[FIRST_FILE].start;
-    tree_index segment = ifc.node[header].next;
-    tree_index trailer = ifc.trees[FIRST_FILE].end;
+    tree_index header = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index segment = ifc.tree_state.node[header].next;
+    tree_index trailer = ifc.tree_state.trees[to_array_index(FileIndex::First)].end;
 
     // Should have only one segment between header and trailer
-    EXPECT_EQ(ifc.node[segment].next, trailer) << "Should have single segment";
-    EXPECT_EQ(ifc.node[segment].cost, 3) << "Single segment should contain all 3 lines";
+    EXPECT_EQ(ifc.tree_state.node[segment].next, trailer) << "Should have single segment";
+    EXPECT_EQ(ifc.tree_state.node[segment].cost, 3) << "Single segment should contain all 3 lines";
 }
 
 TEST_F(Pass5, SingleSegmentAllUnmatched)
@@ -464,14 +483,15 @@ TEST_F(Pass5, SingleSegmentAllUnmatched)
     ifc.pass2();
     ifc.pass5();
 
-    tree_index header = ifc.trees[FIRST_FILE].start;
-    tree_index segment = ifc.node[header].next;
-    tree_index trailer = ifc.trees[FIRST_FILE].end;
+    tree_index header = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index segment = ifc.tree_state.node[header].next;
+    tree_index trailer = ifc.tree_state.trees[to_array_index(FileIndex::First)].end;
 
     // Should have only one segment between header and trailer
-    EXPECT_EQ(ifc.node[segment].next, trailer) << "Should have single segment";
-    EXPECT_EQ(ifc.node[segment].cost, -3) << "Single segment should contain all 3 unmatched lines";
-    EXPECT_LT(ifc.node[segment].cost, 0) << "Should have negative cost";
+    EXPECT_EQ(ifc.tree_state.node[segment].next, trailer) << "Should have single segment";
+    EXPECT_EQ(ifc.tree_state.node[segment].cost, -3)
+        << "Single segment should contain all 3 unmatched lines";
+    EXPECT_LT(ifc.tree_state.node[segment].cost, 0) << "Should have negative cost";
 }
 
 TEST_F(Pass5, HeaderTrailerLinks)
@@ -485,14 +505,16 @@ TEST_F(Pass5, HeaderTrailerLinks)
     ifc.pass5();
 
     // Headers should reference each other (line 0)
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][0].ptr0, 0);
-    EXPECT_EQ(ifc.file_line[SECOND_FILE][0].ptr0, 0);
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][0].ptr0, 0);
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][0].ptr0, 0);
 
     // Trailers should reference each other
-    int file1_tlinesp = ifc.total_file_nlines[FIRST_FILE] + 1;
-    int file2_tlinesp = ifc.total_file_nlines[SECOND_FILE] + 1;
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][file1_tlinesp].ptr0, file2_tlinesp);
-    EXPECT_EQ(ifc.file_line[SECOND_FILE][file2_tlinesp].ptr0, file1_tlinesp);
+    int file1_tlinesp = ifc.file_state.total_file_nlines[to_array_index(FileIndex::First)] + 1;
+    int file2_tlinesp = ifc.file_state.total_file_nlines[to_array_index(FileIndex::Second)] + 1;
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][file1_tlinesp].ptr0,
+              file2_tlinesp);
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][file2_tlinesp].ptr0,
+              file1_tlinesp);
 }
 
 TEST_F(Pass5, BranchStartEndInitiallyNull)
@@ -505,10 +527,13 @@ TEST_F(Pass5, BranchStartEndInitiallyNull)
     ifc.pass2();
     ifc.pass5();
 
-    tree_index segment = ifc.node[ifc.trees[FIRST_FILE].start].next;
+    tree_index segment =
+        ifc.tree_state.node[ifc.tree_state.trees[to_array_index(FileIndex::First)].start].next;
 
-    EXPECT_EQ(ifc.node[segment].branch_start, NULL_NODE) << "Initially should have no branch_start";
-    EXPECT_EQ(ifc.node[segment].branch_end, NULL_NODE) << "Initially should have no branch_end";
+    EXPECT_EQ(ifc.tree_state.node[segment].branch_start, NULL_NODE)
+        << "Initially should have no branch_start";
+    EXPECT_EQ(ifc.tree_state.node[segment].branch_end, NULL_NODE)
+        << "Initially should have no branch_end";
     EXPECT_TRUE(ifc.leaf(segment)) << "Should be a leaf node initially";
 }
 
@@ -522,18 +547,19 @@ TEST_F(Pass5, SegmentLineNumbers)
     ifc.pass2();
     ifc.pass5();
 
-    tree_index seg1 = ifc.node[ifc.trees[FIRST_FILE].start].next;
-    tree_index seg2 = ifc.node[seg1].next;
-    tree_index seg3 = ifc.node[seg2].next;
+    tree_index seg1 =
+        ifc.tree_state.node[ifc.tree_state.trees[to_array_index(FileIndex::First)].start].next;
+    tree_index seg2 = ifc.tree_state.node[seg1].next;
+    tree_index seg3 = ifc.tree_state.node[seg2].next;
 
     // First segment starts at line 1
-    EXPECT_EQ(ifc.node[seg1].linen, 1) << "First segment should start at line 1";
+    EXPECT_EQ(ifc.tree_state.node[seg1].linen, 1) << "First segment should start at line 1";
 
     // Second segment starts at line 2
-    EXPECT_EQ(ifc.node[seg2].linen, 2) << "Second segment should start at line 2";
+    EXPECT_EQ(ifc.tree_state.node[seg2].linen, 2) << "Second segment should start at line 2";
 
     // Third segment starts at line 3
-    EXPECT_EQ(ifc.node[seg3].linen, 3) << "Third segment should start at line 3";
+    EXPECT_EQ(ifc.tree_state.node[seg3].linen, 3) << "Third segment should start at line 3";
 }
 
 TEST_F(Pass5, MatchedSegmentConsecutivePtr0)
@@ -546,13 +572,15 @@ TEST_F(Pass5, MatchedSegmentConsecutivePtr0)
     ifc.pass2();
     ifc.pass5();
 
-    tree_index segment = ifc.node[ifc.trees[FIRST_FILE].start].next;
+    tree_index segment =
+        ifc.tree_state.node[ifc.tree_state.trees[to_array_index(FileIndex::First)].start].next;
 
     // Segment should have cost 2 (both lines matched consecutively)
-    EXPECT_EQ(ifc.node[segment].cost, 2) << "Consecutive matched lines should form single segment";
+    EXPECT_EQ(ifc.tree_state.node[segment].cost, 2)
+        << "Consecutive matched lines should form single segment";
 
     // Verify they're in same segment by checking line numbers
-    EXPECT_EQ(ifc.node[segment].linen, 1) << "Segment starts at line 1";
+    EXPECT_EQ(ifc.tree_state.node[segment].linen, 1) << "Segment starts at line 1";
 }
 
 // ============================================================================
@@ -582,10 +610,11 @@ TEST_F(Pass5, LargeNumberOfSegments)
 
     // Should create many segments
     int segment_count = 0;
-    tree_index current = ifc.node[ifc.trees[FIRST_FILE].start].next;
-    while (current != ifc.trees[FIRST_FILE].end) {
+    tree_index current =
+        ifc.tree_state.node[ifc.tree_state.trees[to_array_index(FileIndex::First)].start].next;
+    while (current != ifc.tree_state.trees[to_array_index(FileIndex::First)].end) {
         segment_count++;
-        current = ifc.node[current].next;
+        current = ifc.tree_state.node[current].next;
     }
 
     EXPECT_GT(segment_count, 25) << "Should create many segments for alternating pattern";
@@ -607,11 +636,12 @@ TEST_F(Pass5, VeryLongSegment)
     ifc.pass2();
     ifc.pass5();
 
-    tree_index header = ifc.trees[FIRST_FILE].start;
-    tree_index segment = ifc.node[header].next;
+    tree_index header = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index segment = ifc.tree_state.node[header].next;
 
     // Should have single segment with all 100 lines
-    EXPECT_EQ(ifc.node[segment].cost, 100) << "Single segment should contain all 100 lines";
+    EXPECT_EQ(ifc.tree_state.node[segment].cost, 100)
+        << "Single segment should contain all 100 lines";
 }
 
 TEST_F(Pass5, BothFilesSameStructure)
@@ -626,17 +656,19 @@ TEST_F(Pass5, BothFilesSameStructure)
 
     // Count segments in both files
     int file1_segments = 0;
-    tree_index current1 = ifc.node[ifc.trees[FIRST_FILE].start].next;
-    while (current1 != ifc.trees[FIRST_FILE].end) {
+    tree_index current1 =
+        ifc.tree_state.node[ifc.tree_state.trees[to_array_index(FileIndex::First)].start].next;
+    while (current1 != ifc.tree_state.trees[to_array_index(FileIndex::First)].end) {
         file1_segments++;
-        current1 = ifc.node[current1].next;
+        current1 = ifc.tree_state.node[current1].next;
     }
 
     int file2_segments = 0;
-    tree_index current2 = ifc.node[ifc.trees[SECOND_FILE].start].next;
-    while (current2 != ifc.trees[SECOND_FILE].end) {
+    tree_index current2 =
+        ifc.tree_state.node[ifc.tree_state.trees[to_array_index(FileIndex::Second)].start].next;
+    while (current2 != ifc.tree_state.trees[to_array_index(FileIndex::Second)].end) {
         file2_segments++;
-        current2 = ifc.node[current2].next;
+        current2 = ifc.tree_state.node[current2].next;
     }
 
     EXPECT_EQ(file1_segments, file2_segments) << "Both files should have same number of segments";
@@ -653,13 +685,14 @@ TEST_F(Pass5, EachLineInNode_MatchedSegment)
     ifc.pass2();
     ifc.pass5();
 
-    tree_index segment = ifc.node[ifc.trees[FIRST_FILE].start].next;
+    tree_index segment =
+        ifc.tree_state.node[ifc.tree_state.trees[to_array_index(FileIndex::First)].start].next;
 
     int line_count = 0;
     ifc.each_line_in_node(segment, false, 0,
-                          [&line_count](int which_file, const std::string &text, int lineno) {
+                          [&line_count](FileIndex which_file, const std::string &text, int lineno) {
                               line_count++;
-                              EXPECT_EQ(which_file, FIRST_FILE) << "Should be first file";
+                              EXPECT_EQ(which_file, FileIndex::First) << "Should be first file";
                           });
 
     EXPECT_EQ(line_count, 3) << "Should iterate over 3 lines";
@@ -675,13 +708,14 @@ TEST_F(Pass5, EachLineInNode_UnmatchedSegment)
     ifc.pass2();
     ifc.pass5();
 
-    tree_index segment = ifc.node[ifc.trees[FIRST_FILE].start].next;
+    tree_index segment =
+        ifc.tree_state.node[ifc.tree_state.trees[to_array_index(FileIndex::First)].start].next;
 
     int line_count = 0;
     ifc.each_line_in_node(segment, true, 0,
-                          [&line_count](int which_file, const std::string &text, int lineno) {
+                          [&line_count](FileIndex which_file, const std::string &text, int lineno) {
                               line_count++;
-                              EXPECT_EQ(which_file, FIRST_FILE) << "Should be first file";
+                              EXPECT_EQ(which_file, FileIndex::First) << "Should be first file";
                           });
 
     EXPECT_EQ(line_count, 3) << "Should iterate over 3 lines (always=true uses absolute cost)";
@@ -697,11 +731,12 @@ TEST_F(Pass5, EachLineInNode_StartingLine)
     ifc.pass2();
     ifc.pass5();
 
-    tree_index segment = ifc.node[ifc.trees[FIRST_FILE].start].next;
+    tree_index segment =
+        ifc.tree_state.node[ifc.tree_state.trees[to_array_index(FileIndex::First)].start].next;
 
     int line_count = 0;
     ifc.each_line_in_node(segment, false, 3,
-                          [&line_count](int which_file, const std::string &text, int lineno) {
+                          [&line_count](FileIndex which_file, const std::string &text, int lineno) {
                               line_count++;
                               EXPECT_GE(lineno, 3) << "Should start from line 3";
                           });
@@ -719,7 +754,8 @@ TEST_F(Pass5, CountNode_Matched)
     ifc.pass2();
     ifc.pass5();
 
-    tree_index segment = ifc.node[ifc.trees[FIRST_FILE].start].next;
+    tree_index segment =
+        ifc.tree_state.node[ifc.tree_state.trees[to_array_index(FileIndex::First)].start].next;
 
     LineKinds kinds;
     ifc.count_node(segment, kinds);
@@ -741,7 +777,8 @@ TEST_F(Pass5, CountNode_Unmatched)
     ifc.pass2();
     ifc.pass5();
 
-    tree_index segment = ifc.node[ifc.trees[FIRST_FILE].start].next;
+    tree_index segment =
+        ifc.tree_state.node[ifc.tree_state.trees[to_array_index(FileIndex::First)].start].next;
 
     LineKinds kinds;
     ifc.count_node(segment, kinds);
@@ -763,11 +800,11 @@ TEST_F(Pass5, NodeWithZeroCost)
     ifc.pass2();
     ifc.pass5();
 
-    tree_index header = ifc.trees[FIRST_FILE].start;
-    tree_index trailer = ifc.trees[FIRST_FILE].end;
+    tree_index header = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index trailer = ifc.tree_state.trees[to_array_index(FileIndex::First)].end;
 
-    EXPECT_EQ(ifc.node[header].cost, 0) << "Header should have cost 0";
-    EXPECT_EQ(ifc.node[trailer].cost, 0) << "Trailer should have cost 0";
+    EXPECT_EQ(ifc.tree_state.node[header].cost, 0) << "Header should have cost 0";
+    EXPECT_EQ(ifc.tree_state.node[trailer].cost, 0) << "Trailer should have cost 0";
 }
 
 TEST_F(Pass5, DiscontinuousMatchedLines)
@@ -781,13 +818,13 @@ TEST_F(Pass5, DiscontinuousMatchedLines)
     ifc.pass5();
 
     // UNIQUE_A and UNIQUE_B should be separate segments (ptr0 not consecutive)
-    tree_index header = ifc.trees[FIRST_FILE].start;
-    tree_index seg1 = ifc.node[header].next;
-    tree_index seg2 = ifc.node[seg1].next;
+    tree_index header = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index seg1 = ifc.tree_state.node[header].next;
+    tree_index seg2 = ifc.tree_state.node[seg1].next;
 
     // Each should be separate segment
-    EXPECT_EQ(ifc.node[seg1].cost, 1) << "First unique should be separate segment";
-    EXPECT_EQ(ifc.node[seg2].cost, 1) << "Second unique should be separate segment";
+    EXPECT_EQ(ifc.tree_state.node[seg1].cost, 1) << "First unique should be separate segment";
+    EXPECT_EQ(ifc.tree_state.node[seg2].cost, 1) << "Second unique should be separate segment";
 }
 
 TEST_F(Pass5, IdenticalFiles)
@@ -800,11 +837,11 @@ TEST_F(Pass5, IdenticalFiles)
     ifc.pass2();
     ifc.pass5();
 
-    tree_index header = ifc.trees[FIRST_FILE].start;
-    tree_index segment = ifc.node[header].next;
-    tree_index trailer = ifc.trees[FIRST_FILE].end;
+    tree_index header = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index segment = ifc.tree_state.node[header].next;
+    tree_index trailer = ifc.tree_state.trees[to_array_index(FileIndex::First)].end;
 
     // Should have single segment with all 3 lines
-    EXPECT_EQ(ifc.node[segment].next, trailer) << "Should have single segment";
-    EXPECT_GT(ifc.node[segment].cost, 0) << "Should be matched segment";
+    EXPECT_EQ(ifc.tree_state.node[segment].next, trailer) << "Should have single segment";
+    EXPECT_GT(ifc.tree_state.node[segment].cost, 0) << "Should be matched segment";
 }

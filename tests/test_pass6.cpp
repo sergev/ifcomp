@@ -37,7 +37,7 @@ TEST_F(Pass6, FindNode_Basic)
     ifc.pass5();
 
     // Find node containing line 1 in file1 tree
-    tree_index node1 = ifc.find_node(ifc.trees[FIRST_FILE], 1);
+    tree_index node1 = ifc.find_node(ifc.tree_state.trees[to_array_index(FileIndex::First)], 1);
     EXPECT_NE(node1, NULL_NODE) << "Should find node containing line 1";
     EXPECT_EQ(ifc.true_line_of(node1), 1) << "Found node should contain line 1";
 }
@@ -53,7 +53,7 @@ TEST_F(Pass6, FindNode_File2)
     ifc.pass5();
 
     // Find node containing line 1 in file2 tree (stored as -1)
-    tree_index node1 = ifc.find_node(ifc.trees[SECOND_FILE], -1);
+    tree_index node1 = ifc.find_node(ifc.tree_state.trees[to_array_index(FileIndex::Second)], -1);
     EXPECT_NE(node1, NULL_NODE) << "Should find node containing line 1";
     EXPECT_EQ(ifc.true_line_of(node1), 1) << "Found node should contain line 1";
 }
@@ -70,34 +70,35 @@ TEST_F(Pass6, DetachNode_Basic)
     ifc.pass5();
 
     // Find the unmatched segment (UNIQUE_B)
-    tree_index header = ifc.trees[FIRST_FILE].start;
-    tree_index node1 = ifc.node[header].next;
+    tree_index header = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index node1 = ifc.tree_state.node[header].next;
 
     // Verify we have the expected structure
-    EXPECT_GT(ifc.node[node1].cost, 0) << "First segment should be matched";
+    EXPECT_GT(ifc.tree_state.node[node1].cost, 0) << "First segment should be matched";
 
-    tree_index unmatched = ifc.node[node1].next;
-    tree_index trailer = ifc.trees[FIRST_FILE].end;
+    tree_index unmatched = ifc.tree_state.node[node1].next;
+    tree_index trailer = ifc.tree_state.trees[to_array_index(FileIndex::First)].end;
 
     // Verify unmatched segment exists and has negative cost
-    if (unmatched != trailer && ifc.node[unmatched].cost < 0) {
+    if (unmatched != trailer && ifc.tree_state.node[unmatched].cost < 0) {
         // Save the next node before detaching
-        tree_index next_after_unmatched = ifc.node[unmatched].next;
+        tree_index next_after_unmatched = ifc.tree_state.node[unmatched].next;
 
         // Detach the unmatched node
         ifc.detach_node(unmatched);
 
         // Verify it's detached from the list
         // After detaching, node1.next should point to what was after unmatched
-        EXPECT_EQ(ifc.node[node1].next, next_after_unmatched)
+        EXPECT_EQ(ifc.tree_state.node[node1].next, next_after_unmatched)
             << "Node should be detached from list";
 
         // Verify the link back from next node
         if (next_after_unmatched != trailer) {
-            EXPECT_EQ(ifc.node[next_after_unmatched].prev, node1)
+            EXPECT_EQ(ifc.tree_state.node[next_after_unmatched].prev, node1)
                 << "Next node should point back to node1";
         } else {
-            EXPECT_EQ(ifc.node[trailer].prev, node1) << "Trailer should point back to node1";
+            EXPECT_EQ(ifc.tree_state.node[trailer].prev, node1)
+                << "Trailer should point back to node1";
         }
     } else {
         GTEST_SKIP() << "No unmatched segment found - test setup issue";
@@ -116,23 +117,25 @@ TEST_F(Pass6, CombineNodes_Basic)
 
     // After pass6, unmatched segments should be combined
     // This test verifies combine_nodes works by checking the tree structure
-    tree_index header = ifc.trees[FIRST_FILE].start;
+    tree_index header = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
 
     // Run pass6 to trigger combine_nodes
     ifc.pass6();
 
     // After pass6, replaced segments should create branch structure
     // Find a node with branch structure (if replacement occurred)
-    tree_index current = ifc.node[header].next;
+    tree_index current = ifc.tree_state.node[header].next;
     bool found_branch = false;
-    while (current != ifc.trees[FIRST_FILE].end) {
+    while (current != ifc.tree_state.trees[to_array_index(FileIndex::First)].end) {
         if (!ifc.leaf(current)) {
             found_branch = true;
-            EXPECT_NE(ifc.node[current].branch_start, NULL_NODE) << "Branch should have start";
-            EXPECT_NE(ifc.node[current].branch_end, NULL_NODE) << "Branch should have end";
+            EXPECT_NE(ifc.tree_state.node[current].branch_start, NULL_NODE)
+                << "Branch should have start";
+            EXPECT_NE(ifc.tree_state.node[current].branch_end, NULL_NODE)
+                << "Branch should have end";
             break;
         }
-        current = ifc.node[current].next;
+        current = ifc.tree_state.node[current].next;
     }
 
     // If replacement happened, we should have branches
@@ -152,8 +155,8 @@ TEST_F(Pass6, UniqueFind_WithUnique)
     ifc.pass5();
 
     // Find segment containing UNIQUE_A
-    tree_index header = ifc.trees[FIRST_FILE].start;
-    tree_index segment = ifc.node[header].next;
+    tree_index header = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index segment = ifc.tree_state.node[header].next;
 
     line_count unique_line = ifc.unique_find(segment);
     EXPECT_NE(unique_line, NULL_NODE) << "Should find unique line";
@@ -171,8 +174,8 @@ TEST_F(Pass6, UniqueFind_NoUnique)
     ifc.pass5();
 
     // Find segment
-    tree_index header = ifc.trees[FIRST_FILE].start;
-    tree_index segment = ifc.node[header].next;
+    tree_index header = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index segment = ifc.tree_state.node[header].next;
 
     line_count unique_line = ifc.unique_find(segment);
     EXPECT_EQ(unique_line, NULL_NODE) << "Should not find unique line when all are duplicates";
@@ -190,11 +193,12 @@ TEST_F(Pass6, Pass6Replaceable_Replaceable)
     ifc.pass5();
 
     // Find unmatched segment in file1
-    tree_index header = ifc.trees[FIRST_FILE].start;
-    tree_index matched1 = ifc.node[header].next;
-    tree_index unmatched = ifc.node[matched1].next; // UNIQUE_DIFF1 segment
+    tree_index header = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index matched1 = ifc.tree_state.node[header].next;
+    tree_index unmatched = ifc.tree_state.node[matched1].next; // UNIQUE_DIFF1 segment
 
-    EXPECT_LT(ifc.node[unmatched].cost, 0) << "Unmatched segment should have negative cost";
+    EXPECT_LT(ifc.tree_state.node[unmatched].cost, 0)
+        << "Unmatched segment should have negative cost";
 
     // Check if it's replaceable
     tree_index replaceable = ifc.pass6_replaceable(unmatched);
@@ -202,7 +206,8 @@ TEST_F(Pass6, Pass6Replaceable_Replaceable)
 
     // Verify the corresponding node in file2 is unmatched
     if (replaceable != NULL_NODE) {
-        EXPECT_LT(ifc.node[replaceable].cost, 0) << "Replacement node should have negative cost";
+        EXPECT_LT(ifc.tree_state.node[replaceable].cost, 0)
+            << "Replacement node should have negative cost";
     }
 }
 
@@ -218,11 +223,12 @@ TEST_F(Pass6, Pass6Replaceable_NotReplaceable)
     ifc.pass5();
 
     // Find unmatched segment in file1
-    tree_index header = ifc.trees[FIRST_FILE].start;
-    tree_index matched1 = ifc.node[header].next;
-    tree_index unmatched = ifc.node[matched1].next; // UNIQUE_DIFF1 segment
+    tree_index header = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index matched1 = ifc.tree_state.node[header].next;
+    tree_index unmatched = ifc.tree_state.node[matched1].next; // UNIQUE_DIFF1 segment
 
-    EXPECT_LT(ifc.node[unmatched].cost, 0) << "Unmatched segment should have negative cost";
+    EXPECT_LT(ifc.tree_state.node[unmatched].cost, 0)
+        << "Unmatched segment should have negative cost";
 
     // Check if it's replaceable (should not be - file2 has no unmatched segment here)
     tree_index replaceable = ifc.pass6_replaceable(unmatched);
@@ -245,11 +251,11 @@ TEST_F(Pass6, SingleDelete)
     ifc.pass5();
 
     // Before pass6, unmatched segment has negative cost
-    tree_index header = ifc.trees[FIRST_FILE].start;
-    tree_index matched1 = ifc.node[header].next;
-    tree_index unmatched = ifc.node[matched1].next;
+    tree_index header = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index matched1 = ifc.tree_state.node[header].next;
+    tree_index unmatched = ifc.tree_state.node[matched1].next;
 
-    EXPECT_LT(ifc.node[unmatched].cost, 0)
+    EXPECT_LT(ifc.tree_state.node[unmatched].cost, 0)
         << "Unmatched segment should have negative cost before pass6";
 
     // Run pass6
@@ -257,17 +263,17 @@ TEST_F(Pass6, SingleDelete)
 
     // After pass6, unmatched segment should be detached (cost should be positive now)
     // The node should be removed from the tree
-    tree_index current = ifc.node[header].next;
+    tree_index current = ifc.tree_state.node[header].next;
     bool found_unmatched = false;
-    while (current != ifc.trees[FIRST_FILE].end) {
-        if (ifc.node[current].cost < 0) {
+    while (current != ifc.tree_state.trees[to_array_index(FileIndex::First)].end) {
+        if (ifc.tree_state.node[current].cost < 0) {
             found_unmatched = true;
             break;
         }
-        current = ifc.node[current].next;
+        current = ifc.tree_state.node[current].next;
     }
     EXPECT_FALSE(found_unmatched) << "Unmatched segment should be processed (detached)";
-    EXPECT_GT(ifc.nchange_blocks, 0) << "Should have change blocks";
+    EXPECT_GT(ifc.stats.nchange_blocks, 0) << "Should have change blocks";
 }
 
 TEST_F(Pass6, SingleInsert)
@@ -282,27 +288,28 @@ TEST_F(Pass6, SingleInsert)
     ifc.pass5();
 
     // Before pass6, file2 has unmatched segment
-    tree_index header2 = ifc.trees[SECOND_FILE].start;
-    tree_index matched1 = ifc.node[header2].next;
-    tree_index unmatched = ifc.node[matched1].next;
+    tree_index header2 = ifc.tree_state.trees[to_array_index(FileIndex::Second)].start;
+    tree_index matched1 = ifc.tree_state.node[header2].next;
+    tree_index unmatched = ifc.tree_state.node[matched1].next;
 
-    EXPECT_LT(ifc.node[unmatched].cost, 0) << "Unmatched segment should have negative cost";
+    EXPECT_LT(ifc.tree_state.node[unmatched].cost, 0)
+        << "Unmatched segment should have negative cost";
 
     // Run pass6
     ifc.pass6();
 
     // After pass6, unmatched segment should be processed
-    tree_index current = ifc.node[header2].next;
+    tree_index current = ifc.tree_state.node[header2].next;
     bool found_unmatched = false;
-    while (current != ifc.trees[SECOND_FILE].end) {
-        if (ifc.node[current].cost < 0) {
+    while (current != ifc.tree_state.trees[to_array_index(FileIndex::Second)].end) {
+        if (ifc.tree_state.node[current].cost < 0) {
             found_unmatched = true;
             break;
         }
-        current = ifc.node[current].next;
+        current = ifc.tree_state.node[current].next;
     }
     EXPECT_FALSE(found_unmatched) << "Unmatched segment should be processed";
-    EXPECT_GT(ifc.nchange_blocks, 0) << "Should have change blocks";
+    EXPECT_GT(ifc.stats.nchange_blocks, 0) << "Should have change blocks";
 }
 
 TEST_F(Pass6, SingleReplace)
@@ -317,31 +324,33 @@ TEST_F(Pass6, SingleReplace)
     ifc.pass5();
 
     // Before pass6, both files have unmatched segments
-    tree_index header1 = ifc.trees[FIRST_FILE].start;
-    tree_index header2 = ifc.trees[SECOND_FILE].start;
+    tree_index header1 = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index header2 = ifc.tree_state.trees[to_array_index(FileIndex::Second)].start;
 
-    tree_index unmatched1 = ifc.node[ifc.node[header1].next].next;
-    tree_index unmatched2 = ifc.node[ifc.node[header2].next].next;
+    tree_index unmatched1 = ifc.tree_state.node[ifc.tree_state.node[header1].next].next;
+    tree_index unmatched2 = ifc.tree_state.node[ifc.tree_state.node[header2].next].next;
 
-    EXPECT_LT(ifc.node[unmatched1].cost, 0) << "File1 unmatched segment should have negative cost";
-    EXPECT_LT(ifc.node[unmatched2].cost, 0) << "File2 unmatched segment should have negative cost";
+    EXPECT_LT(ifc.tree_state.node[unmatched1].cost, 0)
+        << "File1 unmatched segment should have negative cost";
+    EXPECT_LT(ifc.tree_state.node[unmatched2].cost, 0)
+        << "File2 unmatched segment should have negative cost";
 
     // Run pass6
     ifc.pass6();
 
     // After pass6, segments should be replaced (combined into branch structure)
     // Check that file1 tree has a branch structure (from combine_nodes)
-    tree_index current = ifc.node[header1].next;
+    tree_index current = ifc.tree_state.node[header1].next;
     bool found_branch = false;
-    while (current != ifc.trees[FIRST_FILE].end) {
+    while (current != ifc.tree_state.trees[to_array_index(FileIndex::First)].end) {
         if (!ifc.leaf(current)) {
             found_branch = true;
             break;
         }
-        current = ifc.node[current].next;
+        current = ifc.tree_state.node[current].next;
     }
     EXPECT_TRUE(found_branch) << "Replacement should create branch structure";
-    EXPECT_GT(ifc.nchange_blocks, 0) << "Should have change blocks";
+    EXPECT_GT(ifc.stats.nchange_blocks, 0) << "Should have change blocks";
 }
 
 TEST_F(Pass6, MultipleDeletes)
@@ -358,17 +367,17 @@ TEST_F(Pass6, MultipleDeletes)
     ifc.pass6();
 
     // All unmatched segments should be processed
-    tree_index header = ifc.trees[FIRST_FILE].start;
-    tree_index current = ifc.node[header].next;
+    tree_index header = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index current = ifc.tree_state.node[header].next;
     int unmatched_count = 0;
-    while (current != ifc.trees[FIRST_FILE].end) {
-        if (ifc.node[current].cost < 0) {
+    while (current != ifc.tree_state.trees[to_array_index(FileIndex::First)].end) {
+        if (ifc.tree_state.node[current].cost < 0) {
             unmatched_count++;
         }
-        current = ifc.node[current].next;
+        current = ifc.tree_state.node[current].next;
     }
     EXPECT_EQ(unmatched_count, 0) << "All unmatched segments should be processed";
-    EXPECT_GT(ifc.nchange_blocks, 0) << "Should have change blocks";
+    EXPECT_GT(ifc.stats.nchange_blocks, 0) << "Should have change blocks";
 }
 
 TEST_F(Pass6, MultipleInserts)
@@ -385,17 +394,17 @@ TEST_F(Pass6, MultipleInserts)
     ifc.pass6();
 
     // All unmatched segments should be processed
-    tree_index header = ifc.trees[SECOND_FILE].start;
-    tree_index current = ifc.node[header].next;
+    tree_index header = ifc.tree_state.trees[to_array_index(FileIndex::Second)].start;
+    tree_index current = ifc.tree_state.node[header].next;
     int unmatched_count = 0;
-    while (current != ifc.trees[SECOND_FILE].end) {
-        if (ifc.node[current].cost < 0) {
+    while (current != ifc.tree_state.trees[to_array_index(FileIndex::Second)].end) {
+        if (ifc.tree_state.node[current].cost < 0) {
             unmatched_count++;
         }
-        current = ifc.node[current].next;
+        current = ifc.tree_state.node[current].next;
     }
     EXPECT_EQ(unmatched_count, 0) << "All unmatched segments should be processed";
-    EXPECT_GT(ifc.nchange_blocks, 0) << "Should have change blocks";
+    EXPECT_GT(ifc.stats.nchange_blocks, 0) << "Should have change blocks";
 }
 
 TEST_F(Pass6, MultipleReplaces)
@@ -412,17 +421,17 @@ TEST_F(Pass6, MultipleReplaces)
     ifc.pass6();
 
     // All unmatched segments should be processed
-    tree_index header = ifc.trees[FIRST_FILE].start;
-    tree_index current = ifc.node[header].next;
+    tree_index header = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index current = ifc.tree_state.node[header].next;
     int unmatched_count = 0;
-    while (current != ifc.trees[FIRST_FILE].end) {
-        if (ifc.node[current].cost < 0) {
+    while (current != ifc.tree_state.trees[to_array_index(FileIndex::First)].end) {
+        if (ifc.tree_state.node[current].cost < 0) {
             unmatched_count++;
         }
-        current = ifc.node[current].next;
+        current = ifc.tree_state.node[current].next;
     }
     EXPECT_EQ(unmatched_count, 0) << "All unmatched segments should be processed";
-    EXPECT_GT(ifc.nchange_blocks, 0) << "Should have change blocks";
+    EXPECT_GT(ifc.stats.nchange_blocks, 0) << "Should have change blocks";
 }
 
 TEST_F(Pass6, MixedOperations)
@@ -439,31 +448,31 @@ TEST_F(Pass6, MixedOperations)
     ifc.pass6();
 
     // All unmatched segments should be processed
-    tree_index header1 = ifc.trees[FIRST_FILE].start;
-    tree_index header2 = ifc.trees[SECOND_FILE].start;
+    tree_index header1 = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index header2 = ifc.tree_state.trees[to_array_index(FileIndex::Second)].start;
 
     int unmatched1 = 0, unmatched2 = 0;
     tree_index current;
 
-    current = ifc.node[header1].next;
-    while (current != ifc.trees[FIRST_FILE].end) {
-        if (ifc.node[current].cost < 0) {
+    current = ifc.tree_state.node[header1].next;
+    while (current != ifc.tree_state.trees[to_array_index(FileIndex::First)].end) {
+        if (ifc.tree_state.node[current].cost < 0) {
             unmatched1++;
         }
-        current = ifc.node[current].next;
+        current = ifc.tree_state.node[current].next;
     }
 
-    current = ifc.node[header2].next;
-    while (current != ifc.trees[SECOND_FILE].end) {
-        if (ifc.node[current].cost < 0) {
+    current = ifc.tree_state.node[header2].next;
+    while (current != ifc.tree_state.trees[to_array_index(FileIndex::Second)].end) {
+        if (ifc.tree_state.node[current].cost < 0) {
             unmatched2++;
         }
-        current = ifc.node[current].next;
+        current = ifc.tree_state.node[current].next;
     }
 
     EXPECT_EQ(unmatched1, 0) << "All file1 unmatched segments should be processed";
     EXPECT_EQ(unmatched2, 0) << "All file2 unmatched segments should be processed";
-    EXPECT_GT(ifc.nchange_blocks, 0) << "Should have change blocks";
+    EXPECT_GT(ifc.stats.nchange_blocks, 0) << "Should have change blocks";
 }
 
 // ============================================================================
@@ -481,14 +490,14 @@ TEST_F(Pass6, Pass6DoReplaceDelete_OnlyDeletes)
     ifc.pass5();
 
     // Count unmatched segments before
-    tree_index header = ifc.trees[FIRST_FILE].start;
-    tree_index current = ifc.node[header].next;
+    tree_index header = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index current = ifc.tree_state.node[header].next;
     int before_count = 0;
-    while (current != ifc.trees[FIRST_FILE].end) {
-        if (ifc.node[current].cost < 0) {
+    while (current != ifc.tree_state.trees[to_array_index(FileIndex::First)].end) {
+        if (ifc.tree_state.node[current].cost < 0) {
             before_count++;
         }
-        current = ifc.node[current].next;
+        current = ifc.tree_state.node[current].next;
     }
     EXPECT_GT(before_count, 0) << "Should have unmatched segments before";
 
@@ -496,13 +505,13 @@ TEST_F(Pass6, Pass6DoReplaceDelete_OnlyDeletes)
     ifc.pass6_do_replace_delete();
 
     // Count unmatched segments after
-    current = ifc.node[header].next;
+    current = ifc.tree_state.node[header].next;
     int after_count = 0;
-    while (current != ifc.trees[FIRST_FILE].end) {
-        if (ifc.node[current].cost < 0) {
+    while (current != ifc.tree_state.trees[to_array_index(FileIndex::First)].end) {
+        if (ifc.tree_state.node[current].cost < 0) {
             after_count++;
         }
-        current = ifc.node[current].next;
+        current = ifc.tree_state.node[current].next;
     }
     EXPECT_EQ(after_count, 0) << "All file1 unmatched segments should be processed";
 }
@@ -521,14 +530,14 @@ TEST_F(Pass6, Pass6DoReplaceDelete_WithReplaces)
     ifc.pass6_do_replace_delete();
 
     // File1 unmatched segments should be processed
-    tree_index header = ifc.trees[FIRST_FILE].start;
-    tree_index current = ifc.node[header].next;
+    tree_index header = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index current = ifc.tree_state.node[header].next;
     int unmatched_count = 0;
-    while (current != ifc.trees[FIRST_FILE].end) {
-        if (ifc.node[current].cost < 0) {
+    while (current != ifc.tree_state.trees[to_array_index(FileIndex::First)].end) {
+        if (ifc.tree_state.node[current].cost < 0) {
             unmatched_count++;
         }
-        current = ifc.node[current].next;
+        current = ifc.tree_state.node[current].next;
     }
     EXPECT_EQ(unmatched_count, 0) << "All file1 unmatched segments should be processed";
 }
@@ -544,14 +553,14 @@ TEST_F(Pass6, Pass6DoInsert_OnlyInserts)
     ifc.pass5();
 
     // Count unmatched segments before
-    tree_index header = ifc.trees[SECOND_FILE].start;
-    tree_index current = ifc.node[header].next;
+    tree_index header = ifc.tree_state.trees[to_array_index(FileIndex::Second)].start;
+    tree_index current = ifc.tree_state.node[header].next;
     int before_count = 0;
-    while (current != ifc.trees[SECOND_FILE].end) {
-        if (ifc.node[current].cost < 0) {
+    while (current != ifc.tree_state.trees[to_array_index(FileIndex::Second)].end) {
+        if (ifc.tree_state.node[current].cost < 0) {
             before_count++;
         }
-        current = ifc.node[current].next;
+        current = ifc.tree_state.node[current].next;
     }
     EXPECT_GT(before_count, 0) << "Should have unmatched segments before";
 
@@ -559,13 +568,13 @@ TEST_F(Pass6, Pass6DoInsert_OnlyInserts)
     ifc.pass6_do_insert();
 
     // Count unmatched segments after
-    current = ifc.node[header].next;
+    current = ifc.tree_state.node[header].next;
     int after_count = 0;
-    while (current != ifc.trees[SECOND_FILE].end) {
-        if (ifc.node[current].cost < 0) {
+    while (current != ifc.tree_state.trees[to_array_index(FileIndex::Second)].end) {
+        if (ifc.tree_state.node[current].cost < 0) {
             after_count++;
         }
-        current = ifc.node[current].next;
+        current = ifc.tree_state.node[current].next;
     }
     EXPECT_EQ(after_count, 0) << "All file2 unmatched segments should be processed";
 }
@@ -587,15 +596,15 @@ TEST_F(Pass6, DeleteAtStart)
     ifc.pass6();
 
     // Unmatched segment should be processed
-    tree_index header = ifc.trees[FIRST_FILE].start;
-    tree_index current = ifc.node[header].next;
+    tree_index header = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index current = ifc.tree_state.node[header].next;
     bool found_unmatched = false;
-    while (current != ifc.trees[FIRST_FILE].end) {
-        if (ifc.node[current].cost < 0) {
+    while (current != ifc.tree_state.trees[to_array_index(FileIndex::First)].end) {
+        if (ifc.tree_state.node[current].cost < 0) {
             found_unmatched = true;
             break;
         }
-        current = ifc.node[current].next;
+        current = ifc.tree_state.node[current].next;
     }
     EXPECT_FALSE(found_unmatched) << "Unmatched segment at start should be processed";
 }
@@ -613,15 +622,15 @@ TEST_F(Pass6, InsertAtStart)
     ifc.pass6();
 
     // Unmatched segment should be processed
-    tree_index header = ifc.trees[SECOND_FILE].start;
-    tree_index current = ifc.node[header].next;
+    tree_index header = ifc.tree_state.trees[to_array_index(FileIndex::Second)].start;
+    tree_index current = ifc.tree_state.node[header].next;
     bool found_unmatched = false;
-    while (current != ifc.trees[SECOND_FILE].end) {
-        if (ifc.node[current].cost < 0) {
+    while (current != ifc.tree_state.trees[to_array_index(FileIndex::Second)].end) {
+        if (ifc.tree_state.node[current].cost < 0) {
             found_unmatched = true;
             break;
         }
-        current = ifc.node[current].next;
+        current = ifc.tree_state.node[current].next;
     }
     EXPECT_FALSE(found_unmatched) << "Unmatched segment at start should be processed";
 }
@@ -639,15 +648,15 @@ TEST_F(Pass6, DeleteAtEnd)
     ifc.pass6();
 
     // Unmatched segment should be processed
-    tree_index header = ifc.trees[FIRST_FILE].start;
-    tree_index current = ifc.node[header].next;
+    tree_index header = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index current = ifc.tree_state.node[header].next;
     bool found_unmatched = false;
-    while (current != ifc.trees[FIRST_FILE].end) {
-        if (ifc.node[current].cost < 0) {
+    while (current != ifc.tree_state.trees[to_array_index(FileIndex::First)].end) {
+        if (ifc.tree_state.node[current].cost < 0) {
             found_unmatched = true;
             break;
         }
-        current = ifc.node[current].next;
+        current = ifc.tree_state.node[current].next;
     }
     EXPECT_FALSE(found_unmatched) << "Unmatched segment at end should be processed";
 }
@@ -665,15 +674,15 @@ TEST_F(Pass6, InsertAtEnd)
     ifc.pass6();
 
     // Unmatched segment should be processed
-    tree_index header = ifc.trees[SECOND_FILE].start;
-    tree_index current = ifc.node[header].next;
+    tree_index header = ifc.tree_state.trees[to_array_index(FileIndex::Second)].start;
+    tree_index current = ifc.tree_state.node[header].next;
     bool found_unmatched = false;
-    while (current != ifc.trees[SECOND_FILE].end) {
-        if (ifc.node[current].cost < 0) {
+    while (current != ifc.tree_state.trees[to_array_index(FileIndex::Second)].end) {
+        if (ifc.tree_state.node[current].cost < 0) {
             found_unmatched = true;
             break;
         }
-        current = ifc.node[current].next;
+        current = ifc.tree_state.node[current].next;
     }
     EXPECT_FALSE(found_unmatched) << "Unmatched segment at end should be processed";
 }
@@ -692,14 +701,14 @@ TEST_F(Pass6, AllUnmatched_File1)
     ifc.pass6();
 
     // All segments should be processed
-    tree_index header = ifc.trees[FIRST_FILE].start;
-    tree_index current = ifc.node[header].next;
+    tree_index header = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index current = ifc.tree_state.node[header].next;
     int unmatched_count = 0;
-    while (current != ifc.trees[FIRST_FILE].end) {
-        if (ifc.node[current].cost < 0) {
+    while (current != ifc.tree_state.trees[to_array_index(FileIndex::First)].end) {
+        if (ifc.tree_state.node[current].cost < 0) {
             unmatched_count++;
         }
-        current = ifc.node[current].next;
+        current = ifc.tree_state.node[current].next;
     }
     EXPECT_EQ(unmatched_count, 0) << "All unmatched segments should be processed";
 }
@@ -718,14 +727,14 @@ TEST_F(Pass6, AllUnmatched_File2)
     ifc.pass6();
 
     // All segments should be processed
-    tree_index header = ifc.trees[SECOND_FILE].start;
-    tree_index current = ifc.node[header].next;
+    tree_index header = ifc.tree_state.trees[to_array_index(FileIndex::Second)].start;
+    tree_index current = ifc.tree_state.node[header].next;
     int unmatched_count = 0;
-    while (current != ifc.trees[SECOND_FILE].end) {
-        if (ifc.node[current].cost < 0) {
+    while (current != ifc.tree_state.trees[to_array_index(FileIndex::Second)].end) {
+        if (ifc.tree_state.node[current].cost < 0) {
             unmatched_count++;
         }
-        current = ifc.node[current].next;
+        current = ifc.tree_state.node[current].next;
     }
     EXPECT_EQ(unmatched_count, 0) << "All unmatched segments should be processed";
 }
@@ -742,54 +751,54 @@ TEST_F(Pass6, IdenticalFiles)
     ifc.pass5();
 
     // Count unmatched before pass6
-    tree_index header1 = ifc.trees[FIRST_FILE].start;
-    tree_index header2 = ifc.trees[SECOND_FILE].start;
+    tree_index header1 = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index header2 = ifc.tree_state.trees[to_array_index(FileIndex::Second)].start;
     int unmatched1 = 0, unmatched2 = 0;
 
-    tree_index current = ifc.node[header1].next;
-    while (current != ifc.trees[FIRST_FILE].end) {
-        if (ifc.node[current].cost < 0) {
+    tree_index current = ifc.tree_state.node[header1].next;
+    while (current != ifc.tree_state.trees[to_array_index(FileIndex::First)].end) {
+        if (ifc.tree_state.node[current].cost < 0) {
             unmatched1++;
         }
-        current = ifc.node[current].next;
+        current = ifc.tree_state.node[current].next;
     }
 
-    current = ifc.node[header2].next;
-    while (current != ifc.trees[SECOND_FILE].end) {
-        if (ifc.node[current].cost < 0) {
+    current = ifc.tree_state.node[header2].next;
+    while (current != ifc.tree_state.trees[to_array_index(FileIndex::Second)].end) {
+        if (ifc.tree_state.node[current].cost < 0) {
             unmatched2++;
         }
-        current = ifc.node[current].next;
+        current = ifc.tree_state.node[current].next;
     }
 
     EXPECT_EQ(unmatched1, 0) << "Should have no unmatched segments in file1";
     EXPECT_EQ(unmatched2, 0) << "Should have no unmatched segments in file2";
 
     // Run pass6 (should be no-op)
-    int blocks_before = ifc.nchange_blocks;
+    int blocks_before = ifc.stats.nchange_blocks;
     ifc.pass6();
 
     // Should still have no unmatched segments
     unmatched1 = unmatched2 = 0;
-    current = ifc.node[header1].next;
-    while (current != ifc.trees[FIRST_FILE].end) {
-        if (ifc.node[current].cost < 0) {
+    current = ifc.tree_state.node[header1].next;
+    while (current != ifc.tree_state.trees[to_array_index(FileIndex::First)].end) {
+        if (ifc.tree_state.node[current].cost < 0) {
             unmatched1++;
         }
-        current = ifc.node[current].next;
+        current = ifc.tree_state.node[current].next;
     }
 
-    current = ifc.node[header2].next;
-    while (current != ifc.trees[SECOND_FILE].end) {
-        if (ifc.node[current].cost < 0) {
+    current = ifc.tree_state.node[header2].next;
+    while (current != ifc.tree_state.trees[to_array_index(FileIndex::Second)].end) {
+        if (ifc.tree_state.node[current].cost < 0) {
             unmatched2++;
         }
-        current = ifc.node[current].next;
+        current = ifc.tree_state.node[current].next;
     }
 
     EXPECT_EQ(unmatched1, 0) << "Should still have no unmatched segments in file1";
     EXPECT_EQ(unmatched2, 0) << "Should still have no unmatched segments in file2";
-    EXPECT_EQ(ifc.nchange_blocks, blocks_before)
+    EXPECT_EQ(ifc.stats.nchange_blocks, blocks_before)
         << "Should not create change blocks for identical files";
 }
 
@@ -809,14 +818,14 @@ TEST_F(Pass6, Statistics_DeleteCount)
     ifc.pass5();
 
     // Reset statistics
-    ifc.delete_stats.non_cosmetic = 0;
-    ifc.nchange_blocks = 0;
+    ifc.stats.delete_stats.non_cosmetic = 0;
+    ifc.stats.nchange_blocks = 0;
 
     ifc.pass6();
 
     // Should have counted deleted lines
-    EXPECT_GT(ifc.delete_stats.non_cosmetic, 0) << "Should count deleted lines";
-    EXPECT_GT(ifc.nchange_blocks, 0) << "Should have change blocks";
+    EXPECT_GT(ifc.stats.delete_stats.non_cosmetic, 0) << "Should count deleted lines";
+    EXPECT_GT(ifc.stats.nchange_blocks, 0) << "Should have change blocks";
 }
 
 TEST_F(Pass6, Statistics_InsertCount)
@@ -831,14 +840,14 @@ TEST_F(Pass6, Statistics_InsertCount)
     ifc.pass5();
 
     // Reset statistics
-    ifc.insert_stats.non_cosmetic = 0;
-    ifc.nchange_blocks = 0;
+    ifc.stats.insert_stats.non_cosmetic = 0;
+    ifc.stats.nchange_blocks = 0;
 
     ifc.pass6();
 
     // Should have counted inserted lines
-    EXPECT_GT(ifc.insert_stats.non_cosmetic, 0) << "Should count inserted lines";
-    EXPECT_GT(ifc.nchange_blocks, 0) << "Should have change blocks";
+    EXPECT_GT(ifc.stats.insert_stats.non_cosmetic, 0) << "Should count inserted lines";
+    EXPECT_GT(ifc.stats.nchange_blocks, 0) << "Should have change blocks";
 }
 
 TEST_F(Pass6, Statistics_ReplaceCount)
@@ -852,16 +861,16 @@ TEST_F(Pass6, Statistics_ReplaceCount)
     ifc.pass5();
 
     // Reset statistics
-    ifc.replace1_stats.non_cosmetic = 0;
-    ifc.replace2_stats.non_cosmetic = 0;
-    ifc.nchange_blocks = 0;
+    ifc.stats.replace1_stats.non_cosmetic = 0;
+    ifc.stats.replace2_stats.non_cosmetic = 0;
+    ifc.stats.nchange_blocks = 0;
 
     ifc.pass6();
 
     // Should have counted replaced lines
-    EXPECT_GT(ifc.replace1_stats.non_cosmetic, 0) << "Should count replaced lines (file1)";
-    EXPECT_GT(ifc.replace2_stats.non_cosmetic, 0) << "Should count replaced lines (file2)";
-    EXPECT_GT(ifc.nchange_blocks, 0) << "Should have change blocks";
+    EXPECT_GT(ifc.stats.replace1_stats.non_cosmetic, 0) << "Should count replaced lines (file1)";
+    EXPECT_GT(ifc.stats.replace2_stats.non_cosmetic, 0) << "Should count replaced lines (file2)";
+    EXPECT_GT(ifc.stats.nchange_blocks, 0) << "Should have change blocks";
 }
 
 // ============================================================================
@@ -880,25 +889,27 @@ TEST_F(Pass6, ConsecutiveUnmatchedSegments)
     ifc.pass5();
 
     // Before pass6, consecutive unmatched segments should be in one segment (from pass5)
-    tree_index header = ifc.trees[FIRST_FILE].start;
-    tree_index matched1 = ifc.node[header].next;
-    tree_index unmatched = ifc.node[matched1].next;
+    tree_index header = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index matched1 = ifc.tree_state.node[header].next;
+    tree_index unmatched = ifc.tree_state.node[matched1].next;
 
     // pass5 groups consecutive unmatched lines, so they should be in one segment
-    EXPECT_LT(ifc.node[unmatched].cost, 0) << "Unmatched segment should have negative cost";
-    EXPECT_EQ(abs(ifc.node[unmatched].cost), 3) << "Should have 3 unmatched lines in one segment";
+    EXPECT_LT(ifc.tree_state.node[unmatched].cost, 0)
+        << "Unmatched segment should have negative cost";
+    EXPECT_EQ(abs(ifc.tree_state.node[unmatched].cost), 3)
+        << "Should have 3 unmatched lines in one segment";
 
     ifc.pass6();
 
     // Segment should be processed
     bool found_unmatched = false;
-    tree_index current = ifc.node[header].next;
-    while (current != ifc.trees[FIRST_FILE].end) {
-        if (ifc.node[current].cost < 0) {
+    tree_index current = ifc.tree_state.node[header].next;
+    while (current != ifc.tree_state.trees[to_array_index(FileIndex::First)].end) {
+        if (ifc.tree_state.node[current].cost < 0) {
             found_unmatched = true;
             break;
         }
-        current = ifc.node[current].next;
+        current = ifc.tree_state.node[current].next;
     }
     EXPECT_FALSE(found_unmatched) << "Unmatched segment should be processed";
 }
@@ -932,14 +943,14 @@ TEST_F(Pass6, LargeReplacement)
     ifc.pass6();
 
     // All unmatched segments should be processed
-    tree_index header1 = ifc.trees[FIRST_FILE].start;
-    tree_index current = ifc.node[header1].next;
+    tree_index header1 = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index current = ifc.tree_state.node[header1].next;
     int unmatched_count = 0;
-    while (current != ifc.trees[FIRST_FILE].end) {
-        if (ifc.node[current].cost < 0) {
+    while (current != ifc.tree_state.trees[to_array_index(FileIndex::First)].end) {
+        if (ifc.tree_state.node[current].cost < 0) {
             unmatched_count++;
         }
-        current = ifc.node[current].next;
+        current = ifc.tree_state.node[current].next;
     }
     EXPECT_EQ(unmatched_count, 0) << "All unmatched segments should be processed";
 }
@@ -957,17 +968,17 @@ TEST_F(Pass6, AlternatingMatchedUnmatched)
     ifc.pass6();
 
     // All unmatched segments should be processed
-    tree_index header = ifc.trees[FIRST_FILE].start;
-    tree_index current = ifc.node[header].next;
+    tree_index header = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index current = ifc.tree_state.node[header].next;
     int unmatched_count = 0;
-    while (current != ifc.trees[FIRST_FILE].end) {
-        if (ifc.node[current].cost < 0) {
+    while (current != ifc.tree_state.trees[to_array_index(FileIndex::First)].end) {
+        if (ifc.tree_state.node[current].cost < 0) {
             unmatched_count++;
         }
-        current = ifc.node[current].next;
+        current = ifc.tree_state.node[current].next;
     }
     EXPECT_EQ(unmatched_count, 0) << "All unmatched segments should be processed";
-    EXPECT_GT(ifc.nchange_blocks, 0) << "Should have change blocks";
+    EXPECT_GT(ifc.stats.nchange_blocks, 0) << "Should have change blocks";
 }
 
 // ============================================================================
@@ -987,25 +998,25 @@ TEST_F(Pass6, WithPass3Pass4)
     ifc.pass5();
 
     // After pass5, DIFF1 should be unmatched
-    tree_index header2 = ifc.trees[SECOND_FILE].start;
-    tree_index last_segment = ifc.trees[SECOND_FILE].end;
-    tree_index current = ifc.node[header2].next;
-    while (ifc.node[current].next != last_segment) {
-        current = ifc.node[current].next;
+    tree_index header2 = ifc.tree_state.trees[to_array_index(FileIndex::Second)].start;
+    tree_index last_segment = ifc.tree_state.trees[to_array_index(FileIndex::Second)].end;
+    tree_index current = ifc.tree_state.node[header2].next;
+    while (ifc.tree_state.node[current].next != last_segment) {
+        current = ifc.tree_state.node[current].next;
     }
-    EXPECT_LT(ifc.node[current].cost, 0) << "DIFF1 should be unmatched";
+    EXPECT_LT(ifc.tree_state.node[current].cost, 0) << "DIFF1 should be unmatched";
 
     ifc.pass6();
 
     // DIFF1 should be processed as insert
-    current = ifc.node[header2].next;
+    current = ifc.tree_state.node[header2].next;
     bool found_unmatched = false;
     while (current != last_segment) {
-        if (ifc.node[current].cost < 0) {
+        if (ifc.tree_state.node[current].cost < 0) {
             found_unmatched = true;
             break;
         }
-        current = ifc.node[current].next;
+        current = ifc.tree_state.node[current].next;
     }
     EXPECT_FALSE(found_unmatched) << "DIFF1 should be processed as insert";
 }
@@ -1030,12 +1041,12 @@ TEST_F(Pass6, ComplexChanges_Ptr0ValuesAfterReplace)
     // After pass6, line 8 (A) in file1 should match line 1 (A) in file2
     // Line 9 (B) in file1 should match line 2 (B) in file2
     // Check ptr0 values in the file_line arrays
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][8].ptr0, 1)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][8].ptr0, 1)
         << "Line 8 (A) in file1 should point to line 1 in file2";
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][9].ptr0, 2)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][9].ptr0, 2)
         << "Line 9 (B) in file1 should point to line 2 in file2";
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][3].ptr0, 3)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][3].ptr0, 3)
         << "Line 3 (C) in file1 should point to line 3 in file2";
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][5].ptr0, 4)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][5].ptr0, 4)
         << "Line 5 (D) in file1 should point to line 4 in file2";
 }

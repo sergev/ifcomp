@@ -24,7 +24,7 @@ tree_index Ifcomp::find_node(const TreeBounds &T, tree_index linen) const
                     << N << "\n";
             return N;
         }
-        N = node[N].next;
+        N = tree_state.node[N].next;
     }
     // Node not found - return NULL_NODE instead of crashing
     if (debug_dump_trees_full) {
@@ -33,7 +33,7 @@ tree_index Ifcomp::find_node(const TreeBounds &T, tree_index linen) const
         out << "[";
         while (N != T.end) {
             out << N << " ";
-            N = node[N].next;
+            N = tree_state.node[N].next;
         }
         out << "] ln=" << linen << "\n";
         out << "*** Warning: find_node could not find line " << linen << " in tree " << T.start
@@ -48,10 +48,10 @@ tree_index Ifcomp::find_node(const TreeBounds &T, tree_index linen) const
 void Ifcomp::detach_node(tree_index noden)
 {
     // Remove noden from the linked list.
-    tree_index prev = node[noden].prev;
-    tree_index next = node[noden].next;
-    node[prev].next = next;
-    node[next].prev = prev;
+    tree_index prev = tree_state.node[noden].prev;
+    tree_index next = tree_state.node[noden].next;
+    tree_state.node[prev].next = next;
+    tree_state.node[next].prev = prev;
 }
 
 //
@@ -61,23 +61,23 @@ void Ifcomp::combine_nodes(tree_index node1, tree_index node2)
 {
     tree_index branch_link1, branch_link2;
     NodeDecl N;
-    N.cost = node[node1].cost + node[node2].cost;
-    N.linen = node[node1].linen;
+    N.cost = tree_state.node[node1].cost + tree_state.node[node2].cost;
+    N.linen = tree_state.node[node1].linen;
 
     // First remove node2 from file2.
     // Node2 must be detached first to get a true last and next ptr
     // from node1 -- i.e., node2 may be adjacent to node1.
     detach_node(node2);
-    N.prev = node[node1].prev;
-    N.next = node[node1].next;
+    N.prev = tree_state.node[node1].prev;
+    N.next = tree_state.node[node1].next;
 
     // Now remove node1 from file1.
     detach_node(node1);
 
     if (!leaf(node1)) {
         // Just want the branch.
-        N.branch_start = node[node1].branch_start;
-        branch_link1 = node[node1].branch_end;
+        N.branch_start = tree_state.node[node1].branch_start;
+        branch_link1 = tree_state.node[node1].branch_end;
         // The sequence in node1 is absorbed in N and hence isn't needed.
         free_node(node1);
         node1 = N.branch_start;
@@ -86,8 +86,8 @@ void Ifcomp::combine_nodes(tree_index node1, tree_index node2)
     }
 
     if (!leaf(node2)) {
-        branch_link2 = node[node2].branch_start;
-        N.branch_end = node[node2].branch_end;
+        branch_link2 = tree_state.node[node2].branch_start;
+        N.branch_end = tree_state.node[node2].branch_end;
         // The sequence in node2 is absorbed in N and hence isn't needed.
         free_node(node2);
         node2 = branch_link2;
@@ -97,12 +97,12 @@ void Ifcomp::combine_nodes(tree_index node1, tree_index node2)
 
     tree_index new_node = make_node(N);
     // Insert new_node after N.prev and before N.next; i.e., it replaces node1.
-    node[N.prev].next = new_node;
-    node[N.next].prev = new_node;
-    node[N.branch_start].prev = new_node;
-    node[N.branch_end].next = new_node;
-    node[branch_link1].next = branch_link2;
-    node[branch_link2].prev = branch_link1;
+    tree_state.node[N.prev].next = new_node;
+    tree_state.node[N.next].prev = new_node;
+    tree_state.node[N.branch_start].prev = new_node;
+    tree_state.node[N.branch_end].next = new_node;
+    tree_state.node[branch_link1].next = branch_link2;
+    tree_state.node[branch_link2].prev = branch_link1;
 }
 
 //
@@ -149,15 +149,16 @@ void Ifcomp::print_trailer() const
 //
 tree_index Ifcomp::unique_find(tree_index noden) const
 {
-    line_count end_line = node[noden].linen;
-    int filen = get_which_file(end_line);
+    line_count end_line = tree_state.node[noden].linen;
+    FileIndex filen = get_which_file(end_line);
     end_line = get_abs_line(end_line);
+    int filen_idx = to_array_index(filen);
 
     // Scan backwards looking for a unique line in the file
     // -- i.e., it must not occur more than once in the file.
-    line_count cost = node[noden].cost;
+    line_count cost = tree_state.node[noden].cost;
     for (line_count start_line = end_line + cost - 1; start_line >= end_line; start_line--) {
-        if (file_line[filen][start_line].ptr_type == LineType::UNIQUE_TYPE)
+        if (file_state.file_line[filen_idx][start_line].ptr_type == LineType::UNIQUE_TYPE)
             return start_line;
     }
     return NULL_NODE;
@@ -171,45 +172,46 @@ void Ifcomp::after_lines(tree_index noden) const
     print_header("AFTER LINE(s)");
     // Print the block starting at the last line that is unique
     // in the file. I.e., be sure the reader can identify the text.
+    int first_idx = to_array_index(FileIndex::First);
     tree_index start = noden;
-    tree_index last = node[start].next;
+    tree_index last = tree_state.node[start].next;
     line_count linen = 0;
 
-    while (start != trees[FIRST_FILE].start) {
+    while (start != tree_state.trees[first_idx].start) {
         if (leaf(start)) {
             linen = unique_find(start);
             if (linen != NULL_NODE)
                 break;
             linen = 0;
             last = start;
-            start = node[start].prev;
+            start = tree_state.node[start].prev;
         } else {
-            if (last == node[start].branch_start) {
-                start = node[start].prev;
+            if (last == tree_state.node[start].branch_start) {
+                start = tree_state.node[start].prev;
                 last = start;
             } else {
                 last = start;
-                start = node[start].branch_end;
+                start = tree_state.node[start].branch_end;
             }
         }
     }
 
     print_node1(start, false, linen);
     last = start;
-    start = node[start].next;
+    start = tree_state.node[start].next;
 
-    while (start != node[noden].next) {
+    while (start != tree_state.node[noden].next) {
         if (leaf(start)) {
             print_node(start);
             last = start;
-            start = node[start].next;
+            start = tree_state.node[start].next;
         } else {
-            if (last == node[start].branch_end) {
+            if (last == tree_state.node[start].branch_end) {
                 last = start;
-                start = node[start].next;
+                start = tree_state.node[start].next;
             } else {
                 last = start;
-                start = node[start].branch_start;
+                start = tree_state.node[start].branch_start;
             }
         }
     }
@@ -228,7 +230,8 @@ void Ifcomp::top_msg() const
 //
 void Ifcomp::after_header(tree_index noden) const
 {
-    if (noden == trees[FIRST_FILE].start)
+    int first_idx = to_array_index(FileIndex::First);
+    if (noden == tree_state.trees[first_idx].start)
         top_msg();
     else
         after_lines(noden);
@@ -239,13 +242,13 @@ void Ifcomp::after_header(tree_index noden) const
 //
 void Ifcomp::delete_lines(tree_index noden)
 {
-    nchange_blocks++;
-    after_header(node[noden].prev);
-    node[noden].cost = -node[noden].cost; // Indicate delete (?).
+    stats.nchange_blocks++;
+    after_header(tree_state.node[noden].prev);
+    tree_state.node[noden].cost = -tree_state.node[noden].cost; // Indicate delete (?).
     print_header1("DELETE LINE(s)");
     print_node(noden);
     print_trailer();
-    count_node(noden, delete_stats);
+    count_node(noden, stats.delete_stats);
     detach_node(noden);
     dump_trees(99); // no_pass
 }
@@ -255,6 +258,8 @@ void Ifcomp::delete_lines(tree_index noden)
 //
 tree_index Ifcomp::pass6_replaceable(tree_index noden) const
 {
+    int first_idx = to_array_index(FileIndex::First);
+    int second_idx = to_array_index(FileIndex::Second);
     // Replaceable if:
     // file1: blk1 nodenA blk2 file2: blk3 nodenB blk4
     // where nodenA and nodenB don't match something in the other file (cost<0)
@@ -263,10 +268,10 @@ tree_index Ifcomp::pass6_replaceable(tree_index noden) const
     // See if noden in FIRST_FILE can be replaced
     // with something else in SECOND_FILE.
     // Find the previous node to this sequence.
-    tree_index prev = node[noden].prev;
+    tree_index prev = tree_state.node[noden].prev;
     // Lookup that previous node in the other file.
-    tree_index prev_other_file =
-        find_node(trees[SECOND_FILE], file_line[FIRST_FILE][true_line_of(prev)].ptr0);
+    tree_index prev_other_file = find_node(
+        tree_state.trees[second_idx], file_state.file_line[first_idx][true_line_of(prev)].ptr0);
 
     // If find_node failed (returned NULL_NODE), can't replace
     if (prev_other_file == NULL_NODE) {
@@ -275,10 +280,10 @@ tree_index Ifcomp::pass6_replaceable(tree_index noden) const
 
     // OK, now find the successor that node in the other file.
     // This corresponds to our noden.
-    tree_index noden_other_file = node[prev_other_file].next;
+    tree_index noden_other_file = tree_state.node[prev_other_file].next;
     // Ask if the successor node is unique (cost < 0). Otherwise
     // it isn't a replacement.
-    if (node[noden_other_file].cost >= 0) {
+    if (tree_state.node[noden_other_file].cost >= 0) {
         if (debug_dump_trees_full)
             out << "replaceable fails: noden_other_file(" << noden_other_file
                 << ") has neg cost.\n";
@@ -292,14 +297,15 @@ tree_index Ifcomp::pass6_replaceable(tree_index noden) const
 //
 void Ifcomp::pass6_replace_lines(tree_index node1, tree_index node2)
 {
-    nchange_blocks++;
+    int first_idx = to_array_index(FileIndex::First);
+    stats.nchange_blocks++;
     // Make the costs positive, indicating that the nodes now
     // correspond to something in the other file.
-    node[node1].cost = -node[node1].cost;
-    node[node2].cost = -node[node2].cost;
-    count_node(node1, replace1_stats);
-    count_node(node2, replace2_stats);
-    tree_index prev = node[node1].prev;
+    tree_state.node[node1].cost = -tree_state.node[node1].cost;
+    tree_state.node[node2].cost = -tree_state.node[node2].cost;
+    count_node(node1, stats.replace1_stats);
+    count_node(node2, stats.replace2_stats);
+    tree_index prev = tree_state.node[node1].prev;
     after_header(prev);
     print_header1("REPLACE LINE(s)");
     print_node(node1);
@@ -308,21 +314,21 @@ void Ifcomp::pass6_replace_lines(tree_index node1, tree_index node2)
     print_trailer();
 
     // Save what comes after node1 before detaching
-    tree_index saved_next = node[node1].next;
+    tree_index saved_next = tree_state.node[node1].next;
 
     detach_node(node1);
-    if (prev == trees[FIRST_FILE].start) {
+    if (prev == tree_state.trees[first_idx].start) {
         detach_node(node2);
         // Attach node2 as a branch to the header
-        node[trees[FIRST_FILE].start].branch_start = node[trees[FIRST_FILE].start].branch_end =
-            node2;
+        tree_state.node[tree_state.trees[first_idx].start].branch_start =
+            tree_state.node[tree_state.trees[first_idx].start].branch_end = node2;
         // Fix: node2 should point to what was after node1, not back to header
-        node[node2].prev = trees[FIRST_FILE].start;
-        node[node2].next = saved_next;
+        tree_state.node[node2].prev = tree_state.trees[first_idx].start;
+        tree_state.node[node2].next = saved_next;
         // Update the next node's prev pointer to maintain chain
-        node[saved_next].prev = node2;
+        tree_state.node[saved_next].prev = node2;
         // Update header's next pointer to point to node2
-        node[trees[FIRST_FILE].start].next = node2;
+        tree_state.node[tree_state.trees[first_idx].start].next = node2;
     } else {
         combine_nodes(prev, node2);
     }
@@ -334,27 +340,31 @@ void Ifcomp::pass6_replace_lines(tree_index node1, tree_index node2)
 //
 void Ifcomp::pass6_insert_lines(tree_index noden)
 {
-    nchange_blocks++;
-    node[noden].cost = -node[noden].cost;
-    count_node(noden, insert_stats);
-    tree_index i = node[noden].prev;
-    if (i == trees[SECOND_FILE].start) {
+    int first_idx = to_array_index(FileIndex::First);
+    int second_idx = to_array_index(FileIndex::Second);
+    stats.nchange_blocks++;
+    tree_state.node[noden].cost = -tree_state.node[noden].cost;
+    count_node(noden, stats.insert_stats);
+    tree_index i = tree_state.node[noden].prev;
+    if (i == tree_state.trees[second_idx].start) {
         detach_node(noden);
-        node[trees[FIRST_FILE].start].branch_start = node[trees[FIRST_FILE].start].branch_end =
-            noden;
-        node[noden].prev = node[noden].next = trees[FIRST_FILE].start;
+        tree_state.node[tree_state.trees[first_idx].start].branch_start =
+            tree_state.node[tree_state.trees[first_idx].start].branch_end = noden;
+        tree_state.node[noden].prev = tree_state.node[noden].next =
+            tree_state.trees[first_idx].start;
         top_msg();
         print_header1("INSERT LINE(s)");
-        print_node(trees[FIRST_FILE].start);
+        print_node(tree_state.trees[first_idx].start);
     } else {
-        tree_index j = find_node(trees[FIRST_FILE], file_line[SECOND_FILE][true_line_of(i)].ptr0);
+        tree_index j = find_node(tree_state.trees[first_idx],
+                                 file_state.file_line[second_idx][true_line_of(i)].ptr0);
 
         if (j == NULL_NODE) {
             // If find_node failed, just skip this insertion to avoid crashes
             // Detach the node and free it to clean up
             detach_node(noden);
             free_node(noden);
-            nchange_blocks--; // Don't count this failed insertion
+            stats.nchange_blocks--; // Don't count this failed insertion
             return;
         }
 
@@ -372,13 +382,14 @@ void Ifcomp::pass6_insert_lines(tree_index noden)
 //
 void Ifcomp::pass6_do_replace_delete()
 {
+    int first_idx = to_array_index(FileIndex::First);
     // Scan through FIRST_FILE and identify any nodes that
     // have no correspondent in the SECOND_FILE. See if they can be
     // treated as replaced or deleted in the other file.
-    tree_index i = node[trees[FIRST_FILE].start].next;
-    while (i != trees[FIRST_FILE].end) {
-        tree_index j = node[i].next;
-        if (node[i].cost < 0) {
+    tree_index i = tree_state.node[tree_state.trees[first_idx].start].next;
+    while (i != tree_state.trees[first_idx].end) {
+        tree_index j = tree_state.node[i].next;
+        if (tree_state.node[i].cost < 0) {
             tree_index location_in_other_file = pass6_replaceable(i);
             if (location_in_other_file == NULL_NODE)
                 delete_lines(i);
@@ -394,17 +405,18 @@ void Ifcomp::pass6_do_replace_delete()
 //
 void Ifcomp::pass6_do_insert()
 {
+    int second_idx = to_array_index(FileIndex::Second);
     // Scan through SECOND_FILE and identify any nodes that have no
     // correspondent in FIRST_FILE. They are treated as inserted in the
     // FIRST_FILE.
-    tree_index i = node[trees[SECOND_FILE].start].next;
-    while (i != trees[SECOND_FILE].end) {
-        if (node[i].cost < 0) {
-            tree_index j = node[i].next;
+    tree_index i = tree_state.node[tree_state.trees[second_idx].start].next;
+    while (i != tree_state.trees[second_idx].end) {
+        if (tree_state.node[i].cost < 0) {
+            tree_index j = tree_state.node[i].next;
             pass6_insert_lines(i);
             i = j;
         } else {
-            i = node[i].next;
+            i = tree_state.node[i].next;
         }
     }
 }

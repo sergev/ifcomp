@@ -37,22 +37,29 @@ TEST_F(Pass4, SingleMatchBeforeUnique)
     ifc.pass4();
 
     // Line 3 should be UNIQUE_TYPE (from pass2)
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][3].ptr_type, LineType::UNIQUE_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][3].ptr_type,
+              LineType::UNIQUE_TYPE)
         << "UNIQUE_A should be UNIQUE_TYPE";
 
     // Lines 1-2 should be MATCH_TYPE (extended backward from unique)
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][1].ptr_type, LineType::MATCH_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][1].ptr_type,
+              LineType::MATCH_TYPE)
         << "COMMON line 1 should be MATCH_TYPE (extended backward)";
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][2].ptr_type, LineType::MATCH_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][2].ptr_type,
+              LineType::MATCH_TYPE)
         << "COMMON line 2 should be MATCH_TYPE (extended backward)";
-    EXPECT_EQ(ifc.file_line[SECOND_FILE][1].ptr_type, LineType::MATCH_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][1].ptr_type,
+              LineType::MATCH_TYPE)
         << "COMMON line 1 should be MATCH_TYPE";
-    EXPECT_EQ(ifc.file_line[SECOND_FILE][2].ptr_type, LineType::MATCH_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][2].ptr_type,
+              LineType::MATCH_TYPE)
         << "COMMON line 2 should be MATCH_TYPE";
 
     // Verify bidirectional links
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][1].ptr0, 1) << "File1 line 1 should point to file2 line 1";
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][2].ptr0, 2) << "File1 line 2 should point to file2 line 2";
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][1].ptr0, 1)
+        << "File1 line 1 should point to file2 line 1";
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][2].ptr0, 2)
+        << "File1 line 2 should point to file2 line 2";
 }
 
 TEST_F(Pass4, MultipleMatchesBeforeUnique)
@@ -66,17 +73,22 @@ TEST_F(Pass4, MultipleMatchesBeforeUnique)
     ifc.pass4();
 
     // Line 4 should be UNIQUE_TYPE
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][4].ptr_type, LineType::UNIQUE_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][4].ptr_type,
+              LineType::UNIQUE_TYPE)
         << "UNIQUE_A should be UNIQUE_TYPE";
 
     // Lines 1-3 should be MATCH_TYPE (extended backward)
     for (int i = 1; i <= 3; i++) {
-        EXPECT_EQ(ifc.file_line[FIRST_FILE][i].ptr_type, LineType::MATCH_TYPE)
+        EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][i].ptr_type,
+                  LineType::MATCH_TYPE)
             << "COMMON line " << i << " should be MATCH_TYPE";
-        EXPECT_EQ(ifc.file_line[SECOND_FILE][i].ptr_type, LineType::MATCH_TYPE)
+        EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][i].ptr_type,
+                  LineType::MATCH_TYPE)
             << "COMMON line " << i << " should be MATCH_TYPE";
-        EXPECT_EQ(ifc.file_line[FIRST_FILE][i].ptr0, i) << "Bidirectional link check";
-        EXPECT_EQ(ifc.file_line[SECOND_FILE][i].ptr0, i) << "Bidirectional link check";
+        EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][i].ptr0, i)
+            << "Bidirectional link check";
+        EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][i].ptr0, i)
+            << "Bidirectional link check";
     }
 }
 
@@ -91,17 +103,22 @@ TEST_F(Pass4, NoExtension_TextMismatch)
     ifc.pass4();
 
     // Line 3 should be UNIQUE_TYPE
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][3].ptr_type, LineType::UNIQUE_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][3].ptr_type,
+              LineType::UNIQUE_TYPE)
         << "UNIQUE_A should be UNIQUE_TYPE";
 
     // Lines 1-2 should remain SYT_TYPE (text doesn't match)
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][1].ptr_type, LineType::SYT_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][1].ptr_type,
+              LineType::SYT_TYPE)
         << "DIFF1 should remain SYT_TYPE (no match)";
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][2].ptr_type, LineType::SYT_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][2].ptr_type,
+              LineType::SYT_TYPE)
         << "DIFF1 should remain SYT_TYPE (no match)";
-    EXPECT_EQ(ifc.file_line[SECOND_FILE][1].ptr_type, LineType::SYT_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][1].ptr_type,
+              LineType::SYT_TYPE)
         << "DIFF2 should remain SYT_TYPE (no match)";
-    EXPECT_EQ(ifc.file_line[SECOND_FILE][2].ptr_type, LineType::SYT_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][2].ptr_type,
+              LineType::SYT_TYPE)
         << "DIFF2 should remain SYT_TYPE (no match)";
 }
 
@@ -116,9 +133,11 @@ TEST_F(Pass4, ExtensionStopsAtBeginningOfFile)
     ifc.pass4();
 
     // Only one line - should be UNIQUE_TYPE
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][1].ptr_type, LineType::UNIQUE_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][1].ptr_type,
+              LineType::UNIQUE_TYPE)
         << "UNIQUE_A should be UNIQUE_TYPE";
-    EXPECT_EQ(ifc.file_line[SECOND_FILE][1].ptr_type, LineType::UNIQUE_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][1].ptr_type,
+              LineType::UNIQUE_TYPE)
         << "UNIQUE_A should be UNIQUE_TYPE";
 }
 
@@ -133,9 +152,11 @@ TEST_F(Pass4, ExtensionStopsAtAlreadyUnique)
     ifc.pass4();
 
     // Both should be UNIQUE_TYPE (pass4 doesn't extend because line 1 is already unique)
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][1].ptr_type, LineType::UNIQUE_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][1].ptr_type,
+              LineType::UNIQUE_TYPE)
         << "UNIQUE_B should be UNIQUE_TYPE";
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][2].ptr_type, LineType::UNIQUE_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][2].ptr_type,
+              LineType::UNIQUE_TYPE)
         << "UNIQUE_A should be UNIQUE_TYPE (not extended, already unique)";
 }
 
@@ -150,11 +171,13 @@ TEST_F(Pass4, ExtensionStopsAtAlreadyMatched)
     ifc.pass4();
 
     // First pass4 - should mark COMMON as MATCH_TYPE
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][1].ptr_type, LineType::MATCH_TYPE);
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][1].ptr_type,
+              LineType::MATCH_TYPE);
 
     // Call pass4 again - should not change anything
     ifc.pass4();
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][1].ptr_type, LineType::MATCH_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][1].ptr_type,
+              LineType::MATCH_TYPE)
         << "Second pass4 should not change already matched line";
 }
 
@@ -169,19 +192,25 @@ TEST_F(Pass4, MultipleUniquePairsWithExtensions)
     ifc.pass4();
 
     // Lines 3 and 6 should be UNIQUE_TYPE
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][3].ptr_type, LineType::UNIQUE_TYPE);
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][6].ptr_type, LineType::UNIQUE_TYPE);
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][3].ptr_type,
+              LineType::UNIQUE_TYPE);
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][6].ptr_type,
+              LineType::UNIQUE_TYPE);
 
     // Lines 1-2 should be MATCH_TYPE (extended backward from UNIQUE_A)
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][1].ptr_type, LineType::MATCH_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][1].ptr_type,
+              LineType::MATCH_TYPE)
         << "COMMON1 line 1 should be MATCH_TYPE";
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][2].ptr_type, LineType::MATCH_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][2].ptr_type,
+              LineType::MATCH_TYPE)
         << "COMMON1 line 2 should be MATCH_TYPE";
 
     // Lines 4-5 should be MATCH_TYPE (extended backward from UNIQUE_B)
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][4].ptr_type, LineType::MATCH_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][4].ptr_type,
+              LineType::MATCH_TYPE)
         << "COMMON2 line 4 should be MATCH_TYPE";
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][5].ptr_type, LineType::MATCH_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][5].ptr_type,
+              LineType::MATCH_TYPE)
         << "COMMON2 line 5 should be MATCH_TYPE";
 }
 
@@ -196,16 +225,21 @@ TEST_F(Pass4, PartialExtension)
     ifc.pass4();
 
     // Line 4 should be UNIQUE_TYPE
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][4].ptr_type, LineType::UNIQUE_TYPE);
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][4].ptr_type,
+              LineType::UNIQUE_TYPE);
 
     // Lines 2-3 should be MATCH_TYPE (extended backward, COMMON is duplicate)
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][2].ptr_type, LineType::MATCH_TYPE);
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][3].ptr_type, LineType::MATCH_TYPE);
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][2].ptr_type,
+              LineType::MATCH_TYPE);
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][3].ptr_type,
+              LineType::MATCH_TYPE);
 
     // Line 1 should remain SYT_TYPE (extension stopped - text doesn't match)
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][1].ptr_type, LineType::SYT_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][1].ptr_type,
+              LineType::SYT_TYPE)
         << "Extension should stop at DIFFERENT lines";
-    EXPECT_EQ(ifc.file_line[SECOND_FILE][1].ptr_type, LineType::SYT_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][1].ptr_type,
+              LineType::SYT_TYPE)
         << "Extension should stop at DIFFERENT lines";
 }
 
@@ -221,9 +255,11 @@ TEST_F(Pass4, NoUniquePairs_NoExtension)
 
     // All lines should remain SYT_TYPE (no unique pairs to extend from)
     for (int i = 1; i <= 2; i++) {
-        EXPECT_EQ(ifc.file_line[FIRST_FILE][i].ptr_type, LineType::SYT_TYPE)
+        EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][i].ptr_type,
+                  LineType::SYT_TYPE)
             << "Line " << i << " should remain SYT_TYPE (no unique pairs)";
-        EXPECT_EQ(ifc.file_line[SECOND_FILE][i].ptr_type, LineType::SYT_TYPE)
+        EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][i].ptr_type,
+                  LineType::SYT_TYPE)
             << "Line " << i << " should remain SYT_TYPE (no unique pairs)";
     }
 }
@@ -239,15 +275,20 @@ TEST_F(Pass4, ExtensionFromLastUniqueOnly)
     ifc.pass4();
 
     // Lines 1 and 4 should be UNIQUE_TYPE
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][1].ptr_type, LineType::UNIQUE_TYPE);
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][4].ptr_type, LineType::UNIQUE_TYPE);
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][1].ptr_type,
+              LineType::UNIQUE_TYPE);
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][4].ptr_type,
+              LineType::UNIQUE_TYPE);
 
     // Lines 2-3 should be MATCH_TYPE (extended backward from UNIQUE_A)
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][2].ptr_type, LineType::MATCH_TYPE);
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][3].ptr_type, LineType::MATCH_TYPE);
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][2].ptr_type,
+              LineType::MATCH_TYPE);
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][3].ptr_type,
+              LineType::MATCH_TYPE);
 
     // Extension stops at line 1 because it's already UNIQUE_TYPE
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][1].ptr_type, LineType::UNIQUE_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][1].ptr_type,
+              LineType::UNIQUE_TYPE)
         << "UNIQUE_B should be UNIQUE_TYPE (cannot extend from already matched line)";
 }
 
@@ -262,17 +303,23 @@ TEST_F(Pass4, DifferentFileLengths_Extension)
     ifc.pass4();
 
     // Line 4 should be UNIQUE_TYPE
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][4].ptr_type, LineType::UNIQUE_TYPE);
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][4].ptr_type,
+              LineType::UNIQUE_TYPE);
 
     // Lines 2-3 should be MATCH_TYPE (extended backward, both files have COMMON)
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][2].ptr_type, LineType::MATCH_TYPE);
-    EXPECT_EQ(ifc.file_line[SECOND_FILE][1].ptr_type, LineType::MATCH_TYPE);
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][3].ptr_type, LineType::MATCH_TYPE);
-    EXPECT_EQ(ifc.file_line[SECOND_FILE][2].ptr_type, LineType::MATCH_TYPE);
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][2].ptr_type,
+              LineType::MATCH_TYPE);
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][1].ptr_type,
+              LineType::MATCH_TYPE);
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][3].ptr_type,
+              LineType::MATCH_TYPE);
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][2].ptr_type,
+              LineType::MATCH_TYPE);
 
     // Extension should stop because file2 has no more lines (file1 line 1 has no corresponding
     // line)
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][1].ptr_type, LineType::SYT_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][1].ptr_type,
+              LineType::SYT_TYPE)
         << "EXTRA should remain SYT_TYPE (no corresponding line in file2)";
 }
 
@@ -287,16 +334,22 @@ TEST_F(Pass4, DifferentFileLengths_ShorterFirst)
     ifc.pass4();
 
     // Line 3 should be UNIQUE_TYPE
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][3].ptr_type, LineType::UNIQUE_TYPE);
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][3].ptr_type,
+              LineType::UNIQUE_TYPE);
 
     // Lines 1-2 should be MATCH_TYPE (extended backward, both files have COMMON)
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][1].ptr_type, LineType::MATCH_TYPE);
-    EXPECT_EQ(ifc.file_line[SECOND_FILE][2].ptr_type, LineType::MATCH_TYPE);
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][2].ptr_type, LineType::MATCH_TYPE);
-    EXPECT_EQ(ifc.file_line[SECOND_FILE][3].ptr_type, LineType::MATCH_TYPE);
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][1].ptr_type,
+              LineType::MATCH_TYPE);
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][2].ptr_type,
+              LineType::MATCH_TYPE);
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][2].ptr_type,
+              LineType::MATCH_TYPE);
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][3].ptr_type,
+              LineType::MATCH_TYPE);
 
     // Extension stops because file1 has no more lines (file2 line 1 has no corresponding line)
-    EXPECT_EQ(ifc.file_line[SECOND_FILE][1].ptr_type, LineType::SYT_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][1].ptr_type,
+              LineType::SYT_TYPE)
         << "EXTRA should remain SYT_TYPE (no corresponding line in file1)";
 }
 
@@ -311,19 +364,26 @@ TEST_F(Pass4, MixedPattern)
     ifc.pass4();
 
     // Lines 4 and 6 should be UNIQUE_TYPE
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][4].ptr_type, LineType::UNIQUE_TYPE);
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][6].ptr_type, LineType::UNIQUE_TYPE);
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][4].ptr_type,
+              LineType::UNIQUE_TYPE);
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][6].ptr_type,
+              LineType::UNIQUE_TYPE);
 
     // Lines 2-3 should be MATCH_TYPE (extended backward from UNIQUE_A)
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][2].ptr_type, LineType::MATCH_TYPE);
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][3].ptr_type, LineType::MATCH_TYPE);
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][2].ptr_type,
+              LineType::MATCH_TYPE);
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][3].ptr_type,
+              LineType::MATCH_TYPE);
 
     // Line 1 should remain SYT_TYPE (extension stopped)
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][1].ptr_type, LineType::SYT_TYPE);
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][1].ptr_type,
+              LineType::SYT_TYPE);
 
     // Line 5 should be MATCH_TYPE (extended backward from UNIQUE_B)
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][5].ptr_type, LineType::MATCH_TYPE);
-    EXPECT_EQ(ifc.file_line[SECOND_FILE][5].ptr_type, LineType::MATCH_TYPE);
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][5].ptr_type,
+              LineType::MATCH_TYPE);
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][5].ptr_type,
+              LineType::MATCH_TYPE);
 }
 
 TEST_F(Pass4, EmptyLinesInExtension)
@@ -337,12 +397,15 @@ TEST_F(Pass4, EmptyLinesInExtension)
     ifc.pass4();
 
     // Line 3 should be UNIQUE_TYPE
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][3].ptr_type, LineType::UNIQUE_TYPE);
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][3].ptr_type,
+              LineType::UNIQUE_TYPE);
 
     // Lines 1-2 should be MATCH_TYPE (empty lines match)
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][1].ptr_type, LineType::MATCH_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][1].ptr_type,
+              LineType::MATCH_TYPE)
         << "Empty line 1 should be MATCH_TYPE";
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][2].ptr_type, LineType::MATCH_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][2].ptr_type,
+              LineType::MATCH_TYPE)
         << "Empty line 2 should be MATCH_TYPE";
 }
 
@@ -367,13 +430,16 @@ TEST_F(Pass4, LongExtension)
     ifc.pass4();
 
     // Line 51 should be UNIQUE_TYPE
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][51].ptr_type, LineType::UNIQUE_TYPE);
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][51].ptr_type,
+              LineType::UNIQUE_TYPE);
 
     // Lines 1-50 should be MATCH_TYPE (extended backward)
     for (int i = 1; i <= 50; i++) {
-        EXPECT_EQ(ifc.file_line[FIRST_FILE][i].ptr_type, LineType::MATCH_TYPE)
+        EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][i].ptr_type,
+                  LineType::MATCH_TYPE)
             << "Line " << i << " should be MATCH_TYPE";
-        EXPECT_EQ(ifc.file_line[SECOND_FILE][i].ptr_type, LineType::MATCH_TYPE)
+        EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][i].ptr_type,
+                  LineType::MATCH_TYPE)
             << "Line " << i << " should be MATCH_TYPE";
     }
 }
@@ -390,13 +456,17 @@ TEST_F(Pass4, NoExtension_ImmediateMismatch)
     ifc.pass4();
 
     // UNIQUE_A should be UNIQUE_TYPE (from pass2)
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][3].ptr_type, LineType::UNIQUE_TYPE);
-    EXPECT_EQ(ifc.file_line[SECOND_FILE][3].ptr_type, LineType::UNIQUE_TYPE);
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][3].ptr_type,
+              LineType::UNIQUE_TYPE);
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][3].ptr_type,
+              LineType::UNIQUE_TYPE);
 
     // Lines 1-2 should remain SYT_TYPE (text doesn't match, so no extension)
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][1].ptr_type, LineType::SYT_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][1].ptr_type,
+              LineType::SYT_TYPE)
         << "No extension when text doesn't match";
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][2].ptr_type, LineType::SYT_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][2].ptr_type,
+              LineType::SYT_TYPE)
         << "No extension when text doesn't match";
 }
 
@@ -411,12 +481,15 @@ TEST_F(Pass4, ExtensionAcrossDuplicateLines)
     ifc.pass4();
 
     // Line 3 should be UNIQUE_TYPE
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][3].ptr_type, LineType::UNIQUE_TYPE);
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][3].ptr_type,
+              LineType::UNIQUE_TYPE);
 
     // Lines 1-2 should be MATCH_TYPE (extended backward, even though COMMON is duplicate)
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][1].ptr_type, LineType::MATCH_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][1].ptr_type,
+              LineType::MATCH_TYPE)
         << "COMMON line 1 should be MATCH_TYPE (extended)";
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][2].ptr_type, LineType::MATCH_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][2].ptr_type,
+              LineType::MATCH_TYPE)
         << "COMMON line 2 should be MATCH_TYPE (extended)";
 }
 
@@ -432,7 +505,8 @@ TEST_F(Pass4, MultipleSequentialUniquePairs)
 
     // All should be UNIQUE_TYPE (pass4 doesn't extend because previous line is already unique)
     for (int i = 1; i <= 3; i++) {
-        EXPECT_EQ(ifc.file_line[FIRST_FILE][i].ptr_type, LineType::UNIQUE_TYPE)
+        EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][i].ptr_type,
+                  LineType::UNIQUE_TYPE)
             << "Line " << i << " should be UNIQUE_TYPE";
     }
 }
@@ -448,11 +522,14 @@ TEST_F(Pass4, UniqueThenExtension)
     ifc.pass4();
 
     // Line 3 should be UNIQUE_TYPE
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][3].ptr_type, LineType::UNIQUE_TYPE);
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][3].ptr_type,
+              LineType::UNIQUE_TYPE);
 
     // Lines 1-2 should be MATCH_TYPE (extended backward from UNIQUE_B)
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][1].ptr_type, LineType::MATCH_TYPE);
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][2].ptr_type, LineType::MATCH_TYPE);
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][1].ptr_type,
+              LineType::MATCH_TYPE);
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][2].ptr_type,
+              LineType::MATCH_TYPE);
 
     // Extension stops at line 1 (or before if beginning of file)
 }
@@ -468,14 +545,14 @@ TEST_F(Pass4, BidirectionalLinking_Extension)
     ifc.pass4();
 
     // Check bidirectional links for extended matches
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][1].ptr0, 1)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][1].ptr0, 1)
         << "File1 COMMON line 1 should point to file2 line 1";
-    EXPECT_EQ(ifc.file_line[SECOND_FILE][1].ptr0, 1)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][1].ptr0, 1)
         << "File2 COMMON line 1 should point to file1 line 1";
 
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][2].ptr0, 2)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][2].ptr0, 2)
         << "File1 COMMON line 2 should point to file2 line 2";
-    EXPECT_EQ(ifc.file_line[SECOND_FILE][2].ptr0, 2)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][2].ptr0, 2)
         << "File2 COMMON line 2 should point to file1 line 2";
 }
 
@@ -494,8 +571,10 @@ TEST_F(Pass4, SingleLineFiles)
     ifc.pass4();
 
     // Should be UNIQUE_TYPE (no extension possible)
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][1].ptr_type, LineType::UNIQUE_TYPE);
-    EXPECT_EQ(ifc.file_line[SECOND_FILE][1].ptr_type, LineType::UNIQUE_TYPE);
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][1].ptr_type,
+              LineType::UNIQUE_TYPE);
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::Second)][1].ptr_type,
+              LineType::UNIQUE_TYPE);
 }
 
 TEST_F(Pass4, ExtensionWithSpecialCharacters)
@@ -511,16 +590,21 @@ TEST_F(Pass4, ExtensionWithSpecialCharacters)
     ifc.pass4();
 
     // Line 5 should be UNIQUE_TYPE
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][5].ptr_type, LineType::UNIQUE_TYPE);
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][5].ptr_type,
+              LineType::UNIQUE_TYPE);
 
     // Lines 1-4 should be MATCH_TYPE (special characters match, duplicates)
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][1].ptr_type, LineType::MATCH_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][1].ptr_type,
+              LineType::MATCH_TYPE)
         << "Tab line 1 should be MATCH_TYPE";
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][2].ptr_type, LineType::MATCH_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][2].ptr_type,
+              LineType::MATCH_TYPE)
         << "Tab line 2 should be MATCH_TYPE";
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][3].ptr_type, LineType::MATCH_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][3].ptr_type,
+              LineType::MATCH_TYPE)
         << "Space line 3 should be MATCH_TYPE";
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][4].ptr_type, LineType::MATCH_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][4].ptr_type,
+              LineType::MATCH_TYPE)
         << "Space line 4 should be MATCH_TYPE";
 }
 
@@ -544,11 +628,13 @@ TEST_F(Pass4, VeryLongExtension)
     ifc.pass4();
 
     // Line 101 should be UNIQUE_TYPE
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][101].ptr_type, LineType::UNIQUE_TYPE);
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][101].ptr_type,
+              LineType::UNIQUE_TYPE);
 
     // All previous lines should be MATCH_TYPE
     for (int i = 1; i <= 100; i++) {
-        EXPECT_EQ(ifc.file_line[FIRST_FILE][i].ptr_type, LineType::MATCH_TYPE)
+        EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][i].ptr_type,
+                  LineType::MATCH_TYPE)
             << "Line " << i << " should be MATCH_TYPE";
     }
 }
@@ -564,15 +650,20 @@ TEST_F(Pass4, ComplexRealWorldScenario)
     ifc.pass4();
 
     // Function signatures should be unique pairs
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][1].ptr_type, LineType::UNIQUE_TYPE);
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][5].ptr_type, LineType::UNIQUE_TYPE);
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][1].ptr_type,
+              LineType::UNIQUE_TYPE);
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][5].ptr_type,
+              LineType::UNIQUE_TYPE);
 
     // Function bodies should be MATCH_TYPE (extended backward from unique signatures)
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][4].ptr_type, LineType::MATCH_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][4].ptr_type,
+              LineType::MATCH_TYPE)
         << "Closing brace should be MATCH_TYPE";
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][3].ptr_type, LineType::MATCH_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][3].ptr_type,
+              LineType::MATCH_TYPE)
         << "Return statement should be MATCH_TYPE";
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][2].ptr_type, LineType::MATCH_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][2].ptr_type,
+              LineType::MATCH_TYPE)
         << "Opening brace should be MATCH_TYPE";
 }
 
@@ -588,18 +679,23 @@ TEST_F(Pass4, CombinedWithPass3)
     ifc.pass4(); // Backward extension
 
     // Line 3 should be UNIQUE_TYPE
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][3].ptr_type, LineType::UNIQUE_TYPE);
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][3].ptr_type,
+              LineType::UNIQUE_TYPE);
 
     // Lines 1-2 should be MATCH_TYPE (extended backward by pass4)
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][1].ptr_type, LineType::MATCH_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][1].ptr_type,
+              LineType::MATCH_TYPE)
         << "COMMON1 should be MATCH_TYPE (extended backward)";
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][2].ptr_type, LineType::MATCH_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][2].ptr_type,
+              LineType::MATCH_TYPE)
         << "COMMON1 should be MATCH_TYPE (extended backward)";
 
     // Lines 4-5 should be MATCH_TYPE (extended forward by pass3)
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][4].ptr_type, LineType::MATCH_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][4].ptr_type,
+              LineType::MATCH_TYPE)
         << "COMMON2 should be MATCH_TYPE (extended forward)";
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][5].ptr_type, LineType::MATCH_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][5].ptr_type,
+              LineType::MATCH_TYPE)
         << "COMMON2 should be MATCH_TYPE (extended forward)";
 }
 
@@ -615,12 +711,15 @@ TEST_F(Pass4, StopsAtZero)
     ifc.pass4();
 
     // Line 3 should be UNIQUE_TYPE
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][3].ptr_type, LineType::UNIQUE_TYPE);
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][3].ptr_type,
+              LineType::UNIQUE_TYPE);
 
     // Lines 1-2 should be MATCH_TYPE (extended backward from UNIQUE_A)
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][1].ptr_type, LineType::MATCH_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][1].ptr_type,
+              LineType::MATCH_TYPE)
         << "COMMON line 1 should be MATCH_TYPE (extended backward)";
-    EXPECT_EQ(ifc.file_line[FIRST_FILE][2].ptr_type, LineType::MATCH_TYPE)
+    EXPECT_EQ(ifc.file_state.file_line[to_array_index(FileIndex::First)][2].ptr_type,
+              LineType::MATCH_TYPE)
         << "COMMON line 2 should be MATCH_TYPE (extended backward)";
 
     // Verify extension stops at beginning (m > 0 check ensures we don't go below 1)

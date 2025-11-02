@@ -32,52 +32,56 @@ CompareResult Ifcomp::hashcode_compare(size_t ha, size_t hb)
 //
 line_count Ifcomp::make_line_entry(line_count linen, line_count next)
 {
-    line_table.emplace_back();
-    line_table.back().linen = linen;
-    line_table.back().next = next;
-    return static_cast<line_count>(line_table.size() - 1);
+    line_matching_state.line_table.emplace_back();
+    line_matching_state.line_table.back().linen = linen;
+    line_matching_state.line_table.back().next = next;
+    return static_cast<line_count>(line_matching_state.line_table.size() - 1);
 }
 
 //
 // Create a new string entry in the string table for a unique line of text.
 //
-string_index Ifcomp::setup_distinct_text(const std::string &text, line_count linen, int input_file)
+string_index Ifcomp::setup_distinct_text(const std::string &text, line_count linen,
+                                         FileIndex input_file)
 {
     StringDecl s;
-    int other = other_file(input_file);
-    s.file_nlines[input_file] = 1;
-    s.file_nlines[other] = 0;
-    s.file_list[input_file] = make_line_entry(linen, NULL_LINE_LIST);
-    s.file_list[other] = NULL_LINE_LIST;
+    FileIndex other = other_file(input_file);
+    int input_idx = to_array_index(input_file);
+    int other_idx = to_array_index(other);
+    s.file_nlines[input_idx] = 1;
+    s.file_nlines[other_idx] = 0;
+    s.file_list[input_idx] = make_line_entry(linen, NULL_LINE_LIST);
+    s.file_list[other_idx] = NULL_LINE_LIST;
     s.next_text_with_same_hash = NULL_STRING_LIST;
     s.text = text; // Use std::string directly
 
-    string_table.push_back(s);
-    return static_cast<string_index>(string_table.size() - 1);
+    line_matching_state.string_table.push_back(s);
+    return static_cast<string_index>(line_matching_state.string_table.size() - 1);
 }
 
 //
 // Create a new hash node entry linking a hash code to its text string.
 //
 hash_node_index Ifcomp::setup_hash_node(string_index &tip, const std::string &text,
-                                        line_count linen, int input_file, size_t h)
+                                        line_count linen, FileIndex input_file, size_t h)
 {
     HashNodeDecl s;
     s.next_in_bucket = NULL_HASH_LIST;
     s.text_list = tip = setup_distinct_text(text, linen, input_file);
     s.h = h;
 
-    hash_node.push_back(s);
-    return static_cast<hash_node_index>(hash_node.size() - 1);
+    hash_state.hash_node.push_back(s);
+    return static_cast<hash_node_index>(hash_state.hash_node.size() - 1);
 }
 
 //
 // Add a line number occurrence to an existing text string's file list.
 //
-void Ifcomp::add_linen_to_text_list(string_index T, line_count linen, int input_file)
+void Ifcomp::add_linen_to_text_list(string_index T, line_count linen, FileIndex input_file)
 {
-    string_table[T].file_nlines[input_file]++;
-    line_count &p = string_table[T].file_list[input_file];
+    int input_idx = to_array_index(input_file);
+    line_matching_state.string_table[T].file_nlines[input_idx]++;
+    line_count &p = line_matching_state.string_table[T].file_list[input_idx];
     p = make_line_entry(linen, p);
 }
 
@@ -85,13 +89,13 @@ void Ifcomp::add_linen_to_text_list(string_index T, line_count linen, int input_
 // Insert a line into the hash table, maintaining sorted order within buckets.
 // Creates new hash node and string entry if needed, or updates existing entry.
 //
-void Ifcomp::enter_line(const std::string &text, size_t h, line_count linen, int input_file,
+void Ifcomp::enter_line(const std::string &text, size_t h, line_count linen, FileIndex input_file,
                         hash_node_index &result_hash_node, string_index &result_string_index)
 {
     if (debug_syt_full)
         out << "\nEnter line " << text << ", #" << linen << "\n";
 
-    hash_node_index &hash_start_node = sec_hash_start_node[h % NBUCKETS];
+    hash_node_index &hash_start_node = hash_state.sec_hash_start_node[h % NBUCKETS];
     string_index SI;
     hash_node_index current_node;
 
@@ -107,27 +111,27 @@ void Ifcomp::enter_line(const std::string &text, size_t h, line_count linen, int
     string_index last_SI;
 
     while (current_node != NULL_HASH_LIST) {
-        CompareResult test = Ifcomp::hashcode_compare(h, hash_node[current_node].h);
+        CompareResult test = Ifcomp::hashcode_compare(h, hash_state.hash_node[current_node].h);
         if (test == CompareResult::EQ) {
             // Search through this syt node to see if the identical line exists already.
-            SI = hash_node[current_node].text_list;
+            SI = hash_state.hash_node[current_node].text_list;
             last_SI = SI;
             while (SI != NULL_STRING_LIST) {
-                if (string_table[SI].text == text) {
+                if (line_matching_state.string_table[SI].text == text) {
                     add_linen_to_text_list(SI, linen, input_file);
                     result_hash_node = current_node;
                     result_string_index = SI;
                     return;
                 }
                 last_SI = SI;
-                SI = string_table[SI].next_text_with_same_hash;
+                SI = line_matching_state.string_table[SI].next_text_with_same_hash;
             }
             // If text_list was empty (shouldn't happen, but handle it)
-            if (hash_node[current_node].text_list == NULL_STRING_LIST) {
-                hash_node[current_node].text_list = SI =
+            if (hash_state.hash_node[current_node].text_list == NULL_STRING_LIST) {
+                hash_state.hash_node[current_node].text_list = SI =
                     setup_distinct_text(text, linen, input_file);
             } else {
-                string_table[last_SI].next_text_with_same_hash = SI =
+                line_matching_state.string_table[last_SI].next_text_with_same_hash = SI =
                     setup_distinct_text(text, linen, input_file);
             }
             result_hash_node = current_node;
@@ -137,11 +141,11 @@ void Ifcomp::enter_line(const std::string &text, size_t h, line_count linen, int
         if (test == CompareResult::LT) {
             hash_node_index new_node = setup_hash_node(SI, text, linen, input_file, h);
             if (current_node == hash_start_node) {
-                hash_node[new_node].next_in_bucket = hash_start_node;
+                hash_state.hash_node[new_node].next_in_bucket = hash_start_node;
                 hash_start_node = new_node;
             } else {
-                hash_node[new_node].next_in_bucket = current_node;
-                hash_node[last_node].next_in_bucket = new_node;
+                hash_state.hash_node[new_node].next_in_bucket = current_node;
+                hash_state.hash_node[last_node].next_in_bucket = new_node;
             }
             result_hash_node = new_node;
             result_string_index = SI;
@@ -149,14 +153,14 @@ void Ifcomp::enter_line(const std::string &text, size_t h, line_count linen, int
         }
         // test is CompareResult::GT.
         last_node = current_node;
-        current_node = hash_node[current_node].next_in_bucket;
+        current_node = hash_state.hash_node[current_node].next_in_bucket;
     }
 
     // Add to chain.
     if (last_node == NULL_HASH_LIST) {
         out << "?OOPS empty list!\n";
     }
-    hash_node[last_node].next_in_bucket = current_node =
+    hash_state.hash_node[last_node].next_in_bucket = current_node =
         setup_hash_node(SI, text, linen, input_file, h);
     result_hash_node = current_node;
     result_string_index = SI;
@@ -167,37 +171,44 @@ void Ifcomp::enter_line(const std::string &text, size_t h, line_count linen, int
 //
 void Ifcomp::dump_hash_node(hash_node_index node_idx) const
 {
-    const HashNodeDecl &p = hash_node[node_idx];
+    const HashNodeDecl &p = hash_state.hash_node[node_idx];
     out << "hash_node  " << node_idx << ": " << std::hex << "h=" << p.h << std::dec
         << "  text_list=" << p.text_list << "  nextb=" << p.next_in_bucket << "\n\n";
-    string_index T = hash_node[node_idx].text_list;
+    string_index T = hash_state.hash_node[node_idx].text_list;
     while (T != NULL_STRING_LIST) {
-        out << "string " << T << ": | " << string_table[T].text
-            << " | nexth=" << string_table[T].next_text_with_same_hash
-            << " f1l=" << static_cast<int>(string_table[T].file_nlines[FIRST_FILE])
-            << " f2l=" << static_cast<int>(string_table[T].file_nlines[SECOND_FILE])
-            << " f1lst=" << string_table[T].file_list[FIRST_FILE]
-            << " f2lst=" << string_table[T].file_list[SECOND_FILE] << "\n";
+        out << "string " << T << ": | " << line_matching_state.string_table[T].text
+            << " | nexth=" << line_matching_state.string_table[T].next_text_with_same_hash
+            << " f1l="
+            << static_cast<int>(line_matching_state.string_table[T]
+                                    .file_nlines[to_array_index(FileIndex::First)])
+            << " f2l="
+            << static_cast<int>(line_matching_state.string_table[T]
+                                    .file_nlines[to_array_index(FileIndex::Second)])
+            << " f1lst="
+            << line_matching_state.string_table[T].file_list[to_array_index(FileIndex::First)]
+            << " f2lst="
+            << line_matching_state.string_table[T].file_list[to_array_index(FileIndex::Second)]
+            << "\n";
 
         // Print file_list1
         out << "file_list1 for text " << T << ":";
-        int list = string_table[T].file_list[FIRST_FILE];
+        int list = line_matching_state.string_table[T].file_list[to_array_index(FileIndex::First)];
         while (list != NULL_LINE_LIST) {
-            out << " " << std::setw(5) << line_table[list].linen << "@" << list;
-            list = line_table[list].next;
+            out << " " << std::setw(5) << line_matching_state.line_table[list].linen << "@" << list;
+            list = line_matching_state.line_table[list].next;
         }
         out << "\n";
 
         // Print file_list2
         out << "file_list2 for text " << T << ":";
-        list = string_table[T].file_list[SECOND_FILE];
+        list = line_matching_state.string_table[T].file_list[to_array_index(FileIndex::Second)];
         while (list != NULL_LINE_LIST) {
-            out << " " << std::setw(5) << line_table[list].linen << "@" << list;
-            list = line_table[list].next;
+            out << " " << std::setw(5) << line_matching_state.line_table[list].linen << "@" << list;
+            list = line_matching_state.line_table[list].next;
         }
         out << "\n";
 
-        T = string_table[T].next_text_with_same_hash;
+        T = line_matching_state.string_table[T].next_text_with_same_hash;
     }
 }
 
@@ -209,7 +220,7 @@ void Ifcomp::dump_syt(hash_node_index start_node) const
     out << "** symbol table dump **, start=" << start_node << " \n";
     while (start_node != NULL_HASH_LIST) {
         dump_hash_node(start_node);
-        start_node = hash_node[start_node].next_in_bucket;
+        start_node = hash_state.hash_node[start_node].next_in_bucket;
     }
 }
 
@@ -217,10 +228,11 @@ void Ifcomp::dump_syt(hash_node_index start_node) const
 // Read all lines from an input file and populate hash table and file_line arrays.
 // Computes hash for each line and enters it into the hash table structure.
 //
-void Ifcomp::read_lines(int which_file, std::istream &input_file)
+void Ifcomp::read_lines(FileIndex which_file, std::istream &input_file)
 {
     int current_line = 0;
     std::string line;
+    int which_idx = to_array_index(which_file);
 
     while (std::getline(input_file, line)) {
         if (debug_read_current_line)
@@ -229,28 +241,28 @@ void Ifcomp::read_lines(int which_file, std::istream &input_file)
         current_line++;
 
         // Resize file_line if needed (indices start at 1, so we need current_line+1 size)
-        if (static_cast<size_t>(current_line + 1) > file_line[which_file].size()) {
-            file_line[which_file].resize(current_line + 1);
+        if (static_cast<size_t>(current_line + 1) > file_state.file_line[which_idx].size()) {
+            file_state.file_line[which_idx].resize(current_line + 1);
         }
         hash_node_index H;
         size_t h = Ifcomp::hash_line(line);
         enter_line(line, h, current_line, which_file, H,
-                   file_line[which_file][current_line].file_line_text);
+                   file_state.file_line[which_idx][current_line].file_line_text);
 
         // ptr0 should never be used until it is assigned.
         // As long as the type is syt_type it holds nothing of interest.
-        file_line[which_file][current_line].ptr0 = -1; // No line.
-        file_line[which_file][current_line].linen = current_line;
-        file_line[which_file][current_line].ptr_type = LineType::SYT_TYPE;
+        file_state.file_line[which_idx][current_line].ptr0 = -1; // No line.
+        file_state.file_line[which_idx][current_line].linen = current_line;
+        file_state.file_line[which_idx][current_line].ptr_type = LineType::SYT_TYPE;
 
         if (debug_syt_full)
             dump_syt(H);
     }
 
-    total_file_nlines[which_file] = current_line;
+    file_state.total_file_nlines[which_idx] = current_line;
     if (current_line == 0) {
-        out << "File " << which_file << " has no lines.\n";
-        std::exit(which_file);
+        out << "File " << which_idx << " has no lines.\n";
+        std::exit(which_idx);
     }
 }
 
@@ -271,9 +283,9 @@ void Ifcomp::read_lines(int which_file, std::istream &input_file)
 //
 void Ifcomp::pass1(std::istream &file1, std::istream &file2)
 {
-    read_lines(FIRST_FILE, file1);
-    read_lines(SECOND_FILE, file2);
+    read_lines(FileIndex::First, file1);
+    read_lines(FileIndex::Second, file2);
     // We can free the hash stuff; not needed now.
-    hash_node.clear();
-    hash_node.shrink_to_fit();
+    hash_state.hash_node.clear();
+    hash_state.hash_node.shrink_to_fit();
 }

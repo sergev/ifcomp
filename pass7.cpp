@@ -7,27 +7,31 @@
 //
 bool Ifcomp::pass7_combine_adjacent_nodes(tree_index node1)
 {
+    int first_idx = to_array_index(FileIndex::First);
+    int second_idx = to_array_index(FileIndex::Second);
     // Look at adjacent nodes node1 and node2.
     // If they are also adjacent in file 2, combine the nodes
     // in both files.
-    tree_index node2 = node[node1].next;
+    tree_index node2 = tree_state.node[node1].next;
 
     // Also skip if we've reached the trailer
-    if (node2 == trees[FIRST_FILE].end) {
+    if (node2 == tree_state.trees[first_idx].end) {
         return false;
     }
     if (debug_dump_trees_full)
-        out << "combine node1=" << node1 << " ln=" << node[node1].linen << " to node2=" << node2
-            << " ln=" << node[node2].linen << "\n";
-    tree_index i = find_node(trees[SECOND_FILE], file_line[FIRST_FILE][true_line_of(node1)].ptr0);
-    tree_index j = find_node(trees[SECOND_FILE], file_line[FIRST_FILE][true_line_of(node2)].ptr0);
+        out << "combine node1=" << node1 << " ln=" << tree_state.node[node1].linen
+            << " to node2=" << node2 << " ln=" << tree_state.node[node2].linen << "\n";
+    tree_index i = find_node(tree_state.trees[second_idx],
+                             file_state.file_line[first_idx][true_line_of(node1)].ptr0);
+    tree_index j = find_node(tree_state.trees[second_idx],
+                             file_state.file_line[first_idx][true_line_of(node2)].ptr0);
 
     // If find_node failed (returned NULL_NODE), can't combine these nodes
     if (i == NULL_NODE || j == NULL_NODE) {
         return false;
     }
 
-    if (j == node[i].next) {
+    if (j == tree_state.node[i].next) {
         combine_nodes(node1, node2);
         combine_nodes(i, j);
         return true;
@@ -52,14 +56,15 @@ bool Ifcomp::pass7_combine_adjacent_nodes(tree_index node1)
 //
 void Ifcomp::pass7()
 {
-    tree_index i = node[trees[FIRST_FILE].start].next;
+    int first_idx = to_array_index(FileIndex::First);
+    tree_index i = tree_state.node[tree_state.trees[first_idx].start].next;
 
     // Safety check: prevent infinite loops
     // Track iteration count to detect if we're stuck
     int iteration_count = 0;
     const int MAX_ITERATIONS = 10000; // Safety limit
 
-    while (node[i].next != trees[FIRST_FILE].end) {
+    while (tree_state.node[i].next != tree_state.trees[first_idx].end) {
         // Safety check: prevent infinite loops
         iteration_count++;
         if (iteration_count > MAX_ITERATIONS) {
@@ -68,7 +73,7 @@ void Ifcomp::pass7()
             std::exit(1);
         }
 
-        tree_index j = node[i].prev;
-        i = node[pass7_combine_adjacent_nodes(i) ? j : i].next;
+        tree_index j = tree_state.node[i].prev;
+        i = tree_state.node[pass7_combine_adjacent_nodes(i) ? j : i].next;
     }
 }

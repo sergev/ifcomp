@@ -7,14 +7,21 @@
 #include <string>
 #include <vector>
 
-// File indices
-constexpr int FIRST_FILE = 0;
-constexpr int SECOND_FILE = 1;
+// File index enumeration - strong type for file identification
+enum class FileIndex : int { First = 0, Second = 1 };
+
+// Array size constant (for sizing arrays)
 constexpr int TWO_FILES = 2;
 
-inline int other_file(int f)
+inline FileIndex other_file(FileIndex f)
 {
-    return SECOND_FILE - f;
+    return (f == FileIndex::First) ? FileIndex::Second : FileIndex::First;
+}
+
+// Helper to convert FileIndex to array index (for array access)
+inline int to_array_index(FileIndex f)
+{
+    return static_cast<int>(f);
 }
 
 // Line count type
@@ -94,11 +101,11 @@ struct TreeBounds {
 enum class CompareResult { LT = 1, EQ = 2, GT = 3 };
 
 // Helper inline functions
-inline int get_which_file(line_count linen)
+inline FileIndex get_which_file(line_count linen)
 {
     if (linen < 0)
-        return SECOND_FILE;
-    return FIRST_FILE;
+        return FileIndex::Second;
+    return FileIndex::First;
 }
 
 inline line_count get_abs_line(line_count linen)
@@ -111,6 +118,112 @@ class Ifcomp;
 
 // Ifcomp class - encapsulates all state and functionality
 class Ifcomp {
+private:
+    // Nested structs for organizing related data
+
+    // Hash table state (only used in pass1)
+    struct HashTableState {
+        std::vector<HashNodeDecl> hash_node;
+        hash_node_index sec_hash_start_node[NBUCKETS];
+
+        HashTableState()
+        {
+            for (int i = 0; i < NBUCKETS; i++)
+                sec_hash_start_node[i] = NULL_HASH_LIST;
+        }
+
+        void clear()
+        {
+            hash_node.clear();
+            for (int i = 0; i < NBUCKETS; i++)
+                sec_hash_start_node[i] = NULL_HASH_LIST;
+        }
+    };
+
+    // File state - per-file line data
+    struct FileState {
+        std::vector<FileLineDecl> file_line[TWO_FILES];
+        int total_file_nlines[TWO_FILES];
+
+        FileState() : total_file_nlines{ 0, 0 }
+        {
+            file_line[0].resize(1);
+            file_line[1].resize(1);
+        }
+
+        void clear()
+        {
+            file_line[0].clear();
+            file_line[1].clear();
+            file_line[0].resize(1);
+            file_line[1].resize(1);
+            total_file_nlines[0] = 0;
+            total_file_nlines[1] = 0;
+        }
+    };
+
+    // Line matching state - tables for matching lines
+    struct LineMatchingState {
+        std::vector<LineTableDecl> line_table;
+        std::vector<StringDecl> string_table;
+
+        void clear()
+        {
+            line_table.clear();
+            string_table.clear();
+            // Add dummy entries at index 0 for 1-based indexing
+            line_table.emplace_back();
+            string_table.emplace_back();
+        }
+    };
+
+    // Tree state - tree structure for passes 5-8
+    struct TreeState {
+        std::vector<NodeDecl> node;
+        TreeBounds trees[TWO_FILES];
+        tree_index free_nodes_start;
+
+        TreeState() : free_nodes_start(NULL_NODE)
+        {
+            trees[0] = TreeBounds{};
+            trees[1] = TreeBounds{};
+        }
+
+        void clear()
+        {
+            node.clear();
+            trees[0] = TreeBounds{};
+            trees[1] = TreeBounds{};
+            free_nodes_start = NULL_NODE;
+        }
+    };
+
+    // Statistics - change tracking
+    struct Statistics {
+        LineKinds delete_stats;
+        LineKinds insert_stats;
+        LineKinds move_stats;
+        LineKinds replace1_stats;
+        LineKinds replace2_stats;
+        short nchange_blocks;
+
+        Statistics()
+            : delete_stats{}, insert_stats{}, move_stats{}, replace1_stats{}, replace2_stats{},
+              nchange_blocks(0)
+        {
+        }
+
+        void clear()
+        {
+            delete_stats = LineKinds{};
+            insert_stats = LineKinds{};
+            move_stats = LineKinds{};
+            replace1_stats = LineKinds{};
+            replace2_stats = LineKinds{};
+            nchange_blocks = 0;
+        }
+    };
+
 public:
     // Static pure functions (no state needed)
     static size_t hash_line(const std::string &line);
@@ -137,18 +250,12 @@ public:
     bool debug_alloc = false;
     bool debug_read_current_line = false;
 
-    // Data structures - all previously global variables
-    std::vector<LineTableDecl> line_table;
-    std::vector<StringDecl> string_table;
-    std::vector<HashNodeDecl> hash_node;
-    std::vector<FileLineDecl> file_line[TWO_FILES];
-    std::vector<NodeDecl> node;
-    hash_node_index sec_hash_start_node[NBUCKETS];
-    int total_file_nlines[TWO_FILES];
-    short nchange_blocks;
-    LineKinds delete_stats, insert_stats, move_stats, replace1_stats, replace2_stats;
-    tree_index free_nodes_start;
-    TreeBounds trees[TWO_FILES];
+    // Data structures - organized into nested structs
+    HashTableState hash_state;
+    FileState file_state;
+    LineMatchingState line_matching_state;
+    TreeState tree_state;
+    Statistics stats;
 
     // Output stream reference
     std::ostream &out;
@@ -175,13 +282,14 @@ public:
 
     // Helper methods for pass1
     line_count make_line_entry(line_count linen, line_count next);
-    string_index setup_distinct_text(const std::string &text, line_count linen, int input_file);
+    string_index setup_distinct_text(const std::string &text, line_count linen,
+                                     FileIndex input_file);
     hash_node_index setup_hash_node(string_index &tip, const std::string &text, line_count linen,
-                                    int input_file, size_t h);
-    void add_linen_to_text_list(string_index T, line_count linen, int input_file);
-    void enter_line(const std::string &text, size_t h, line_count linen, int input_file,
+                                    FileIndex input_file, size_t h);
+    void add_linen_to_text_list(string_index T, line_count linen, FileIndex input_file);
+    void enter_line(const std::string &text, size_t h, line_count linen, FileIndex input_file,
                     hash_node_index &result_hash_node, string_index &result_string_index);
-    void read_lines(int which_file, std::istream &input_file);
+    void read_lines(FileIndex which_file, std::istream &input_file);
 
     // Helper methods for pass5 and later
     bool leaf(tree_index n) const;
@@ -194,9 +302,9 @@ public:
     void dump_tree(tree_index tree_start) const;
     void each_line_in_node(
         tree_index noden, bool always, int starting_line,
-        std::function<void(int which_file, const std::string &text, int lineno)> func) const;
+        std::function<void(FileIndex which_file, const std::string &text, int lineno)> func) const;
     void count_node(tree_index noden, LineKinds &p);
-    void pass5_doit(int fileno, NodeDecl &Np);
+    void pass5_doit(FileIndex fileno, NodeDecl &Np);
 
     // Helper methods for pass6
     tree_index find_node(const TreeBounds &T, tree_index linen) const;

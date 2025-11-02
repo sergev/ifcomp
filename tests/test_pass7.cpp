@@ -40,17 +40,17 @@ TEST_F(Pass7, Pass7CombineAdjacentNodes_Combines)
     ifc.pass6();
 
     // After pass5 and pass6, we should have segments
-    tree_index header = ifc.trees[FIRST_FILE].start;
-    tree_index node1 = ifc.node[header].next;
-    tree_index trailer = ifc.trees[FIRST_FILE].end;
+    tree_index header = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index node1 = ifc.tree_state.node[header].next;
+    tree_index trailer = ifc.tree_state.trees[to_array_index(FileIndex::First)].end;
 
     // Check if node1 has a next node (not trailer)
-    if (ifc.node[node1].next != trailer) {
-        tree_index node2 = ifc.node[node1].next;
+    if (ifc.tree_state.node[node1].next != trailer) {
+        tree_index node2 = ifc.tree_state.node[node1].next;
 
         // Verify nodes exist and are matched
-        EXPECT_GT(ifc.node[node1].cost, 0) << "Node1 should be matched";
-        EXPECT_GT(ifc.node[node2].cost, 0) << "Node2 should be matched";
+        EXPECT_GT(ifc.tree_state.node[node1].cost, 0) << "Node1 should be matched";
+        EXPECT_GT(ifc.tree_state.node[node2].cost, 0) << "Node2 should be matched";
 
         // Try to combine node1 and node2
         // This should work if they're adjacent in both files
@@ -59,8 +59,9 @@ TEST_F(Pass7, Pass7CombineAdjacentNodes_Combines)
         if (combined) {
             // After combination, node1 should have become a branch node
             EXPECT_FALSE(ifc.leaf(node1)) << "Combined node should be a branch";
-            EXPECT_NE(ifc.node[node1].branch_start, NULL_NODE) << "Branch should have start";
-            EXPECT_NE(ifc.node[node1].branch_end, NULL_NODE) << "Branch should have end";
+            EXPECT_NE(ifc.tree_state.node[node1].branch_start, NULL_NODE)
+                << "Branch should have start";
+            EXPECT_NE(ifc.tree_state.node[node1].branch_end, NULL_NODE) << "Branch should have end";
         }
     } else {
         // Only one segment - nothing to combine (expected for identical files)
@@ -83,8 +84,8 @@ TEST_F(Pass7, Pass7CombineAdjacentNodes_NotAdjacentInFile2)
     // File2: [A] [X] [C] (all matched separately)
     // But A and B are not adjacent in file2 (X is between A and C)
 
-    tree_index header = ifc.trees[FIRST_FILE].start;
-    tree_index node1 = ifc.node[header].next; // A
+    tree_index header = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index node1 = ifc.tree_state.node[header].next; // A
 
     // Try to combine node1 and node2
     // This should fail because in file2, A is followed by X (not B)
@@ -95,7 +96,7 @@ TEST_F(Pass7, Pass7CombineAdjacentNodes_NotAdjacentInFile2)
 TEST_F(Pass7, Pass7CombineAdjacentNodes_Trailer)
 {
     // Test pass7_combine_adjacent_nodes() at trailer
-    // pass7() itself checks "while (node[i].next != trees[FIRST_FILE].end)"
+    // pass7() itself checks "while (node[i].next != trees[FileIndex::First].end)"
     // so it never calls the helper on the last node before trailer
     // This test verifies that pass7 correctly stops before trailer
     std::istringstream file1("UNIQUE_A\nUNIQUE_B\n");
@@ -107,26 +108,26 @@ TEST_F(Pass7, Pass7CombineAdjacentNodes_Trailer)
     ifc.pass6();
 
     // Find structure after pass6
-    tree_index header = ifc.trees[FIRST_FILE].start;
-    tree_index trailer = ifc.trees[FIRST_FILE].end;
+    tree_index header = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index trailer = ifc.tree_state.trees[to_array_index(FileIndex::First)].end;
 
     // Count nodes before pass7
-    tree_index current = ifc.node[header].next;
+    tree_index current = ifc.tree_state.node[header].next;
     int nodes_before = 0;
     while (current != trailer) {
         nodes_before++;
-        current = ifc.node[current].next;
+        current = ifc.tree_state.node[current].next;
     }
 
     // Run pass7 - it should handle trailer correctly
     ifc.pass7();
 
     // Verify pass7 completed without errors
-    current = ifc.node[header].next;
+    current = ifc.tree_state.node[header].next;
     int nodes_after = 0;
     while (current != trailer) {
         nodes_after++;
-        current = ifc.node[current].next;
+        current = ifc.tree_state.node[current].next;
     }
 
     // Should have processed correctly
@@ -159,12 +160,12 @@ TEST_F(Pass7, SingleCombination)
     ifc.pass7();
 
     // After pass7, adjacent segments should be combined if they're adjacent in both files
-    tree_index header = ifc.trees[FIRST_FILE].start;
-    tree_index current = ifc.node[header].next;
+    tree_index header = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index current = ifc.tree_state.node[header].next;
     int nodes_after = 0;
-    while (current != ifc.trees[FIRST_FILE].end) {
+    while (current != ifc.tree_state.trees[to_array_index(FileIndex::First)].end) {
         nodes_after++;
-        current = ifc.node[current].next;
+        current = ifc.tree_state.node[current].next;
     }
 
     // Should have at least combined some segments
@@ -187,20 +188,20 @@ TEST_F(Pass7, MultipleCombinations)
     ifc.pass7();
 
     // After pass7, all segments should be combined into one if they're all adjacent
-    tree_index header = ifc.trees[FIRST_FILE].start;
-    tree_index current = ifc.node[header].next;
+    tree_index header = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index current = ifc.tree_state.node[header].next;
     int nodes_after = 0;
-    while (current != ifc.trees[FIRST_FILE].end) {
+    while (current != ifc.tree_state.trees[to_array_index(FileIndex::First)].end) {
         nodes_after++;
-        current = ifc.node[current].next;
+        current = ifc.tree_state.node[current].next;
     }
 
     // Should have combined all segments (identical files, all adjacent)
     EXPECT_EQ(nodes_after, 1) << "Should have 1 combined segment after pass7";
 
     // The combined node should have cost equal to total lines
-    tree_index combined = ifc.node[header].next;
-    EXPECT_EQ(ifc.node[combined].cost, 4) << "Combined segment should have cost 4";
+    tree_index combined = ifc.tree_state.node[header].next;
+    EXPECT_EQ(ifc.tree_state.node[combined].cost, 4) << "Combined segment should have cost 4";
 }
 
 TEST_F(Pass7, NoCombination_DifferentStructure)
@@ -214,23 +215,23 @@ TEST_F(Pass7, NoCombination_DifferentStructure)
     ifc.pass5();
 
     // Count nodes before pass7
-    tree_index header = ifc.trees[FIRST_FILE].start;
-    tree_index current = ifc.node[header].next;
+    tree_index header = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index current = ifc.tree_state.node[header].next;
     int nodes_before = 0;
-    while (current != ifc.trees[FIRST_FILE].end) {
+    while (current != ifc.tree_state.trees[to_array_index(FileIndex::First)].end) {
         nodes_before++;
-        current = ifc.node[current].next;
+        current = ifc.tree_state.node[current].next;
     }
 
     // Run pass7
     ifc.pass7();
 
     // Should still have same number of nodes (no combination possible)
-    current = ifc.node[header].next;
+    current = ifc.tree_state.node[header].next;
     int nodes_after = 0;
-    while (current != ifc.trees[FIRST_FILE].end) {
+    while (current != ifc.tree_state.trees[to_array_index(FileIndex::First)].end) {
         nodes_after++;
-        current = ifc.node[current].next;
+        current = ifc.tree_state.node[current].next;
     }
     EXPECT_EQ(nodes_after, nodes_before) << "Should have same number of nodes (no combination)";
 }
@@ -254,12 +255,12 @@ TEST_F(Pass7, PartialCombination)
     // A and B should combine (adjacent in both files)
     // C and D should not combine (C is matched to X in file2, X and D are not adjacent in file2's
     // perspective)
-    tree_index header = ifc.trees[FIRST_FILE].start;
-    tree_index current = ifc.node[header].next;
+    tree_index header = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index current = ifc.tree_state.node[header].next;
     int nodes_after = 0;
-    while (current != ifc.trees[FIRST_FILE].end) {
+    while (current != ifc.tree_state.trees[to_array_index(FileIndex::First)].end) {
         nodes_after++;
-        current = ifc.node[current].next;
+        current = ifc.tree_state.node[current].next;
     }
 
     // Should have fewer nodes than before (A-B combined)
@@ -283,15 +284,17 @@ TEST_F(Pass7, SingleSegment)
     ifc.pass5();
 
     // Run pass7 (should be no-op)
-    tree_index header = ifc.trees[FIRST_FILE].start;
-    tree_index node1_before = ifc.node[header].next;
+    tree_index header = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index node1_before = ifc.tree_state.node[header].next;
 
     ifc.pass7();
 
     // Should still have one segment
-    tree_index node1_after = ifc.node[header].next;
+    tree_index node1_after = ifc.tree_state.node[header].next;
     EXPECT_EQ(node1_after, node1_before) << "Should have same node (no combination)";
-    EXPECT_EQ(ifc.trees[FIRST_FILE].end, ifc.trees[FIRST_FILE].end) << "Trailer unchanged";
+    EXPECT_EQ(ifc.tree_state.trees[to_array_index(FileIndex::First)].end,
+              ifc.tree_state.trees[to_array_index(FileIndex::First)].end)
+        << "Trailer unchanged";
 }
 
 TEST_F(Pass7, IdenticalFiles)
@@ -308,15 +311,16 @@ TEST_F(Pass7, IdenticalFiles)
     ifc.pass7();
 
     // All segments should be combined into one
-    tree_index header = ifc.trees[FIRST_FILE].start;
-    tree_index current = ifc.node[header].next;
+    tree_index header = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index current = ifc.tree_state.node[header].next;
     int nodes_after = 0;
-    while (current != ifc.trees[FIRST_FILE].end) {
+    while (current != ifc.tree_state.trees[to_array_index(FileIndex::First)].end) {
         nodes_after++;
-        current = ifc.node[current].next;
+        current = ifc.tree_state.node[current].next;
     }
     EXPECT_EQ(nodes_after, 1) << "All segments should combine to one";
-    EXPECT_EQ(ifc.node[ifc.node[header].next].cost, 5) << "Combined segment should have cost 5";
+    EXPECT_EQ(ifc.tree_state.node[ifc.tree_state.node[header].next].cost, 5)
+        << "Combined segment should have cost 5";
 }
 
 TEST_F(Pass7, WithUnmatchedSegments)
@@ -337,12 +341,12 @@ TEST_F(Pass7, WithUnmatchedSegments)
     // A-B and C should remain (as leaf nodes if no replacements)
     // pass7 should combine A-B if they're adjacent
 
-    tree_index header = ifc.trees[FIRST_FILE].start;
-    tree_index current = ifc.node[header].next;
+    tree_index header = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index current = ifc.tree_state.node[header].next;
     int nodes_after = 0;
-    while (current != ifc.trees[FIRST_FILE].end) {
+    while (current != ifc.tree_state.trees[to_array_index(FileIndex::First)].end) {
         nodes_after++;
-        current = ifc.node[current].next;
+        current = ifc.tree_state.node[current].next;
     }
 
     // Should have combined A-B if they're adjacent (both matched leaf nodes)
@@ -369,13 +373,13 @@ TEST_F(Pass7, AfterPass6_WithReplacements)
     ifc.pass7();
 
     // Verify structure is valid after pass7
-    tree_index header = ifc.trees[FIRST_FILE].start;
-    tree_index current = ifc.node[header].next;
+    tree_index header = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index current = ifc.tree_state.node[header].next;
     int node_count = 0;
-    while (current != ifc.trees[FIRST_FILE].end) {
+    while (current != ifc.tree_state.trees[to_array_index(FileIndex::First)].end) {
         node_count++;
         EXPECT_NE(current, NULL_NODE) << "Node should not be NULL";
-        current = ifc.node[current].next;
+        current = ifc.tree_state.node[current].next;
     }
 
     EXPECT_GT(node_count, 0) << "Should have at least one node";
@@ -396,13 +400,13 @@ TEST_F(Pass7, AfterPass6_WithInsertions)
     ifc.pass7();
 
     // Verify structure is valid after pass7
-    tree_index header = ifc.trees[FIRST_FILE].start;
-    tree_index current = ifc.node[header].next;
+    tree_index header = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index current = ifc.tree_state.node[header].next;
     int node_count = 0;
-    while (current != ifc.trees[FIRST_FILE].end) {
+    while (current != ifc.tree_state.trees[to_array_index(FileIndex::First)].end) {
         node_count++;
         EXPECT_NE(current, NULL_NODE) << "Node should not be NULL";
-        current = ifc.node[current].next;
+        current = ifc.tree_state.node[current].next;
     }
 
     EXPECT_GT(node_count, 0) << "Should have at least one node";
@@ -429,12 +433,12 @@ TEST_F(Pass7, AlternatingMatchedAndUnmatched)
     // A-B and C-D should remain (as leaf nodes if no replacements)
     // pass7 should combine A-B and C-D if they're adjacent
 
-    tree_index header = ifc.trees[FIRST_FILE].start;
-    tree_index current = ifc.node[header].next;
+    tree_index header = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index current = ifc.tree_state.node[header].next;
     int nodes_after = 0;
-    while (current != ifc.trees[FIRST_FILE].end) {
+    while (current != ifc.tree_state.trees[to_array_index(FileIndex::First)].end) {
         nodes_after++;
-        current = ifc.node[current].next;
+        current = ifc.tree_state.node[current].next;
     }
 
     // Should have combined A-B and C-D separately (both are adjacent matched segments)
@@ -460,12 +464,12 @@ TEST_F(Pass7, LargeNumberOfSegments)
     ifc.pass5();
 
     // Count nodes before pass7
-    tree_index header = ifc.trees[FIRST_FILE].start;
-    tree_index current = ifc.node[header].next;
+    tree_index header = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index current = ifc.tree_state.node[header].next;
     int nodes_before = 0;
-    while (current != ifc.trees[FIRST_FILE].end) {
+    while (current != ifc.tree_state.trees[to_array_index(FileIndex::First)].end) {
         nodes_before++;
-        current = ifc.node[current].next;
+        current = ifc.tree_state.node[current].next;
     }
     // pass5 groups consecutive matched lines, so we may have 1 segment already
     EXPECT_GE(nodes_before, 1) << "Should have at least 1 segment before pass7";
@@ -475,14 +479,15 @@ TEST_F(Pass7, LargeNumberOfSegments)
     ifc.pass7();
 
     // All segments should be combined into one (if they weren't already)
-    current = ifc.node[header].next;
+    current = ifc.tree_state.node[header].next;
     int nodes_after = 0;
-    while (current != ifc.trees[FIRST_FILE].end) {
+    while (current != ifc.tree_state.trees[to_array_index(FileIndex::First)].end) {
         nodes_after++;
-        current = ifc.node[current].next;
+        current = ifc.tree_state.node[current].next;
     }
     EXPECT_EQ(nodes_after, 1) << "Should have 1 combined segment after pass7";
-    EXPECT_EQ(ifc.node[ifc.node[header].next].cost, 20) << "Combined segment should have cost 20";
+    EXPECT_EQ(ifc.tree_state.node[ifc.tree_state.node[header].next].cost, 20)
+        << "Combined segment should have cost 20";
 }
 
 TEST_F(Pass7, BranchStructure_AfterPass6)
@@ -499,17 +504,17 @@ TEST_F(Pass7, BranchStructure_AfterPass6)
     ifc.pass6(); // Creates REPLACE (UNIQUE_OLD -> UNIQUE_NEW), creating branches
 
     // Run pass7 - it should work correctly even with branches
-    tree_index header = ifc.trees[FIRST_FILE].start;
-    tree_index current = ifc.node[header].next;
+    tree_index header = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index current = ifc.tree_state.node[header].next;
     ifc.pass7();
 
     // Verify structure
-    current = ifc.node[header].next;
+    current = ifc.tree_state.node[header].next;
     int nodes_after = 0;
-    while (current != ifc.trees[FIRST_FILE].end) {
+    while (current != ifc.tree_state.trees[to_array_index(FileIndex::First)].end) {
         nodes_after++;
         EXPECT_NE(current, NULL_NODE) << "Node should not be NULL";
-        current = ifc.node[current].next;
+        current = ifc.tree_state.node[current].next;
     }
 
     EXPECT_GE(nodes_after, 1) << "Should have at least 1 node after pass7";
@@ -534,12 +539,12 @@ TEST_F(Pass7, CombinedNodeIsBranch)
     ifc.pass5();
 
     // Count nodes before pass7
-    tree_index header = ifc.trees[FIRST_FILE].start;
-    tree_index current = ifc.node[header].next;
+    tree_index header = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index current = ifc.tree_state.node[header].next;
     int nodes_before = 0;
-    while (current != ifc.trees[FIRST_FILE].end) {
+    while (current != ifc.tree_state.trees[to_array_index(FileIndex::First)].end) {
         nodes_before++;
-        current = ifc.node[current].next;
+        current = ifc.tree_state.node[current].next;
     }
 
     // Run pass7 regardless of segments
@@ -551,11 +556,11 @@ TEST_F(Pass7, CombinedNodeIsBranch)
     // If multiple segments existed before, verify combination worked
     if (nodes_before > 1) {
         // Count nodes after pass7
-        current = ifc.node[header].next;
+        current = ifc.tree_state.node[header].next;
         int nodes_after = 0;
-        while (current != ifc.trees[FIRST_FILE].end) {
+        while (current != ifc.tree_state.trees[to_array_index(FileIndex::First)].end) {
             nodes_after++;
-            current = ifc.node[current].next;
+            current = ifc.tree_state.node[current].next;
         }
 
         // Should have fewer or equal nodes
@@ -575,20 +580,20 @@ TEST_F(Pass7, BothFilesCombined)
     ifc.pass7();
 
     // Both files should have combined nodes
-    tree_index header1 = ifc.trees[FIRST_FILE].start;
-    tree_index header2 = ifc.trees[SECOND_FILE].start;
+    tree_index header1 = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index header2 = ifc.tree_state.trees[to_array_index(FileIndex::Second)].start;
 
-    tree_index current1 = ifc.node[header1].next;
-    tree_index current2 = ifc.node[header2].next;
+    tree_index current1 = ifc.tree_state.node[header1].next;
+    tree_index current2 = ifc.tree_state.node[header2].next;
 
     int nodes1 = 0, nodes2 = 0;
-    while (current1 != ifc.trees[FIRST_FILE].end) {
+    while (current1 != ifc.tree_state.trees[to_array_index(FileIndex::First)].end) {
         nodes1++;
-        current1 = ifc.node[current1].next;
+        current1 = ifc.tree_state.node[current1].next;
     }
-    while (current2 != ifc.trees[SECOND_FILE].end) {
+    while (current2 != ifc.tree_state.trees[to_array_index(FileIndex::Second)].end) {
         nodes2++;
-        current2 = ifc.node[current2].next;
+        current2 = ifc.tree_state.node[current2].next;
     }
 
     EXPECT_EQ(nodes1, 1) << "File1 should have 1 combined node";
@@ -607,23 +612,24 @@ TEST_F(Pass7, CostPreservation)
     ifc.pass5();
 
     // Get costs before pass7
-    tree_index header = ifc.trees[FIRST_FILE].start;
-    tree_index node1 = ifc.node[header].next;
-    tree_index node2 = ifc.node[node1].next;
-    tree_index node3 = ifc.node[node2].next;
-    tree_index node4 = ifc.node[node3].next;
+    tree_index header = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index node1 = ifc.tree_state.node[header].next;
+    tree_index node2 = ifc.tree_state.node[node1].next;
+    tree_index node3 = ifc.tree_state.node[node2].next;
+    tree_index node4 = ifc.tree_state.node[node3].next;
 
-    int cost1 = ifc.node[node1].cost;
-    int cost2 = ifc.node[node2].cost;
-    int cost3 = ifc.node[node3].cost;
-    int cost4 = ifc.node[node4].cost;
+    int cost1 = ifc.tree_state.node[node1].cost;
+    int cost2 = ifc.tree_state.node[node2].cost;
+    int cost3 = ifc.tree_state.node[node3].cost;
+    int cost4 = ifc.tree_state.node[node4].cost;
     int total_cost = cost1 + cost2 + cost3 + cost4;
 
     ifc.pass7();
 
     // Combined node should have total cost
-    tree_index combined = ifc.node[header].next;
-    EXPECT_EQ(ifc.node[combined].cost, total_cost) << "Combined cost should equal sum of parts";
+    tree_index combined = ifc.tree_state.node[header].next;
+    EXPECT_EQ(ifc.tree_state.node[combined].cost, total_cost)
+        << "Combined cost should equal sum of parts";
 }
 
 // ============================================================================
@@ -646,12 +652,12 @@ TEST_F(Pass7, IteratorSafety_MultipleCombinations)
     ifc.pass7();
 
     // Should complete without errors and combine all nodes
-    tree_index header = ifc.trees[FIRST_FILE].start;
-    tree_index current = ifc.node[header].next;
+    tree_index header = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index current = ifc.tree_state.node[header].next;
     int nodes_after = 0;
-    while (current != ifc.trees[FIRST_FILE].end) {
+    while (current != ifc.tree_state.trees[to_array_index(FileIndex::First)].end) {
         nodes_after++;
-        current = ifc.node[current].next;
+        current = ifc.tree_state.node[current].next;
     }
     EXPECT_EQ(nodes_after, 1) << "Should combine all nodes correctly";
 }
@@ -675,33 +681,33 @@ TEST_F(Pass7, ComplexChanges_CombineAdjacentWithBranch)
     ifc.pass6();
 
     // Count nodes before pass7
-    tree_index header = ifc.trees[FIRST_FILE].start;
-    tree_index current = ifc.node[header].next;
+    tree_index header = ifc.tree_state.trees[to_array_index(FileIndex::First)].start;
+    tree_index current = ifc.tree_state.node[header].next;
     int nodes_before = 0;
-    while (current != ifc.trees[FIRST_FILE].end) {
+    while (current != ifc.tree_state.trees[to_array_index(FileIndex::First)].end) {
         nodes_before++;
-        current = ifc.node[current].next;
+        current = ifc.tree_state.node[current].next;
     }
 
     // Run pass7 - should combine adjacent nodes
     ifc.pass7();
 
     // Count nodes after pass7
-    current = ifc.node[header].next;
+    current = ifc.tree_state.node[header].next;
     int nodes_after = 0;
-    while (current != ifc.trees[FIRST_FILE].end) {
+    while (current != ifc.tree_state.trees[to_array_index(FileIndex::First)].end) {
         nodes_after++;
-        current = ifc.node[current].next;
+        current = ifc.tree_state.node[current].next;
     }
 
     // Should have fewer or equal nodes (pass7 combines when possible)
     EXPECT_LE(nodes_after, nodes_before) << "pass7 should not increase node count";
 
     // Verify structure after pass7 - should work correctly even with complex changes
-    current = ifc.node[header].next;
-    while (current != ifc.trees[FIRST_FILE].end) {
+    current = ifc.tree_state.node[header].next;
+    while (current != ifc.tree_state.trees[to_array_index(FileIndex::First)].end) {
         // All nodes should be valid
         EXPECT_NE(current, NULL_NODE) << "Node should not be NULL";
-        current = ifc.node[current].next;
+        current = ifc.tree_state.node[current].next;
     }
 }
