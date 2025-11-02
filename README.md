@@ -153,11 +153,12 @@ ifcomp/
 │   ├── test_complex_changes.cpp
 │   ├── test_permutation_changes.cpp
 │   └── test_much_writing.cpp
-├── rust/               # Rust implementation (experimental)
+├── rust/               # Rust implementation
 │   ├── src/
 │   │   ├── main.rs
 │   │   └── lib.rs
-│   └── tests/
+│   ├── tests/
+│   └── README.md
 ├── go/                 # Go implementation
 │   ├── main.go
 │   ├── types.go
@@ -178,12 +179,12 @@ $ ctest --verbose
 
 ## Implementation
 
-The primary implementation is in C++ (originally C), with an experimental Rust version in the `rust/` directory and a Go implementation in the `go/` directory. See [Theory.md](Theory.md) for implementation details.
+The primary implementation is in C++ (originally C), with a Rust version in the `rust/` directory and a Go implementation in the `go/` directory. See [Theory.md](Theory.md) for implementation details.
 
 ### Available Implementations
 
 - **C++**: Primary implementation (original C code, modern C++ refactoring)
-- **Rust**: Experimental Rust implementation in `rust/`
+- **Rust**: Rust language port in `rust/` - see [rust/README.md](rust/README.md) for details
 - **Go**: Go language port in `go/` - see [go/README.md](go/README.md) for details
 
 ## License
