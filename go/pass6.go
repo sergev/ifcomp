@@ -96,12 +96,8 @@ func (i *Ifcomp) eachLineInNode(noden TreeIndex, always bool, startingLine int, 
 // Count cosmetic and non-cosmetic lines in a node
 func (i *Ifcomp) countNode(noden TreeIndex, p *LineKinds) {
 	i.eachLineInNode(noden, false, 0, func(whichFile FileIndex, text string, lineno int) {
-		if len(text) > 0 {
-			// For now, no cosmetic lines
-			p.NonCosmetic++
-		} else {
-			p.Cosmetic++
-		}
+		// For now, no cosmetic lines (cosmetic_line always returns false in C++)
+		p.NonCosmetic++
 	})
 }
 
@@ -175,7 +171,6 @@ func (i *Ifcomp) deleteLines(noden TreeIndex) {
 	i.printTrailer()
 	i.countNode(noden, &i.Stats.DeleteStats)
 	i.detachNode(noden)
-	i.dumpTrees(99)
 }
 
 // Find first unique line in a node
@@ -256,29 +251,54 @@ func (i *Ifcomp) afterHeader(noden TreeIndex) {
 // Process and output a replacement operation
 func (i *Ifcomp) pass6ReplaceLines(node1, node2 TreeIndex) {
 	i.Stats.NChangeBlocks++
+	// Make the costs positive, indicating that the nodes now
+	// correspond to something in the other file.
+	i.TreeState.Node[node1].Cost = -i.TreeState.Node[node1].Cost
+	i.TreeState.Node[node2].Cost = -i.TreeState.Node[node2].Cost
+	i.countNode(node1, &i.Stats.Replace1Stats)
+	i.countNode(node2, &i.Stats.Replace2Stats)
 	i.afterHeader(i.TreeState.Node[node1].Prev)
 	i.printHeader1("REPLACE LINE(s)")
 	i.printNode(node1)
 	i.printHeader1("WITH LINE(s)")
 	i.printNode(node2)
 	i.printTrailer()
-	i.countNode(node1, &i.Stats.Replace1Stats)
-	i.countNode(node2, &i.Stats.Replace2Stats)
 	i.detachNode(node1)
 	i.detachNode(node2)
-	i.dumpTrees(99)
 }
 
 // Process and output an insertion operation
 func (i *Ifcomp) pass6InsertLines(noden TreeIndex) {
+	firstIdx := toArrayIndex(First)
+	secondIdx := toArrayIndex(Second)
 	i.Stats.NChangeBlocks++
-	i.afterHeader(i.TreeState.Node[noden].Prev)
-	i.printHeader1("INSERT LINE(s)")
-	i.printNode(noden)
-	i.printTrailer()
+	i.TreeState.Node[noden].Cost = -i.TreeState.Node[noden].Cost
 	i.countNode(noden, &i.Stats.InsertStats)
-	i.detachNode(noden)
-	i.dumpTrees(99)
+	prev := i.TreeState.Node[noden].Prev
+	if prev == i.TreeState.Trees[secondIdx].Start {
+		i.detachNode(noden)
+		i.TreeState.Node[i.TreeState.Trees[firstIdx].Start].BranchStart = noden
+		i.TreeState.Node[i.TreeState.Trees[firstIdx].Start].BranchEnd = noden
+		i.TreeState.Node[noden].Prev = i.TreeState.Trees[firstIdx].Start
+		i.TreeState.Node[noden].Next = i.TreeState.Trees[firstIdx].Start
+		i.printHeader("AFTER TOP")
+		i.printHeader1("INSERT LINE(s)")
+		i.printNode(i.TreeState.Trees[firstIdx].Start)
+	} else {
+		j := i.findNode(i.TreeState.Trees[firstIdx],
+			TreeIndex(i.FileState.FileLine[secondIdx][i.trueLineOf(prev)].Ptr0))
+		if j == NullNode {
+			i.detachNode(noden)
+			i.freeNode(noden)
+			i.Stats.NChangeBlocks--
+			return
+		}
+		i.afterLines(j)
+		i.printHeader1("INSERT LINE(s)")
+		i.printNode(noden)
+		i.combineNodes(j, noden)
+	}
+	i.printTrailer()
 }
 
 // Dump trees for debugging
@@ -335,7 +355,13 @@ func (i *Ifcomp) formatNode(noden TreeIndex, pad int) {
 	fileno := getWhichFile(L)
 	L = getAbsLine(L)
 	filenoIdx := toArrayIndex(fileno)
-	i.printf("(%d)", i.FileState.FileLine[filenoIdx][L].Ptr0)
+
+	// Check bounds before accessing FileLine - end nodes may have Linen beyond file bounds
+	if int(L) < len(i.FileState.FileLine[filenoIdx]) {
+		i.printf("(%d)", i.FileState.FileLine[filenoIdx][L].Ptr0)
+	} else {
+		i.printf("(end)")
+	}
 
 	if i.TreeState.Node[noden].BranchStart != NullNode || i.TreeState.Node[noden].BranchEnd != NullNode {
 		i.printf(" bs=%2d be=%2d", i.TreeState.Node[noden].BranchStart, i.TreeState.Node[noden].BranchEnd)
