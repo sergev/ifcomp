@@ -10,7 +10,7 @@ fn usage() -> TestResult {
         cargo_bin_cmd!("ifcomp")
             .arg(flag)
             .assert()
-            .stdout(predicate::str::contains("USAGE"));
+            .stdout(predicate::str::contains("Usage"));
     }
     Ok(())
 }

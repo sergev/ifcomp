@@ -130,69 +130,69 @@ pub struct Config {
 // Parse command line arguments and return the Config structure.
 //
 pub fn get_args() -> MyResult<Config> {
-    let matches = clap::App::new("ifcomp")
+    let matches = clap::Command::new("ifcomp")
         .version("0.1.0")
         .author("Serge Vakulenko <serge.vakulenko@gmail.com>")
         .about("Rust version of IFCOMP")
         .arg(
-            clap::Arg::with_name("stat")
+            clap::Arg::new("stat")
                 .long("stat")
-                .short("s")
+                .short('s')
                 .help("Print detailed memory usage statistics")
-                .takes_value(false),
+                .action(clap::ArgAction::SetTrue),
         )
         .arg(
-            clap::Arg::with_name("debug")
+            clap::Arg::new("debug")
                 .long("debug")
-                .short("d")
+                .short('d')
                 .help("Enable all debug output modes")
-                .takes_value(false),
+                .action(clap::ArgAction::SetTrue),
         )
         .arg(
-            clap::Arg::with_name("st")
+            clap::Arg::new("st")
                 .long("st")
                 .help("Enable symbol table debugging")
-                .takes_value(false),
+                .action(clap::ArgAction::SetTrue),
         )
         .arg(
-            clap::Arg::with_name("stfull")
+            clap::Arg::new("stfull")
                 .long("stfull")
                 .help("Enable full symbol table debugging")
-                .takes_value(false),
+                .action(clap::ArgAction::SetTrue),
         )
         .arg(
-            clap::Arg::with_name("trees")
+            clap::Arg::new("trees")
                 .long("trees")
                 .help("Enable tree structure debugging")
-                .takes_value(false),
+                .action(clap::ArgAction::SetTrue),
         )
         .arg(
-            clap::Arg::with_name("treesfull")
+            clap::Arg::new("treesfull")
                 .long("treesfull")
                 .help("Enable full tree structure debugging")
-                .takes_value(false),
+                .action(clap::ArgAction::SetTrue),
         )
         .arg(
-            clap::Arg::with_name("alloc")
+            clap::Arg::new("alloc")
                 .long("alloc")
                 .help("Enable memory allocation debugging")
-                .takes_value(false),
+                .action(clap::ArgAction::SetTrue),
         )
         .arg(
-            clap::Arg::with_name("nofree")
+            clap::Arg::new("nofree")
                 .long("nofree")
                 .help("Disable memory freeing (for debugging)")
-                .takes_value(false),
+                .action(clap::ArgAction::SetTrue),
         )
         .arg(
-            clap::Arg::with_name("first_file")
+            clap::Arg::new("first_file")
                 .value_name("FILE")
                 .help("First input file")
                 .required(true)
                 .index(1),
         )
         .arg(
-            clap::Arg::with_name("second_file")
+            clap::Arg::new("second_file")
                 .value_name("FILE")
                 .help("Second input file")
                 .required(true)
@@ -201,16 +201,16 @@ pub fn get_args() -> MyResult<Config> {
         .get_matches();
 
     Ok(Config {
-        first_file: matches.value_of("first_file").unwrap().to_string(),
-        second_file: matches.value_of("second_file").unwrap().to_string(),
-        debug_flag: matches.is_present("debug"),
-        statistics: matches.is_present("stat"),
-        debug_st: matches.is_present("st"),
-        debug_stfull: matches.is_present("stfull"),
-        debug_trees: matches.is_present("trees"),
-        debug_treesfull: matches.is_present("treesfull"),
-        debug_alloc: matches.is_present("alloc"),
-        debug_nofree: matches.is_present("nofree"),
+        first_file: matches.get_one::<String>("first_file").unwrap().to_string(),
+        second_file: matches.get_one::<String>("second_file").unwrap().to_string(),
+        debug_flag: matches.get_flag("debug"),
+        statistics: matches.get_flag("stat"),
+        debug_st: matches.get_flag("st"),
+        debug_stfull: matches.get_flag("stfull"),
+        debug_trees: matches.get_flag("trees"),
+        debug_treesfull: matches.get_flag("treesfull"),
+        debug_alloc: matches.get_flag("alloc"),
+        debug_nofree: matches.get_flag("nofree"),
     })
 }
 
