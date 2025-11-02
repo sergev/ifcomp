@@ -220,7 +220,6 @@ fn test_ifcomp_no_trailing_newline() -> TestResult {
 }
 
 // Test case with deletes, moves and replacements
-// TODO: Enable when pass7 bug is fixed
 #[test]
 fn test_ifcomp_complex_changes() -> TestResult {
     let output = run_ifcomp(
@@ -232,7 +231,6 @@ fn test_ifcomp_complex_changes() -> TestResult {
 }
 
 // Test case with deletes, moves and replacements
-// TODO: Enable when pass7 bug is fixed
 #[test]
 fn test_ifcomp_permutation_changes() -> TestResult {
     let output = run_ifcomp(
@@ -244,7 +242,6 @@ fn test_ifcomp_permutation_changes() -> TestResult {
 }
 
 // Test case from the NASA paper
-// TODO: Enable when pass7 bug is fixed
 #[test]
 fn test_ifcomp_much_writing_example() -> TestResult {
     let file_a = "a\nmass\nof\nlatin\nwords\nfalls\nupon\nthe\nrelevant\nfacts\nlike\nsoft\nsnow\n,\ncovering\nup\nthe\ndetails\n.\n";
@@ -925,4 +922,3 @@ fn test_ifcomp_change_every_other_line() -> TestResult {
     assert_statistics(&output, 0, 0, 3, 3, 0, 3);
     Ok(())
 }
-

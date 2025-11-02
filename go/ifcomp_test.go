@@ -186,7 +186,6 @@ func TestIfcomp_NoTrailingNewline(t *testing.T) {
 }
 
 // Test case with deletes, moves and replacements
-// TODO: Enable when pass7 bug is fixed
 func TestIfcomp_ComplexChanges(t *testing.T) {
 
 	output := runIfcomp("A\nX\nC\nY\nD\nW\nE\nA\nB\nE\n", "A\nB\nC\nD\nE\n")
@@ -194,7 +193,6 @@ func TestIfcomp_ComplexChanges(t *testing.T) {
 }
 
 // Test case with deletes, moves and replacements
-// TODO: Enable when pass7 bug is fixed
 func TestIfcomp_PermutationChanges(t *testing.T) {
 
 	output := runIfcomp("A\nB\nC\nD\nE\nG\n", "D\nE\nF\nG\nA\nC\n")
@@ -202,7 +200,6 @@ func TestIfcomp_PermutationChanges(t *testing.T) {
 }
 
 // Test case from the NASA paper
-// TODO: Enable when pass7 bug is fixed
 func TestIfcomp_MuchWritingExample(t *testing.T) {
 
 	fileA := "a\nmass\nof\nlatin\nwords\nfalls\nupon\nthe\nrelevant\nfacts\nlike\nsoft\nsnow\n,\ncovering\nup\nthe\ndetails\n.\n"
