@@ -94,23 +94,15 @@ Comparing: file1.txt file2.txt
 
 ## Build
 
-### Using Make
-
-On Mac:
 ```bash
-$ brew install cmocka
-$ make
-```
-
-On Ubuntu:
-```bash
-$ sudo apt install libcmocka-dev
 $ make
 ```
 
 Run tests:
 ```bash
 $ make test
+# Or with CMake
+$ ctest --test-dir build/tests
 ```
 
 Other Make targets:
@@ -118,65 +110,58 @@ Other Make targets:
 - `make clean`: Remove build directory
 - `make reindent`: Format code with clang-format
 
-### Using CMake
-
-CMake is supported with C11 and C++17 standards:
-
-```bash
-$ mkdir build && cd build
-$ cmake ..
-$ cmake --build .
-```
-
-Run tests:
-```bash
-$ ctest --verbose
-```
-
-Or build in Debug mode:
-```bash
-$ cmake -DCMAKE_BUILD_TYPE=Debug ..
-$ cmake --build .
-```
-
-On Mac, cmocka is detected automatically via Homebrew. On Ubuntu, install `libcmocka-dev`.
-
 ### Project Structure
 
 ```
 ifcomp/
-├── main.c              # Main entry point and command-line parsing
-├── ifcomp.c            # Core algorithm implementation (1376 lines)
+├── main.cpp            # Main entry point and command-line parsing
+├── ifcomp.cpp          # Core algorithm implementation
 ├── ifcomp.h            # Header file with public API
-├── unit_tests.c        # Unit tests
+├── pass1.cpp - pass8.cpp  # Algorithm pass implementations
+├── Makefile            # Make build configuration
+├── CMakeLists.txt      # CMake build configuration
 ├── Theory.md           # Detailed algorithm theory and documentation
+├── calculate_coverage.py  # Test coverage calculation script
 ├── tests/              # GoogleTest-based C++ tests
+│   ├── CMakeLists.txt
+│   ├── test_helpers.h
+│   ├── ifcomp_driver.h
 │   ├── test_identical_files.cpp
 │   ├── test_complex_changes.cpp
 │   ├── test_permutation_changes.cpp
-│   └── test_much_writing.cpp
+│   ├── test_much_writing.cpp
+│   ├── test_cli.cpp
+│   ├── test_file_io_errors.cpp
+│   ├── test_pass1.cpp - test_pass8.cpp
+│   └── test_*.cpp      # Additional test files
 ├── rust/               # Rust implementation
+│   ├── Cargo.toml
 │   ├── src/
 │   │   ├── main.rs
-│   │   └── lib.rs
+│   │   ├── lib.rs
+│   │   ├── types.rs
+│   │   └── pass1.rs - pass8.rs
 │   ├── tests/
+│   │   ├── cli.rs
+│   │   ├── integration_test.rs
+│   │   └── pass1_test.rs - pass8_test.rs
 │   └── README.md
 ├── go/                 # Go implementation
+│   ├── go.mod
 │   ├── main.go
 │   ├── types.go
 │   ├── pass1.go - pass8.go
+│   ├── pass1_test.go - pass8_test.go
 │   ├── ifcomp_test.go
 │   └── README.md
-└── CMakeLists.txt      # CMake build configuration
-```
-
-## Testing
-
-Run tests:
-```bash
-$ make test
-# Or with CMake
-$ ctest --verbose
+├── legacy/             # Original C implementation
+│   ├── main.c
+│   ├── ifcomp.c
+│   ├── ifcomp.h
+│   ├── unit_tests.c
+│   ├── Makefile
+│   └── README.md
+└── MIT-LICENSE         # License file
 ```
 
 ## Implementation
@@ -185,9 +170,10 @@ The primary implementation is in C++ (originally C), with a Rust version in the 
 
 ### Available Implementations
 
-- **C++**: Primary implementation (original C code, modern C++ refactoring)
+- **C++**: Primary implementation (modern C++ refactoring)
 - **Rust**: Rust language port in `rust/` - see [rust/README.md](rust/README.md) for details
 - **Go**: Go language port in `go/` - see [go/README.md](go/README.md) for details
+- **C**: Original C code, ported from XPL
 
 ## License
 
