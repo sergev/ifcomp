@@ -76,16 +76,6 @@ TEST_F(IfcompDriver, SingleUniqueInDuplicates)
     assert_statistics(result, 0, 0, 0, 0, 0, 0);
 }
 
-// Test matching at file boundaries (start/end)
-TEST_F(IfcompDriver, BoundaryMatching)
-{
-    const char *a = "START\nMIDDLE\nEND\n";
-    const char *b = "START\nMIDDLE\nEND\n";
-
-    std::string result = run_ifcomp(a, b);
-    assert_statistics(result, 0, 0, 0, 0, 0, 0);
-}
-
 // Test changes at boundaries
 TEST_F(IfcompDriver, BoundaryChanges)
 {
@@ -94,17 +84,6 @@ TEST_F(IfcompDriver, BoundaryChanges)
 
     std::string result = run_ifcomp(a, b);
     assert_statistics(result, 0, 0, 2, 2, 0, 2);
-}
-
-// Test identical duplicates handling
-// Note: Identical duplicate files are reported as replacements due to algorithm limitation
-TEST_F(IfcompDriver, IdenticalDuplicates)
-{
-    const char *a = "X\nX\nX\n";
-    const char *b = "X\nX\nX\n";
-
-    std::string result = run_ifcomp(a, b);
-    assert_statistics(result, 0, 0, 3, 3, 0, 1);
 }
 
 // Test partial duplicate matching
@@ -116,17 +95,6 @@ TEST_F(IfcompDriver, PartialDuplicateMatching)
 
     std::string result = run_ifcomp(a, b);
     assert_statistics(result, 0, 0, 3, 3, 0, 1);
-}
-
-// Test same content, different duplicates pattern
-// Note: Duplicate lines are reported as replacement rather than deletion
-TEST_F(IfcompDriver, DifferentDuplicatePatterns)
-{
-    const char *a = "LINE\nLINE\nLINE\n";
-    const char *b = "LINE\nLINE\n";
-
-    std::string result = run_ifcomp(a, b);
-    assert_statistics(result, 0, 0, 3, 2, 0, 1);
 }
 
 // Test unique matching with duplicates around

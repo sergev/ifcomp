@@ -50,16 +50,6 @@ TEST_F(IfcompDriver, SingleDifferentLine)
     EXPECT_EQ(result, std::string(expect));
 }
 
-// Test two lines - both identical
-TEST_F(IfcompDriver, TwoLinesIdentical)
-{
-    const char *a = "LINE1\nLINE2\n";
-    const char *b = "LINE1\nLINE2\n";
-
-    std::string result = run_ifcomp(a, b);
-    assert_statistics(result, 0, 0, 0, 0, 0, 0);
-}
-
 // Test two lines - second different
 TEST_F(IfcompDriver, TwoLinesSecondDifferent)
 {

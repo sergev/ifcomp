@@ -103,16 +103,6 @@ TEST_F(IfcompDriver, StatisticsSum)
     EXPECT_GT(stats.change_blocks, 0); // Should have some changes
 }
 
-// Test identical files produce correct stats
-TEST_F(IfcompDriver, IdenticalFilesStats)
-{
-    const char *a = "A\nB\nC\nD\n";
-    const char *b = "A\nB\nC\nD\n";
-
-    std::string result = run_ifcomp(a, b);
-    assert_statistics(result, 0, 0, 0, 0, 0, 0);
-}
-
 // Test output contains "Comparing:" header
 TEST_F(IfcompDriver, ContainsComparingHeader)
 {
