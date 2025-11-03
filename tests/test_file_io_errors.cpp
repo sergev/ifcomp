@@ -15,7 +15,7 @@ public:
     }
 
     std::ostringstream output;
-    Ifcomp ifc{output};
+    Ifcomp ifc{ output };
 };
 
 // Test file not found - first file doesn't exist
@@ -29,11 +29,7 @@ TEST_F(FileIOErrorTest, FirstFileNotFound)
     f << "test\n";
     f.close();
 
-    EXPECT_THROW(
-        {
-            ifc.compare(nonexistent_file, existing_file);
-        },
-        std::runtime_error);
+    EXPECT_THROW({ ifc.compare(nonexistent_file, existing_file); }, std::runtime_error);
 
     // Verify exception message contains expected text
     try {
@@ -59,11 +55,7 @@ TEST_F(FileIOErrorTest, SecondFileNotFound)
     f << "test\n";
     f.close();
 
-    EXPECT_THROW(
-        {
-            ifc.compare(existing_file, nonexistent_file);
-        },
-        std::runtime_error);
+    EXPECT_THROW({ ifc.compare(existing_file, nonexistent_file); }, std::runtime_error);
 
     // Verify exception message contains expected text
     try {
@@ -84,11 +76,7 @@ TEST_F(FileIOErrorTest, BothFilesNotFound)
     const char *nonexistent_file1 = "/nonexistent/path/to/file1.txt";
     const char *nonexistent_file2 = "/nonexistent/path/to/file2.txt";
 
-    EXPECT_THROW(
-        {
-            ifc.compare(nonexistent_file1, nonexistent_file2);
-        },
-        std::runtime_error);
+    EXPECT_THROW({ ifc.compare(nonexistent_file1, nonexistent_file2); }, std::runtime_error);
 
     // Verify exception message contains expected text
     try {
@@ -113,11 +101,7 @@ TEST_F(FileIOErrorTest, FirstFileEmptyString)
     f << "test\n";
     f.close();
 
-    EXPECT_THROW(
-        {
-            ifc.compare(empty_file, existing_file);
-        },
-        std::runtime_error);
+    EXPECT_THROW({ ifc.compare(empty_file, existing_file); }, std::runtime_error);
 
     // Cleanup
     unlink(existing_file);
@@ -134,11 +118,7 @@ TEST_F(FileIOErrorTest, SecondFileEmptyString)
     f << "test\n";
     f.close();
 
-    EXPECT_THROW(
-        {
-            ifc.compare(existing_file, empty_file);
-        },
-        std::runtime_error);
+    EXPECT_THROW({ ifc.compare(existing_file, empty_file); }, std::runtime_error);
 
     // Cleanup
     unlink(existing_file);
@@ -155,11 +135,7 @@ TEST_F(FileIOErrorTest, FirstFileIsDirectory)
     f << "test\n";
     f.close();
 
-    EXPECT_THROW(
-        {
-            ifc.compare(dir_path, existing_file);
-        },
-        std::runtime_error);
+    EXPECT_THROW({ ifc.compare(dir_path, existing_file); }, std::runtime_error);
 
     // Cleanup
     unlink(existing_file);
@@ -176,11 +152,7 @@ TEST_F(FileIOErrorTest, SecondFileIsDirectory)
     f << "test\n";
     f.close();
 
-    EXPECT_THROW(
-        {
-            ifc.compare(existing_file, dir_path);
-        },
-        std::runtime_error);
+    EXPECT_THROW({ ifc.compare(existing_file, dir_path); }, std::runtime_error);
 
     // Cleanup
     unlink(existing_file);
@@ -203,11 +175,7 @@ TEST_F(FileIOErrorTest, VeryLongPathName)
     f << "test\n";
     f.close();
 
-    EXPECT_THROW(
-        {
-            ifc.compare(long_path.c_str(), existing_file);
-        },
-        std::runtime_error);
+    EXPECT_THROW({ ifc.compare(long_path.c_str(), existing_file); }, std::runtime_error);
 
     // Cleanup
     unlink(existing_file);
@@ -241,4 +209,3 @@ TEST_F(FileIOErrorTest, ErrorMessageFormat)
     // Cleanup
     unlink(existing_file);
 }
-

@@ -1,4 +1,6 @@
+#include <fcntl.h>
 #include <gtest/gtest.h>
+#include <unistd.h>
 
 #include <cstdlib>
 #include <cstring>
@@ -7,6 +9,11 @@
 #include <string>
 
 #include "ifcomp.h"
+
+// Verify BUILD_DIR is defined by CMake
+#ifndef BUILD_DIR
+#error BUILD_DIR must be defined by CMake. Add it in tests/CMakeLists.txt with target_compile_definitions.
+#endif
 
 // Test fixture for CLI-related tests
 class CLITest : public ::testing::Test {
@@ -29,9 +36,9 @@ public:
     void create_test_file(const char *fname, const char *content)
     {
         std::ofstream f(fname);
-        if (f) {
-            f << content;
-        }
+        ASSERT_TRUE(f.good()) << "Failed to create test file: " << fname;
+        f << content;
+        ASSERT_TRUE(f.good()) << "Failed to write to test file: " << fname;
         f.close();
     }
 
@@ -49,8 +56,7 @@ TEST_F(CLITest, DebugFlagST)
     EXPECT_FALSE(ifc.debug_dump_trees);
 
     // Run comparison with debug flag set
-    ifc.compare("cli_test_a.txt", "cli_test_b.txt");
-    // Should not throw
+    EXPECT_NO_THROW({ ifc.compare("cli_test_a.txt", "cli_test_b.txt"); });
 }
 
 // Test debug flag -stfull
@@ -64,7 +70,7 @@ TEST_F(CLITest, DebugFlagSTFull)
     EXPECT_FALSE(ifc.debug_dump_trees);
 
     // Run comparison with debug flag set
-    ifc.compare("cli_test_a.txt", "cli_test_b.txt");
+    EXPECT_NO_THROW({ ifc.compare("cli_test_a.txt", "cli_test_b.txt"); });
 }
 
 // Test debug flag -trees
@@ -78,7 +84,7 @@ TEST_F(CLITest, DebugFlagTrees)
     EXPECT_FALSE(ifc.debug_syt);
 
     // Run comparison with debug flag set
-    ifc.compare("cli_test_a.txt", "cli_test_b.txt");
+    EXPECT_NO_THROW({ ifc.compare("cli_test_a.txt", "cli_test_b.txt"); });
 }
 
 // Test debug flag -treesfull
@@ -92,7 +98,7 @@ TEST_F(CLITest, DebugFlagTreesFull)
     EXPECT_FALSE(ifc.debug_syt);
 
     // Run comparison with debug flag set
-    ifc.compare("cli_test_a.txt", "cli_test_b.txt");
+    EXPECT_NO_THROW({ ifc.compare("cli_test_a.txt", "cli_test_b.txt"); });
 }
 
 // Test debug flag -alloc
@@ -106,7 +112,7 @@ TEST_F(CLITest, DebugFlagAlloc)
     EXPECT_FALSE(ifc.debug_dump_trees);
 
     // Run comparison with debug flag set
-    ifc.compare("cli_test_a.txt", "cli_test_b.txt");
+    EXPECT_NO_THROW({ ifc.compare("cli_test_a.txt", "cli_test_b.txt"); });
 }
 
 // Test debug flag -nofree
@@ -120,7 +126,7 @@ TEST_F(CLITest, DebugFlagNoFree)
     EXPECT_FALSE(ifc.debug_dump_trees);
 
     // Run comparison with debug flag set
-    ifc.compare("cli_test_a.txt", "cli_test_b.txt");
+    EXPECT_NO_THROW({ ifc.compare("cli_test_a.txt", "cli_test_b.txt"); });
 }
 
 // Test debug flag -debug (sets all debug flags)
@@ -140,14 +146,14 @@ TEST_F(CLITest, DebugFlagDebug)
     EXPECT_TRUE(ifc.debug_dump_trees_full);
 
     // Run comparison with all debug flags set
-    ifc.compare("cli_test_a.txt", "cli_test_b.txt");
+    EXPECT_NO_THROW({ ifc.compare("cli_test_a.txt", "cli_test_b.txt"); });
 }
 
 // Test statistics flag -stat
 TEST_F(CLITest, StatisticsFlag)
 {
     Ifcomp ifc(output);
-    ifc.compare("cli_test_a.txt", "cli_test_b.txt");
+    EXPECT_NO_THROW({ ifc.compare("cli_test_a.txt", "cli_test_b.txt"); });
 
     // Test that print_statistics can be called
     ifc.print_statistics();
@@ -170,14 +176,14 @@ TEST_F(CLITest, MultipleDebugFlags)
     EXPECT_TRUE(ifc.debug_alloc);
 
     // Run comparison with multiple flags set
-    ifc.compare("cli_test_a.txt", "cli_test_b.txt");
+    EXPECT_NO_THROW({ ifc.compare("cli_test_a.txt", "cli_test_b.txt"); });
 }
 
 // Test valid two-file comparison (CLI-style)
 TEST_F(CLITest, ValidTwoFileComparison)
 {
     Ifcomp ifc(output);
-    ifc.compare("cli_test_a.txt", "cli_test_b.txt");
+    EXPECT_NO_THROW({ ifc.compare("cli_test_a.txt", "cli_test_b.txt"); });
 
     std::string result = output.str();
     // Should contain comparison output
@@ -218,34 +224,53 @@ TEST_F(CLITest, StatisticsOutputFormat)
 // This tests actual CLI execution
 std::string run_cli_command(const std::string &args)
 {
-    std::string command = "./build/ifcomp " + args + " 2>&1";
-    FILE *pipe = popen(command.c_str(), "r");
-    if (!pipe) {
+    // Use BUILD_DIR from CMake compile definition to find the ifcomp binary and test directory
+    std::string binary_path = std::string(BUILD_DIR) + "/ifcomp";
+    std::string test_dir = std::string(BUILD_DIR) + "/tests";
+
+    // Use a temporary file to capture output
+    char tmpfile_template[] = "/tmp/ifcomp_test_XXXXXX";
+    int tmpfd = mkstemp(tmpfile_template);
+    if (tmpfd < 0) {
         return "";
     }
+    close(tmpfd);
+    std::string tmpfile = tmpfile_template;
 
-    char buffer[128];
-    std::string result = "";
-    while (fgets(buffer, sizeof(buffer), pipe) != nullptr) {
-        result += buffer;
+    // Change to test directory (where test files are created) before running
+    // Quote paths to handle spaces
+    std::string command = "(cd \"" + test_dir + "\" && \"" + binary_path + "\" " + args + ") > \"" +
+                          tmpfile + "\" 2>&1";
+    int status = system(command.c_str());
+    (void)status; // Ignore status for now
+
+    // Read the output from the temporary file
+    std::ifstream in(tmpfile);
+    std::string result;
+    if (in) {
+        std::ostringstream ss;
+        ss << in.rdbuf();
+        result = ss.str();
     }
-    pclose(pipe);
+    in.close();
+    unlink(tmpfile.c_str());
+
     return result;
 }
 
 // Test CLI help output (requires binary to be built)
 // Note: This test may be skipped if binary is not available
-TEST_F(CLITest, DISABLED_CLIHelpOutput)
+TEST_F(CLITest, CLIHelpOutput)
 {
     // This test requires the ifcomp binary to be built
     // It's disabled by default but can be enabled when binary exists
     std::string output = run_cli_command("-invalid_flag");
-    // Help should contain "Usage"
+    // Help should contain "Usage is:" (help() outputs "Usage is: ...")
     EXPECT_NE(output.find("Usage"), std::string::npos);
 }
 
 // Test CLI with missing arguments (requires binary)
-TEST_F(CLITest, DISABLED_CLIMissingArguments)
+TEST_F(CLITest, CLIMissingArguments)
 {
     std::string output = run_cli_command("");
     // Should show help or error
@@ -253,7 +278,7 @@ TEST_F(CLITest, DISABLED_CLIMissingArguments)
 }
 
 // Test CLI with too many arguments (requires binary)
-TEST_F(CLITest, DISABLED_CLITooManyArguments)
+TEST_F(CLITest, CLITooManyArguments)
 {
     std::string output = run_cli_command("file1.txt file2.txt file3.txt");
     // Should show help or error
@@ -261,11 +286,10 @@ TEST_F(CLITest, DISABLED_CLITooManyArguments)
 }
 
 // Test CLI with valid arguments (requires binary)
-TEST_F(CLITest, DISABLED_CLIValidArguments)
+TEST_F(CLITest, CLIValidArguments)
 {
     std::string output = run_cli_command("cli_test_a.txt cli_test_b.txt");
     // Should show comparison output
     EXPECT_FALSE(output.empty());
     EXPECT_NE(output.find("Comparing:"), std::string::npos);
 }
-

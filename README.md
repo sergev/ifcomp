@@ -1,6 +1,6 @@
 # Text File Comparator (IFCOMP)
 
-**C++ Test Coverage: 91.7% (360 tests)**
+**C++ Test Coverage: 91.7% (359 tests)**
 
 File Comparator program IFCOMP is a sophisticated text file comparator originally designed for IBM OS/VS compatible systems. IFCOMP accepts as input two text files and produces a listing of their differences in pseudo-update form, making it highly useful for monitoring changes made to software at the source code level.
 

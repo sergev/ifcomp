@@ -54,6 +54,12 @@ set_tests_properties(test_ifcomp PROPERTIES TIMEOUT 60)
 # Include parent directory for ifcomp.h
 target_include_directories(test_ifcomp PRIVATE ${CMAKE_SOURCE_DIR})
 
+# Pass build directory path to the test executable
+# This allows tests to find the ifcomp binary
+target_compile_definitions(test_ifcomp PRIVATE
+    BUILD_DIR="${CMAKE_BINARY_DIR}"
+)
+
 # Use C17 standard for C++ compilation
 set_target_properties(test_ifcomp PROPERTIES
     CXX_STANDARD 17
