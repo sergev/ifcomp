@@ -8,33 +8,19 @@
 // Test files with 1000 lines
 TEST_F(IfcompDriver, ThousandLines)
 {
-    std::ostringstream a, b;
-    for (int i = 1; i <= 1000; i++) {
-        a << "line" << i << "\n";
-        b << "line" << i << "\n";
-    }
-
-    std::string result = run_ifcomp(a.str().c_str(), b.str().c_str());
-    assert_statistics(result, 0, 0, 0, 0, 0, 0);
+    std::string content = generate_sequential_lines(1, 1000, "line");
+    std::string result = run_ifcomp(content.c_str(), content.c_str());
+    assert_identical_files(result);
 }
 
 // Test 100 unique lines repeated in different orders
 // Note: Duplicate lines prevent proper matching - reported as replacement
 TEST_F(IfcompDriver, HundredUniqueRepeated)
 {
-    std::ostringstream a, b;
-    // Create 100 unique lines
-    for (int i = 1; i <= 100; i++) {
-        a << "unique" << i << "\n";
-        b << "unique" << i << "\n";
-    }
-    // Repeat them
-    for (int i = 1; i <= 100; i++) {
-        a << "unique" << i << "\n";
-        b << "unique" << i << "\n";
-    }
-
-    std::string result = run_ifcomp(a.str().c_str(), b.str().c_str());
+    std::string first_100 = generate_sequential_lines(1, 100, "unique");
+    std::string second_100 = generate_sequential_lines(1, 100, "unique");
+    std::string content = first_100 + second_100;
+    std::string result = run_ifcomp(content.c_str(), content.c_str());
     assert_statistics(result, 0, 0, 200, 200, 0, 1);
 }
 
@@ -60,37 +46,32 @@ TEST_F(IfcompDriver, LargeFileWithScatteredChanges)
 // Test large identical sections with small differences
 TEST_F(IfcompDriver, LargeIdenticalSectionsWithDifferences)
 {
-    std::ostringstream a, b;
     // Section 1: identical
-    for (int i = 1; i <= 500; i++) {
-        a << "identical" << i << "\n";
-        b << "identical" << i << "\n";
-    }
+    std::string section1 = generate_sequential_lines(1, 500, "identical");
     // Section 2: different
-    a << "DIFFERENT_A\n";
-    b << "DIFFERENT_B\n";
+    std::string a_section2 = "DIFFERENT_A\n";
+    std::string b_section2 = "DIFFERENT_B\n";
     // Section 3: identical again
-    for (int i = 501; i <= 1000; i++) {
-        a << "identical" << i << "\n";
-        b << "identical" << i << "\n";
-    }
+    std::string section3 = generate_sequential_lines(501, 1000, "identical");
 
-    std::string result = run_ifcomp(a.str().c_str(), b.str().c_str());
+    std::string a = section1 + a_section2 + section3;
+    std::string b = section1 + b_section2 + section3;
+    std::string result = run_ifcomp(a.c_str(), b.c_str());
     assert_statistics(result, 0, 0, 1, 1, 0, 1);
 }
 
 // Test large deletions
 TEST_F(IfcompDriver, LargeDeletions)
 {
-    std::ostringstream a, b;
+    std::string a = generate_sequential_lines(1, 1000, "line");
+    std::ostringstream b;
     for (int i = 1; i <= 1000; i++) {
-        a << "line" << i << "\n";
         if (i % 2 == 0) { // Only even lines in b
             b << "line" << i << "\n";
         }
     }
 
-    std::string result = run_ifcomp(a.str().c_str(), b.str().c_str());
+    std::string result = run_ifcomp(a.c_str(), b.str().c_str());
     // 500 deletions
     assert_statistics(result, 500, 0, 0, 0, 0, 500);
 }
@@ -98,15 +79,15 @@ TEST_F(IfcompDriver, LargeDeletions)
 // Test large insertions
 TEST_F(IfcompDriver, LargeInsertions)
 {
-    std::ostringstream a, b;
+    std::ostringstream a;
     for (int i = 1; i <= 1000; i++) {
         if (i % 2 == 0) { // Only even lines in a
             a << "line" << i << "\n";
         }
-        b << "line" << i << "\n";
     }
+    std::string b = generate_sequential_lines(1, 1000, "line");
 
-    std::string result = run_ifcomp(a.str().c_str(), b.str().c_str());
+    std::string result = run_ifcomp(a.str().c_str(), b.c_str());
     // 500 insertions
     assert_statistics(result, 0, 500, 0, 0, 0, 500);
 }
@@ -114,14 +95,9 @@ TEST_F(IfcompDriver, LargeInsertions)
 // Test very large file with 5000 lines
 TEST_F(IfcompDriver, FiveThousandLines)
 {
-    std::ostringstream a, b;
-    for (int i = 1; i <= 5000; i++) {
-        a << "line" << i << "\n";
-        b << "line" << i << "\n";
-    }
-
-    std::string result = run_ifcomp(a.str().c_str(), b.str().c_str());
-    assert_statistics(result, 0, 0, 0, 0, 0, 0);
+    std::string content = generate_sequential_lines(1, 5000, "line");
+    std::string result = run_ifcomp(content.c_str(), content.c_str());
+    assert_identical_files(result);
 }
 
 // Test alternating pattern in large file

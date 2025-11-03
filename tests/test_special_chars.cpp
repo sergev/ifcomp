@@ -12,7 +12,7 @@ TEST_F(IfcompDriver, LinesWithTabs)
     const char *b = "\tLINE1\nLINE2\t\n";
 
     std::string result = run_ifcomp(a, b);
-    assert_statistics(result, 0, 0, 0, 0, 0, 0);
+    assert_identical_files(result);
 }
 
 // Test lines with multiple spaces
@@ -22,7 +22,7 @@ TEST_F(IfcompDriver, LinesWithMultipleSpaces)
     const char *b = "LINE    WITH    SPACES\n";
 
     std::string result = run_ifcomp(a, b);
-    assert_statistics(result, 0, 0, 0, 0, 0, 0);
+    assert_identical_files(result);
 }
 
 // Test ASCII control characters
@@ -34,7 +34,7 @@ TEST_F(IfcompDriver, ASCIIControlChars)
     b << "LINE" << (char)1 << "CONTROL\n";
 
     std::string result = run_ifcomp(a.str().c_str(), b.str().c_str());
-    assert_statistics(result, 0, 0, 0, 0, 0, 0);
+    assert_identical_files(result);
 }
 
 // Test mix of special characters
@@ -50,7 +50,7 @@ TEST_F(IfcompDriver, MixedSpecialChars)
         "`~-_=+\n";
 
     std::string result = run_ifcomp(a, b);
-    assert_statistics(result, 0, 0, 0, 0, 0, 0);
+    assert_identical_files(result);
 }
 
 // Test UTF-8 multibyte characters
@@ -66,7 +66,7 @@ TEST_F(IfcompDriver, UTF8MultibyteChars)
         "Привет\n";
 
     std::string result = run_ifcomp(a, b);
-    assert_statistics(result, 0, 0, 0, 0, 0, 0);
+    assert_identical_files(result);
 }
 
 // Test UTF-8 with differences
@@ -90,7 +90,7 @@ TEST_F(IfcompDriver, BackslashHandling)
         "C:\\Windows\\System\n";
 
     std::string result = run_ifcomp(a, b);
-    assert_statistics(result, 0, 0, 0, 0, 0, 0);
+    assert_identical_files(result);
 }
 
 // Test quotes and apostrophes
@@ -106,7 +106,7 @@ TEST_F(IfcompDriver, QuotesAndApostrophes)
         "it's a test\n";
 
     std::string result = run_ifcomp(a, b);
-    assert_statistics(result, 0, 0, 0, 0, 0, 0);
+    assert_identical_files(result);
 }
 
 // Test numeric strings
@@ -122,7 +122,7 @@ TEST_F(IfcompDriver, NumericStrings)
         "3.14159\n";
 
     std::string result = run_ifcomp(a, b);
-    assert_statistics(result, 0, 0, 0, 0, 0, 0);
+    assert_identical_files(result);
 }
 
 // Test lines with carriage returns (CRLF vs LF)

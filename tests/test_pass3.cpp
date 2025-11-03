@@ -4,22 +4,13 @@
 #include <string>
 
 #include "../ifcomp.h"
+#include "test_helpers.h"
 
 // Test fixture that properly initializes and cleans up state using Ifcomp class
 class Pass3 : public ::testing::Test {
-protected:
-    void SetUp() override
-    {
-        // Create a fresh Ifcomp instance for each test
-    }
-
-    void TearDown() override
-    {
-        // Ifcomp instance will be destroyed automatically
-    }
-
 public:
     Ifcomp ifc;
+    // Ifcomp instance is automatically initialized and destroyed - no SetUp/TearDown needed
 };
 
 // ============================================================================
@@ -402,16 +393,12 @@ TEST_F(Pass3, EmptyLinesInExtension)
 TEST_F(Pass3, LongExtension)
 {
     // Unique pair followed by many duplicate matching lines (remain SYT_TYPE)
-    std::ostringstream file1_content, file2_content;
-    file1_content << "UNIQUE_A\n";
-    file2_content << "UNIQUE_A\n";
-    for (int i = 0; i < 50; i++) {
-        file1_content << "COMMON\n";
-        file2_content << "COMMON\n";
-    }
+    std::string common_lines = generate_file_with_duplicates("COMMON", 50);
+    std::string file1_content = "UNIQUE_A\n" + common_lines;
+    std::string file2_content = "UNIQUE_A\n" + common_lines;
 
-    std::istringstream file1(file1_content.str());
-    std::istringstream file2(file2_content.str());
+    std::istringstream file1(file1_content);
+    std::istringstream file2(file2_content);
 
     ifc.pass1(file1, file2);
     ifc.pass2();
@@ -606,17 +593,12 @@ TEST_F(Pass3, ExtensionWithSpecialCharacters)
 TEST_F(Pass3, VeryLongExtension)
 {
     // Test extension with 100 duplicate matching lines (remain SYT_TYPE)
-    std::ostringstream file1_content, file2_content;
-    file1_content << "UNIQUE_A\n";
-    file2_content << "UNIQUE_A\n";
-    // Use same line repeated to make it duplicate
-    for (int i = 0; i < 100; i++) {
-        file1_content << "COMMON_LINE\n";
-        file2_content << "COMMON_LINE\n";
-    }
+    std::string common_lines = generate_file_with_duplicates("COMMON_LINE", 100);
+    std::string file1_content = "UNIQUE_A\n" + common_lines;
+    std::string file2_content = "UNIQUE_A\n" + common_lines;
 
-    std::istringstream file1(file1_content.str());
-    std::istringstream file2(file2_content.str());
+    std::istringstream file1(file1_content);
+    std::istringstream file2(file2_content);
 
     ifc.pass1(file1, file2);
     ifc.pass2();

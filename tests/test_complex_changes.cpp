@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include "ifcomp_driver.h"
+#include "test_helpers.h"
 
 // Test case with deletes, moves and replacements
 TEST_F(IfcompDriver, ComplexChanges)
@@ -48,5 +49,5 @@ TEST_F(IfcompDriver, ComplexChanges)
         "       5 change blocks.\n";
 
     std::string result = run_ifcomp(a, b);
-    EXPECT_EQ(result, std::string(expect));
+    assert_expected_output(result, expect);
 }

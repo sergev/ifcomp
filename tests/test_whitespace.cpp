@@ -10,7 +10,7 @@ TEST_F(IfcompDriver, LeadingWhitespace)
     const char *b = "   LINE\n   MORE\n";
 
     std::string result = run_ifcomp(a, b);
-    assert_statistics(result, 0, 0, 0, 0, 0, 0);
+    assert_identical_files(result);
 }
 
 // Test trailing whitespace
@@ -20,7 +20,7 @@ TEST_F(IfcompDriver, TrailingWhitespace)
     const char *b = "LINE   \nMORE   \n";
 
     std::string result = run_ifcomp(a, b);
-    assert_statistics(result, 0, 0, 0, 0, 0, 0);
+    assert_identical_files(result);
 }
 
 // Test leading whitespace differences
@@ -50,7 +50,7 @@ TEST_F(IfcompDriver, OnlyWhitespaceLines)
     const char *b = "   \n\t\t\t\nLINE\n";
 
     std::string result = run_ifcomp(a, b);
-    assert_statistics(result, 0, 0, 0, 0, 0, 0);
+    assert_identical_files(result);
 }
 
 // Test mix of spaces and tabs
@@ -64,7 +64,7 @@ TEST_F(IfcompDriver, MixedSpacesAndTabs)
         "   \t\tMORE\n";
 
     std::string result = run_ifcomp(a, b);
-    assert_statistics(result, 0, 0, 0, 0, 0, 0);
+    assert_identical_files(result);
 }
 
 // Test empty lines (just newline)
@@ -74,7 +74,7 @@ TEST_F(IfcompDriver, EmptyLines)
     const char *b = "A\n\nB\n\nC\n";
 
     std::string result = run_ifcomp(a, b);
-    assert_statistics(result, 0, 0, 0, 0, 0, 0);
+    assert_identical_files(result);
 }
 
 // Test empty lines in different positions
@@ -131,5 +131,5 @@ TEST_F(IfcompDriver, MultipleEmptyLines)
     const char *b = "START\n\n\n\nEND\n";
 
     std::string result = run_ifcomp(a, b);
-    assert_statistics(result, 0, 0, 0, 0, 0, 0);
+    assert_identical_files(result);
 }

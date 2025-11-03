@@ -7,19 +7,9 @@
 
 // Test fixture that properly initializes and cleans up state using Ifcomp class
 class Pass1 : public ::testing::Test {
-protected:
-    void SetUp() override
-    {
-        // Create a fresh Ifcomp instance for each test
-    }
-
-    void TearDown() override
-    {
-        // Ifcomp instance will be destroyed automatically
-    }
-
 public:
     Ifcomp ifc;
+    // Ifcomp instance is automatically initialized and destroyed - no SetUp/TearDown needed
 };
 
 // ============================================================================

@@ -11,7 +11,7 @@ TEST_F(IfcompDriver, Line4095Bytes)
     std::string b = long_line + "\n";
 
     std::string result = run_ifcomp(a.c_str(), b.c_str());
-    assert_statistics(result, 0, 0, 0, 0, 0, 0);
+    assert_identical_files(result);
 }
 
 // Test line exactly 4096 bytes (buffer size)
@@ -22,7 +22,7 @@ TEST_F(IfcompDriver, Line4096Bytes)
     std::string b = long_line + "\n";
 
     std::string result = run_ifcomp(a.c_str(), b.c_str());
-    assert_statistics(result, 0, 0, 0, 0, 0, 0);
+    assert_identical_files(result);
 }
 
 // Test line over 4096 bytes (truncation behavior)
@@ -35,7 +35,7 @@ TEST_F(IfcompDriver, LineOver4096Bytes)
 
     // Should match because buffer truncates to same length
     std::string result = run_ifcomp(a.c_str(), b.c_str());
-    assert_statistics(result, 0, 0, 0, 0, 0, 0);
+    assert_identical_files(result);
 }
 
 // Test mix of very short and very long lines
@@ -48,7 +48,7 @@ TEST_F(IfcompDriver, MixShortAndLongLines)
     std::string b = short_line + long_line + short_line;
 
     std::string result = run_ifcomp(a.c_str(), b.c_str());
-    assert_statistics(result, 0, 0, 0, 0, 0, 0);
+    assert_identical_files(result);
 }
 
 // Test very long line followed by very short line
@@ -72,7 +72,7 @@ TEST_F(IfcompDriver, MultipleLongLines)
     std::string b = line1 + line2;
 
     std::string result = run_ifcomp(a.c_str(), b.c_str());
-    assert_statistics(result, 0, 0, 0, 0, 0, 0);
+    assert_identical_files(result);
 }
 
 // Test lines of maximum safe size
@@ -83,5 +83,5 @@ TEST_F(IfcompDriver, MaxSafeLineSize)
     std::string b = line + "\n";
 
     std::string result = run_ifcomp(a.c_str(), b.c_str());
-    assert_statistics(result, 0, 0, 0, 0, 0, 0);
+    assert_identical_files(result);
 }

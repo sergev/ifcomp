@@ -16,15 +16,9 @@ TEST_F(IfcompDriver, SingleIdenticalLine)
 {
     const char *a = "HELLO\n";
     const char *b = "HELLO\n";
-    const char *expect =
-        "       0 lines deleted from old.\n"
-        "       0 lines inserted in new.\n"
-        "       0 lines deleted from old and replaced with 0 lines of new.\n"
-        "       0 lines moved in old.\n"
-        "       0 change blocks.\n";
 
     std::string result = run_ifcomp(a, b);
-    EXPECT_EQ(result, std::string(expect));
+    assert_identical_files(result);
 }
 
 // Test files with single different line
@@ -47,7 +41,7 @@ TEST_F(IfcompDriver, SingleDifferentLine)
         "       1 change blocks.\n";
 
     std::string result = run_ifcomp(a, b);
-    EXPECT_EQ(result, std::string(expect));
+    assert_expected_output(result, expect);
 }
 
 // Test two lines - second different
@@ -67,7 +61,7 @@ TEST_F(IfcompDriver, ThreeLinesIdentical)
     const char *b = "A\nB\nC\n";
 
     std::string result = run_ifcomp(a, b);
-    assert_statistics(result, 0, 0, 0, 0, 0, 0);
+    assert_identical_files(result);
 }
 
 // Test file with only spaces (as lines)
@@ -89,5 +83,5 @@ TEST_F(IfcompDriver, NoTrailingNewline)
 
     // Should detect the line difference
     std::string result = run_ifcomp(a, b);
-    assert_statistics(result, 0, 0, 0, 0, 0, 0);
+    assert_identical_files(result);
 }

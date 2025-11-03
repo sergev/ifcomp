@@ -57,8 +57,7 @@ TEST_F(IfcompDriver, LineNumbersCorrect)
     std::string result = run_ifcomp(a, b);
 
     // Check that line numbers appear in output
-    EXPECT_TRUE(result.find("2|") != std::string::npos) << "Should show line 2";
-    EXPECT_TRUE(result.find("4|") != std::string::npos) << "Should show line 4";
+    assert_line_numbers_present(result, { 2, 4 });
 }
 
 // Test output format consistency
@@ -70,9 +69,8 @@ TEST_F(IfcompDriver, OutputFormatConsistency)
     std::string result = run_ifcomp(a, b);
 
     // Output should have consistent format
-    EXPECT_TRUE(result.find("lines deleted from old.") != std::string::npos);
-    EXPECT_TRUE(result.find("lines inserted in new.") != std::string::npos);
-    EXPECT_TRUE(result.find("change blocks.") != std::string::npos);
+    assert_output_contains(
+        result, { "lines deleted from old.", "lines inserted in new.", "change blocks." });
 }
 
 // Test change block counts accuracy

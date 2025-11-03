@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include "ifcomp_driver.h"
+#include "test_helpers.h"
 
 // Test case from the article
 TEST_F(IfcompDriver, MuchWritingExample)
@@ -59,5 +60,5 @@ TEST_F(IfcompDriver, MuchWritingExample)
         "       5 change blocks.\n";
 
     std::string result = run_ifcomp(a, b);
-    EXPECT_EQ(result, std::string(expect));
+    assert_expected_output(result, expect);
 }

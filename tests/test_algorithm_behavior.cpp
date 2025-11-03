@@ -73,7 +73,7 @@ TEST_F(IfcompDriver, SingleUniqueInDuplicates)
     const char *b = "X\nX\nUNIQUE\nX\nX\n";
 
     std::string result = run_ifcomp(a, b);
-    assert_statistics(result, 0, 0, 0, 0, 0, 0);
+    assert_identical_files(result);
 }
 
 // Test changes at boundaries
@@ -104,5 +104,5 @@ TEST_F(IfcompDriver, UniqueWithDuplicatesAround)
     const char *b = "X\nUNIQUE1\nX\nUNIQUE2\nX\n";
 
     std::string result = run_ifcomp(a, b);
-    assert_statistics(result, 0, 0, 0, 0, 0, 0);
+    assert_identical_files(result);
 }

@@ -133,14 +133,24 @@ TEST_F(IfcompDriver, AlternatingInsertDelete)
 // Test many small moves
 TEST_F(IfcompDriver, ManySmallMoves)
 {
-    std::ostringstream a, b;
-    // Create pairs
-    for (int i = 0; i < 20; i++) {
-        a << "A" << i << "\nB" << i << "\n";
-        b << "B" << i << "\nA" << i << "\n";
-    }
+    // Generate pairs: for each i, we want A{i}\nB{i}\n for file a
+    // and B{i}\nA{i}\n for file b
+    std::string a = generate_file_content_with_pattern(40, [](int i) {
+        if (i % 2 == 0) {
+            return "A" + std::to_string(i / 2);
+        } else {
+            return "B" + std::to_string(i / 2);
+        }
+    });
+    std::string b = generate_file_content_with_pattern(40, [](int i) {
+        if (i % 2 == 0) {
+            return "B" + std::to_string(i / 2);
+        } else {
+            return "A" + std::to_string(i / 2);
+        }
+    });
 
-    std::string result = run_ifcomp(a.str().c_str(), b.str().c_str());
+    std::string result = run_ifcomp(a.c_str(), b.c_str());
     // 40 lines moved
     assert_statistics(result, 0, 0, 0, 0, 20, 20);
 }

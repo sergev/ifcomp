@@ -11,6 +11,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 // Helper function to generate a line of specific length
 inline std::string generate_long_line(size_t length, char fill = 'X')
@@ -24,6 +25,48 @@ inline std::string generate_file_with_duplicates(const std::string &line, int re
     std::ostringstream oss;
     for (int i = 0; i < repeats; i++) {
         oss << line << "\n";
+    }
+    return oss.str();
+}
+
+// ============================================================================
+// File Content Generation Helpers
+// ============================================================================
+
+// Helper function to generate sequential numbered lines
+inline std::string generate_sequential_lines(int start, int end, const std::string &prefix = "line")
+{
+    std::ostringstream oss;
+    for (int i = start; i <= end; i++) {
+        oss << prefix << i << "\n";
+    }
+    return oss.str();
+}
+
+// Helper function to generate identical file content for both files
+inline std::string generate_identical_files(int count, const std::string &line_format = "line")
+{
+    std::ostringstream oss;
+    for (int i = 1; i <= count; i++) {
+        if (line_format.find("{}") != std::string::npos) {
+            std::string line = line_format;
+            size_t pos = line.find("{}");
+            line.replace(pos, 2, std::to_string(i));
+            oss << line << "\n";
+        } else {
+            oss << line_format << i << "\n";
+        }
+    }
+    return oss.str();
+}
+
+// Helper function to generate file content with custom pattern function
+inline std::string generate_file_content_with_pattern(int count,
+                                                      std::function<std::string(int)> pattern_func)
+{
+    std::ostringstream oss;
+    for (int i = 0; i < count; i++) {
+        oss << pattern_func(i) << "\n";
     }
     return oss.str();
 }
@@ -85,6 +128,47 @@ inline void assert_statistics(const std::string &output, int expected_del, int e
     EXPECT_EQ(stats.replaced_new, expected_repl_new) << "Replaced new lines mismatch";
     EXPECT_EQ(stats.moved, expected_moved) << "Moved lines mismatch";
     EXPECT_EQ(stats.change_blocks, expected_blocks) << "Change blocks mismatch";
+}
+
+// ============================================================================
+// Comparison Helpers
+// ============================================================================
+
+// Helper to assert identical files produce zero changes
+inline void assert_identical_files(const std::string &result)
+{
+    assert_statistics(result, 0, 0, 0, 0, 0, 0);
+}
+
+// Helper to assert expected output matches exactly
+inline void assert_expected_output(const std::string &result, const std::string &expected)
+{
+    EXPECT_EQ(result, expected) << "Output does not match expected output";
+}
+
+// ============================================================================
+// Output Validation Helpers
+// ============================================================================
+
+// Helper to assert output contains multiple patterns
+inline void assert_output_contains(const std::string &output,
+                                   const std::vector<std::string> &patterns)
+{
+    for (const auto &pattern : patterns) {
+        EXPECT_NE(output.find(pattern), std::string::npos)
+            << "Output should contain pattern: " << pattern;
+    }
+}
+
+// Helper to assert specific line numbers are present in output
+inline void assert_line_numbers_present(const std::string &output,
+                                        const std::vector<int> &line_nums)
+{
+    for (int line_num : line_nums) {
+        std::string line_pattern = std::to_string(line_num) + "|";
+        EXPECT_NE(output.find(line_pattern), std::string::npos)
+            << "Output should contain line number: " << line_num;
+    }
 }
 
 // ============================================================================
