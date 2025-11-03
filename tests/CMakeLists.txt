@@ -15,21 +15,12 @@ FetchContent_MakeAvailable(googletest)
 
 # GoogleTest unit tests executable
 add_executable(test_ifcomp
-    test_identical_files.cpp
-    test_complex_changes.cpp
-    test_permutation_changes.cpp
-    test_much_writing.cpp
-    test_edge_cases.cpp
-    test_line_length.cpp
+    test_integration.cpp
     test_duplicates.cpp
-    test_hash_collisions.cpp
-    test_special_chars.cpp
-    test_whitespace.cpp
+    test_input_format.cpp
     test_large_files.cpp
-    test_advanced_patterns.cpp
-    test_algorithm_behavior.cpp
-    test_output_validation.cpp
-    test_file_io_errors.cpp
+    test_algorithm_patterns.cpp
+    test_error_handling.cpp
     test_cli.cpp
     test_pass1.cpp
     test_pass2.cpp
