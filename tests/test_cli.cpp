@@ -1,4 +1,3 @@
-#include <fcntl.h>
 #include <gtest/gtest.h>
 #include <unistd.h>
 
@@ -9,6 +8,7 @@
 #include <string>
 
 #include "ifcomp.h"
+#include "test_helpers.h"
 
 // Verify BUILD_DIR is defined by CMake
 #ifndef BUILD_DIR
@@ -20,29 +20,31 @@ class CLITest : public ::testing::Test {
 public:
     void SetUp() override
     {
+        // Create unique temporary files
+        fname_a = create_temp_file("cli_test_a_XXXXXX");
+        fname_b = create_temp_file("cli_test_b_XXXXXX");
+
         // Create test files
-        create_test_file("cli_test_a.txt", "A\nB\nC\n");
-        create_test_file("cli_test_b.txt", "A\nB\nC\n");
+        write_file_content(fname_a.c_str(), "A\nB\nC\n");
+        write_file_content(fname_b.c_str(), "A\nB\nC\n");
         output.str("");
     }
 
     void TearDown() override
     {
         // Cleanup test files
-        unlink("cli_test_a.txt");
-        unlink("cli_test_b.txt");
+        cleanup_temp_file(fname_a);
+        cleanup_temp_file(fname_b);
     }
 
     void create_test_file(const char *fname, const char *content)
     {
-        std::ofstream f(fname);
-        ASSERT_TRUE(f.good()) << "Failed to create test file: " << fname;
-        f << content;
-        ASSERT_TRUE(f.good()) << "Failed to write to test file: " << fname;
-        f.close();
+        write_file_content(fname, content);
     }
 
     std::ostringstream output;
+    std::string fname_a;
+    std::string fname_b;
 };
 
 // Test debug flag -st
@@ -56,7 +58,7 @@ TEST_F(CLITest, DebugFlagST)
     EXPECT_FALSE(ifc.debug_dump_trees);
 
     // Run comparison with debug flag set
-    EXPECT_NO_THROW({ ifc.compare("cli_test_a.txt", "cli_test_b.txt"); });
+    EXPECT_NO_THROW({ ifc.compare(fname_a.c_str(), fname_b.c_str()); });
 }
 
 // Test debug flag -stfull
@@ -70,7 +72,7 @@ TEST_F(CLITest, DebugFlagSTFull)
     EXPECT_FALSE(ifc.debug_dump_trees);
 
     // Run comparison with debug flag set
-    EXPECT_NO_THROW({ ifc.compare("cli_test_a.txt", "cli_test_b.txt"); });
+    EXPECT_NO_THROW({ ifc.compare(fname_a.c_str(), fname_b.c_str()); });
 }
 
 // Test debug flag -trees
@@ -84,7 +86,7 @@ TEST_F(CLITest, DebugFlagTrees)
     EXPECT_FALSE(ifc.debug_syt);
 
     // Run comparison with debug flag set
-    EXPECT_NO_THROW({ ifc.compare("cli_test_a.txt", "cli_test_b.txt"); });
+    EXPECT_NO_THROW({ ifc.compare(fname_a.c_str(), fname_b.c_str()); });
 }
 
 // Test debug flag -treesfull
@@ -98,7 +100,7 @@ TEST_F(CLITest, DebugFlagTreesFull)
     EXPECT_FALSE(ifc.debug_syt);
 
     // Run comparison with debug flag set
-    EXPECT_NO_THROW({ ifc.compare("cli_test_a.txt", "cli_test_b.txt"); });
+    EXPECT_NO_THROW({ ifc.compare(fname_a.c_str(), fname_b.c_str()); });
 }
 
 // Test debug flag -alloc
@@ -112,7 +114,7 @@ TEST_F(CLITest, DebugFlagAlloc)
     EXPECT_FALSE(ifc.debug_dump_trees);
 
     // Run comparison with debug flag set
-    EXPECT_NO_THROW({ ifc.compare("cli_test_a.txt", "cli_test_b.txt"); });
+    EXPECT_NO_THROW({ ifc.compare(fname_a.c_str(), fname_b.c_str()); });
 }
 
 // Test debug flag -nofree
@@ -126,7 +128,7 @@ TEST_F(CLITest, DebugFlagNoFree)
     EXPECT_FALSE(ifc.debug_dump_trees);
 
     // Run comparison with debug flag set
-    EXPECT_NO_THROW({ ifc.compare("cli_test_a.txt", "cli_test_b.txt"); });
+    EXPECT_NO_THROW({ ifc.compare(fname_a.c_str(), fname_b.c_str()); });
 }
 
 // Test debug flag -debug (sets all debug flags)
@@ -146,14 +148,14 @@ TEST_F(CLITest, DebugFlagDebug)
     EXPECT_TRUE(ifc.debug_dump_trees_full);
 
     // Run comparison with all debug flags set
-    EXPECT_NO_THROW({ ifc.compare("cli_test_a.txt", "cli_test_b.txt"); });
+    EXPECT_NO_THROW({ ifc.compare(fname_a.c_str(), fname_b.c_str()); });
 }
 
 // Test statistics flag -stat
 TEST_F(CLITest, StatisticsFlag)
 {
     Ifcomp ifc(output);
-    EXPECT_NO_THROW({ ifc.compare("cli_test_a.txt", "cli_test_b.txt"); });
+    EXPECT_NO_THROW({ ifc.compare(fname_a.c_str(), fname_b.c_str()); });
 
     // Test that print_statistics can be called
     ifc.print_statistics();
@@ -176,14 +178,14 @@ TEST_F(CLITest, MultipleDebugFlags)
     EXPECT_TRUE(ifc.debug_alloc);
 
     // Run comparison with multiple flags set
-    EXPECT_NO_THROW({ ifc.compare("cli_test_a.txt", "cli_test_b.txt"); });
+    EXPECT_NO_THROW({ ifc.compare(fname_a.c_str(), fname_b.c_str()); });
 }
 
 // Test valid two-file comparison (CLI-style)
 TEST_F(CLITest, ValidTwoFileComparison)
 {
     Ifcomp ifc(output);
-    EXPECT_NO_THROW({ ifc.compare("cli_test_a.txt", "cli_test_b.txt"); });
+    EXPECT_NO_THROW({ ifc.compare(fname_a.c_str(), fname_b.c_str()); });
 
     std::string result = output.str();
     // Should contain comparison output
@@ -200,17 +202,17 @@ TEST_F(CLITest, DebugFlagsDontBreakNormalOperation)
     ifc.debug_dump_trees = true;
 
     // Should not throw
-    EXPECT_NO_THROW({ ifc.compare("cli_test_a.txt", "cli_test_b.txt"); });
+    EXPECT_NO_THROW({ ifc.compare(fname_a.c_str(), fname_b.c_str()); });
 }
 
 // Test statistics output format
 TEST_F(CLITest, StatisticsOutputFormat)
 {
     Ifcomp ifc(output);
-    create_test_file("cli_test_a.txt", "A\nB\n");
-    create_test_file("cli_test_b.txt", "A\nC\n");
+    create_test_file(fname_a.c_str(), "A\nB\n");
+    create_test_file(fname_b.c_str(), "A\nC\n");
 
-    ifc.compare("cli_test_a.txt", "cli_test_b.txt");
+    ifc.compare(fname_a.c_str(), fname_b.c_str());
     output.str(""); // Clear output
     ifc.print_statistics();
 
@@ -229,13 +231,7 @@ std::string run_cli_command(const std::string &args)
     std::string test_dir = std::string(BUILD_DIR) + "/tests";
 
     // Use a temporary file to capture output
-    char tmpfile_template[] = "/tmp/ifcomp_test_XXXXXX";
-    int tmpfd = mkstemp(tmpfile_template);
-    if (tmpfd < 0) {
-        return "";
-    }
-    close(tmpfd);
-    std::string tmpfile = tmpfile_template;
+    std::string tmpfile = create_temp_file("/tmp/ifcomp_test_XXXXXX");
 
     // Change to test directory (where test files are created) before running
     // Quote paths to handle spaces
@@ -253,7 +249,7 @@ std::string run_cli_command(const std::string &args)
         result = ss.str();
     }
     in.close();
-    unlink(tmpfile.c_str());
+    cleanup_temp_file(tmpfile);
 
     return result;
 }
@@ -288,7 +284,7 @@ TEST_F(CLITest, CLITooManyArguments)
 // Test CLI with valid arguments (requires binary)
 TEST_F(CLITest, CLIValidArguments)
 {
-    std::string output = run_cli_command("cli_test_a.txt cli_test_b.txt");
+    std::string output = run_cli_command(fname_a + " " + fname_b);
     // Should show comparison output
     EXPECT_FALSE(output.empty());
     EXPECT_NE(output.find("Comparing:"), std::string::npos);
