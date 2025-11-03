@@ -114,27 +114,27 @@ Other Make targets:
 
 ```
 ifcomp/
-├── main.cpp            # Main entry point and command-line parsing
-├── ifcomp.cpp          # Core algorithm implementation
-├── ifcomp.h            # Header file with public API
-├── pass1.cpp - pass8.cpp  # Algorithm pass implementations
-├── Makefile            # Make build configuration
-├── CMakeLists.txt      # CMake build configuration
-├── Theory.md           # Detailed algorithm theory and documentation
-├── calculate_coverage.py  # Test coverage calculation script
-├── tests/              # GoogleTest-based C++ tests
+├── main.cpp                # Main entry point and command-line parsing
+├── ifcomp.cpp              # Core algorithm implementation
+├── ifcomp.h                # Header file with public API
+├── pass1.cpp - pass8.cpp   # Algorithm pass implementations
+├── Makefile                # Make build configuration
+├── CMakeLists.txt          # CMake build configuration
+├── Theory.md               # Detailed algorithm theory and documentation
+├── calculate_coverage.py   # Test coverage calculation script
+├── tests/                  # GoogleTest-based C++ tests
 │   ├── CMakeLists.txt
 │   ├── test_helpers.h
 │   ├── ifcomp_driver.h
-│   ├── test_identical_files.cpp
-│   ├── test_complex_changes.cpp
-│   ├── test_permutation_changes.cpp
-│   ├── test_much_writing.cpp
+│   ├── test_integration.cpp
+│   ├── test_duplicates.cpp
+│   ├── test_input_format.cpp
+│   ├── test_large_files.cpp
+│   ├── test_algorithm_patterns.cpp
+│   ├── test_error_handling.cpp
 │   ├── test_cli.cpp
-│   ├── test_file_io_errors.cpp
-│   ├── test_pass1.cpp - test_pass8.cpp
-│   └── test_*.cpp      # Additional test files
-├── rust/               # Rust implementation
+│   └── test_pass1.cpp - test_pass8.cpp
+├── rust/                   # Rust implementation
 │   ├── Cargo.toml
 │   ├── src/
 │   │   ├── main.rs
@@ -146,7 +146,7 @@ ifcomp/
 │   │   ├── integration_test.rs
 │   │   └── pass1_test.rs - pass8_test.rs
 │   └── README.md
-├── go/                 # Go implementation
+├── go/                     # Go implementation
 │   ├── go.mod
 │   ├── main.go
 │   ├── types.go
@@ -154,14 +154,14 @@ ifcomp/
 │   ├── pass1_test.go - pass8_test.go
 │   ├── ifcomp_test.go
 │   └── README.md
-├── legacy/             # Original C implementation
+├── legacy/                 # Original C implementation
 │   ├── main.c
 │   ├── ifcomp.c
 │   ├── ifcomp.h
 │   ├── unit_tests.c
 │   ├── Makefile
 │   └── README.md
-└── MIT-LICENSE         # License file
+└── MIT-LICENSE             # License file
 ```
 
 ## Implementation
